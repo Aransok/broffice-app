@@ -2,11 +2,12 @@
 // screenshots of the admin panel for docs/admin-manual.pdf. Not part of the
 // app itself — run manually with the dev servers already up:
 //
-//   cd frontend && node ../scripts/capture_admin_screenshots.mjs
+//   SCREENSHOT_ADMIN_USER=... SCREENSHOT_ADMIN_PASSWORD=... \
+//     node ../scripts/capture_admin_screenshots.mjs
 //
-// Requires the temporary "manual_screenshot_admin" account (created via
-// Django shell before running this, deleted after) since these are real
-// screenshots of real data, not a mock.
+// Requires a temporary admin account (created via Django shell before
+// running this, deleted after) since these are real screenshots of real
+// data, not a mock.
 
 import { chromium } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
@@ -18,6 +19,12 @@ const OUT_DIR = path.resolve(__dirname, '../../docs/screenshots')
 mkdirSync(OUT_DIR, { recursive: true })
 
 const BASE_URL = 'http://localhost:5173'
+const ADMIN_USER = process.env.SCREENSHOT_ADMIN_USER
+const ADMIN_PASSWORD = process.env.SCREENSHOT_ADMIN_PASSWORD
+if (!ADMIN_USER || !ADMIN_PASSWORD) {
+  console.error('Set SCREENSHOT_ADMIN_USER and SCREENSHOT_ADMIN_PASSWORD env vars first.')
+  process.exit(1)
+}
 
 async function shot(page, name) {
   await page.screenshot({ path: path.join(OUT_DIR, `${name}.png`) })
@@ -29,8 +36,8 @@ async function main() {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
 
   await page.goto(`${BASE_URL}/login`)
-  await page.locator('input[type="text"]').fill('manual_screenshot_admin')
-  await page.locator('input[type="password"]').fill('ScreenshotTemp123!')
+  await page.locator('input[type="text"]').fill(ADMIN_USER)
+  await page.locator('input[type="password"]').fill(ADMIN_PASSWORD)
   await page.getByRole('button', { name: 'Вход' }).click()
   await page.waitForURL(`${BASE_URL}/`)
 
