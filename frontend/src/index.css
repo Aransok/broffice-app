@@ -1,0 +1,248 @@
+@import 'tailwindcss';
+
+/*
+ * Centralized design-token architecture.
+ *
+ * Tailwind v4 generates every utility class (bg-slate-50, text-slate-900,
+ * bg-primary, rounded-ui, ...) from CSS custom properties defined once
+ * here. That means overriding those same variable names in a more specific
+ * selector (scoped by [data-mode]/[data-theme] on <html>) re-themes every
+ * component already using them — a real dark mode and 5 visual presets
+ * without touching the ~80 files that use these classes today, and without
+ * ever inverting colors mathematically: every value below is a deliberate,
+ * separately-chosen color for its role in that mode.
+ *
+ * `--color-white` is deliberately NEVER overridden — it's also what
+ * `text-white` uses for text drawn on top of `bg-primary` buttons, and that
+ * needs to stay legible in every mode/preset. Surfaces (cards/header/panel
+ * backgrounds) that want to go dark use the new `bg-surface`/`border-surface`
+ * tokens instead of literal `bg-white` (see the small number of call sites
+ * updated alongside this).
+ */
+@theme {
+  --color-primary: #3577f0;
+  --color-surface: #ffffff;
+  --radius-ui: 8px;
+  --shadow-card: none;
+}
+
+/* ---------- Light/Dark mode (orthogonal to the 5 presets below) ---------- */
+
+:root[data-mode='dark'] {
+  --color-surface: #16202e;
+
+  --color-slate-50: #0b1220;
+  --color-slate-100: #1a2434;
+  --color-slate-200: #2b3648;
+  --color-slate-300: #3c4a5e;
+  --color-slate-400: #7c8ba1;
+  --color-slate-500: #93a3b8;
+  --color-slate-600: #b6c2d1;
+  --color-slate-700: #cbd5e1;
+  --color-slate-800: #e2e8f0;
+  --color-slate-900: #f8fafc;
+
+  --color-red-100: #3f1d1d;
+  --color-red-300: #7f3535;
+  --color-red-500: #f87171;
+  --color-red-600: #f87171;
+  --color-red-800: #fca5a5;
+
+  --color-green-100: #12321f;
+  --color-green-700: #6ee7a0;
+  --color-green-800: #86efac;
+
+  --color-yellow-100: #3a2f10;
+  --color-yellow-800: #fcd34d;
+
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-slate-50);
+}
+
+/* Tailwind's preflight makes form controls inherit `color` from the page
+ * (so <select> text correctly goes near-white in dark mode via the
+ * --color-slate-900 token above) but never sets their `background-color` —
+ * that's left at the browser's native default (white), regardless of mode.
+ * Result in dark mode: white text on a white box, unreadable until some
+ * native :hover/:focus state happens to render differently. Fixed once
+ * here for every <select> in the app, rather than adding bg-surface to
+ * ~10 individual admin form files and hoping every future one remembers to. */
+select {
+  background-color: var(--color-surface);
+  color: var(--color-slate-900);
+}
+select option {
+  background-color: var(--color-surface);
+  color: var(--color-slate-900);
+}
+
+/* Staggered reveal for menu columns — mirrors the live site's own mega-menu
+ * CSS (.department-submenu:nth-child(1n/2n/3n){transition-delay:...}), just
+ * done as a real @keyframes animation instead of a transition so it replays
+ * every time the content remounts (e.g. switching which root category is
+ * active), not only on first mount. Apply `animate-menu-item-in` plus an
+ * inline `animation-delay` per item. */
+@keyframes menu-item-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-menu-item-in {
+  animation: menu-item-in 0.3s ease-out both;
+}
+
+/* ---------- Design presets (visual only — never touches architecture) ---------- */
+/* Each preset restyles color/radius/density/shadow via the same tokens
+ * every component already consumes. "Clean Business" is the default and
+ * intentionally matches the site's original look exactly (zero visual
+ * change for anyone who never opens the theme selector). */
+
+/* 1. Clean Business (default) — no overrides needed, see @theme above. */
+
+/* 2. Modern Commerce — cool violet-tinted grays, rounder cards, softer
+ * shadows, bold tight headings, borders de-emphasized in favor of shadow. */
+:root[data-theme='modern'] {
+  --color-primary: #6d5ce8;
+  --radius-ui: 14px;
+  --spacing: 0.27rem;
+  --shadow-card: 0 10px 25px -8px rgba(76, 29, 149, 0.25);
+}
+/* Light-only tint: a bare :root[data-theme='modern'] rule has the SAME
+ * specificity as :root[data-mode='dark'] above, so without :not(...) here,
+ * source order alone would decide the winner — and since presets are
+ * declared after the dark-mode block, the tint would incorrectly beat dark
+ * mode's slate values every time "Modern" + dark are both active. */
+:root[data-theme='modern']:not([data-mode='dark']) {
+  --color-slate-50: #f5f4fe;
+  --color-slate-100: #ece9fd;
+  --color-slate-200: #d9d4fa;
+  --color-slate-300: #beb3f5;
+}
+:root[data-theme='modern'][data-mode='dark'] {
+  --color-primary: #8b7cf0;
+  --shadow-card: 0 10px 25px -8px rgba(0, 0, 0, 0.55);
+}
+:root[data-theme='modern'] h1,
+:root[data-theme='modern'] h2,
+:root[data-theme='modern'] h3 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* 3. Compact Professional — denser spacing, sharper corners, crisper
+ * (darker, no-nonsense) borders, smaller base type so more fits on screen. */
+:root[data-theme='compact'] {
+  --color-primary: #2f5fd6;
+  --radius-ui: 4px;
+  --spacing: 0.19rem;
+}
+:root[data-theme='compact']:not([data-mode='dark']) {
+  --color-slate-50: #f4f6f9;
+  --color-slate-100: #e7ebf1;
+  --color-slate-200: #c7d0dd;
+  --color-slate-300: #9fadc0;
+}
+html[data-theme='compact'] {
+  font-size: 14px;
+}
+:root[data-theme='compact'] h1,
+:root[data-theme='compact'] h2,
+:root[data-theme='compact'] h3 {
+  letter-spacing: -0.01em;
+}
+
+/* 4. Premium — warm charcoal-taupe neutrals, serif headings, deep navy
+ * accent, larger type and generous whitespace for an elevated feel. */
+:root[data-theme='premium'] {
+  --color-primary: #1f3a5f;
+  --radius-ui: 2px;
+  --spacing: 0.3rem;
+  --shadow-card: 0 1px 0 rgba(31, 58, 95, 0.08);
+}
+:root[data-theme='premium']:not([data-mode='dark']) {
+  --color-slate-50: #f8f6f3;
+  --color-slate-100: #efe9e2;
+  --color-slate-200: #ddd2c3;
+  --color-slate-300: #bfae95;
+}
+:root[data-theme='premium'][data-mode='dark'] {
+  --color-primary: #8fa9c4;
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+html[data-theme='premium'] {
+  font-size: 17.5px;
+}
+:root[data-theme='premium'] h1,
+:root[data-theme='premium'] h2,
+:root[data-theme='premium'] h3 {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* 5. Soft / Friendly — warm peach-cream neutrals, very rounded, gentle
+ * diffuse shadow, teal accent, rounded-leaning heading font stack. */
+:root[data-theme='soft'] {
+  --color-primary: #14b8a6;
+  --radius-ui: 22px;
+  --spacing: 0.26rem;
+  --shadow-card: 0 8px 20px -6px rgba(20, 184, 166, 0.3);
+}
+:root[data-theme='soft']:not([data-mode='dark']) {
+  --color-slate-50: #fdf6ef;
+  --color-slate-100: #faebdd;
+  --color-slate-200: #f0d6bd;
+  --color-slate-300: #dfb992;
+}
+:root[data-theme='soft'][data-mode='dark'] {
+  --shadow-card: 0 8px 20px -6px rgba(0, 0, 0, 0.5);
+}
+:root[data-theme='soft'] h1,
+:root[data-theme='soft'] h2,
+:root[data-theme='soft'] h3 {
+  font-family: ui-rounded, 'SF Pro Rounded', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 700;
+}
+
+/* 6. BRoffice — the client's actual brand colors (from the real logo), not a
+ * generic style experiment. Blue primary + the logo's orange used as the
+ * site's "attention" accent (discount prices, sale badges) instead of the
+ * default red — deliberate for this preset, since the brand kit has no
+ * separate error-red and reusing the accent for both is a common real-brand
+ * pattern. Clean/default density and radius — the point here is the palette,
+ * not a new layout mood. */
+:root[data-theme='brand'] {
+  --color-primary: #215f9a;
+  --color-red-100: #fdece0;
+  --color-red-300: #f3b28f;
+  --color-red-500: #ef6e35;
+  --color-red-600: #ef6e35;
+  --color-red-800: #c2540f;
+}
+:root[data-theme='brand'][data-mode='dark'] {
+  --color-primary: #4a86bd;
+  --color-red-100: #3a2013;
+  --color-red-300: #7a4a2e;
+  --color-red-500: #f4885a;
+  --color-red-600: #f4885a;
+  --color-red-800: #ffb38f;
+}
+
+/* `.rounded-ui` is already used as the de-facto shared card/panel/button/input
+ * container class across the whole app — attaching the preset shadow here
+ * (rather than to every individual component) is what makes each preset read
+ * as visually distinct without a component rewrite. Buttons/inputs get the
+ * shadow too, which is intentional (they're `.rounded-ui` as well) — it's
+ * subtle at that size and keeps every preset-aware element on one rule. */
+.rounded-ui {
+  box-shadow: var(--shadow-card);
+}

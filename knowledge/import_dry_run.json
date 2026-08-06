@@ -1,0 +1,27 @@
+{
+  "products": {
+    "created": 91,
+    "updated": 0,
+    "total": 91
+  },
+  "categories": {
+    "created": 286,
+    "updated": 0,
+    "total": 286
+  },
+  "brands": {
+    "created": 10,
+    "updated": 0,
+    "total": 10
+  },
+  "images": {
+    "created": 305,
+    "updated": 11,
+    "total": 316
+  },
+  "products_second_pass": {
+    "created": 0,
+    "updated": 91,
+    "total": 91
+  }
+}

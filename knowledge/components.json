@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Header",
+    "selector": "header.axil-header, header.header",
+    "pages_detected": 8,
+    "estimated_react_component": "Header"
+  },
+  {
+    "name": "Footer",
+    "selector": "footer, .footer-area, .axil-footer-area",
+    "pages_detected": 8,
+    "estimated_react_component": "Footer"
+  },
+  {
+    "name": "MegaMenu",
+    "selector": ".department-megamenu, .header-department",
+    "pages_detected": 8,
+    "estimated_react_component": "MegaMenu"
+  },
+  {
+    "name": "SearchBox",
+    "selector": ".axil-search, #searchForm",
+    "pages_detected": 8,
+    "estimated_react_component": "SearchBox"
+  },
+  {
+    "name": "ProductCard",
+    "selector": ".axil-product, .product-card, .product",
+    "pages_detected": 8,
+    "estimated_react_component": "ProductCard"
+  },
+  {
+    "name": "Breadcrumbs",
+    "selector": "ul.axil-breadcrumb",
+    "pages_detected": 8,
+    "estimated_react_component": "Breadcrumbs"
+  },
+  {
+    "name": "Pagination",
+    "selector": ".pagination, .axil-pagination",
+    "pages_detected": 7,
+    "estimated_react_component": "Pagination"
+  },
+  {
+    "name": "Filters",
+    "selector": ".axil-shop-sidebar, .filter",
+    "pages_detected": 8,
+    "estimated_react_component": "Filters"
+  }
+]

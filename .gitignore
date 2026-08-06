@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+*.sqlite3
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# Node
+node_modules/
+dist/
+*.local
+
+# Media / logs / tmp
+media/**
+!media/.gitkeep
+logs/**
+!logs/.gitkeep
+tmp/**
+!tmp/.gitkeep
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Playwright
+playwright-report/
+test-results/
+
+# Docker
+*.log
+
+# Internal dev-process notes — not part of the shipped project.
+CLAUDE.md
+ROADMAP.md
+ai-memory/
+docs/AI_WORKFLOW.md
+docs/DEPLOYMENT_SUPERHOSTING.md
+docs/discovery/
+docs/tasks/

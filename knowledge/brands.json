@@ -1,0 +1,82 @@
+[
+  {
+    "external_id": "1",
+    "slug": "bic",
+    "name": "Bic",
+    "logo": "../../assets/media/plovdiv-logo.png",
+    "url": "/brand/1/bic",
+    "source_file": "C:\\Myfolder\\broffice\\officecenter-bg.com\\brand\\1\\bic.html"
+  },
+  {
+    "external_id": "125",
+    "slug": "tork",
+    "name": "TORK",
+    "logo": "../../assets/media/plovdiv-logo.png",
+    "url": "/brand/125/tork",
+    "source_file": "C:\\Myfolder\\broffice\\officecenter-bg.com\\brand\\125\\tork.html"
+  },
+  {
+    "external_id": "139",
+    "slug": "apple",
+    "name": "Apple",
+    "logo": "../../assets/media/plovdiv-logo.png",
+    "url": "/brand/139/apple",
+    "source_file": "C:\\Myfolder\\broffice\\officecenter-bg.com\\brand\\139\\apple.html"
+  },
+  {
+    "external_id": "176",
+    "slug": "philips",
+    "name": "PHILIPS",
+    "logo": "../../assets/media/plovdiv-logo.png",
+    "url": "/brand/176/philips",
+    "source_file": "C:\\Myfolder\\broffice\\officecenter-bg.com\\brand\\176\\philips.html"
+  },
+  {
+    "external_id": "195",
+    "slug": "lavazza",
+    "name": "LAVAZZA",
+    "logo": "../../assets/media/plovdiv-logo.png",
+    "url": "/brand/195/lavazza",
+    "source_file": "C:\\Myfolder\\broffice\\officecenter-bg.com\\brand\\195\\lavazza.html"
+  },
+  {
+    "external_id": "2",
+    "slug": "mas",
+    "name": "Mas",
+    "logo": "../../assets/media/plovdiv-logo.png",
+    "url": "/brand/2/mas",
+    "source_file": "C:\\Myfolder\\broffice\\officecenter-bg.com\\brand\\2\\mas.html"
+  },
+  {
+    "external_id": "20",
+    "slug": "hb",
+    "name": "HB",
+    "logo": "../../assets/media/plovdiv-logo.png",
+    "url": "/brand/20/hb",
+    "source_file": "C:\\Myfolder\\broffice\\officecenter-bg.com\\brand\\20\\hb.html"
+  },
+  {
+    "external_id": "27",
+    "slug": "carmen",
+    "name": "Carmen",
+    "logo": "../../assets/media/plovdiv-logo.png",
+    "url": "/brand/27/carmen",
+    "source_file": "C:\\Myfolder\\broffice\\officecenter-bg.com\\brand\\27\\carmen.html"
+  },
+  {
+    "external_id": "32",
+    "slug": "omega",
+    "name": "Omega",
+    "logo": "../../assets/media/plovdiv-logo.png",
+    "url": "/brand/32/omega",
+    "source_file": "C:\\Myfolder\\broffice\\officecenter-bg.com\\brand\\32\\omega.html"
+  },
+  {
+    "external_id": "81",
+    "slug": "hp",
+    "name": "HP",
+    "logo": "../../assets/media/plovdiv-logo.png",
+    "url": "/brand/81/hp",
+    "source_file": "C:\\Myfolder\\broffice\\officecenter-bg.com\\brand\\81\\hp.html"
+  }
+]

@@ -1,0 +1,1215 @@
+{
+  "products_to_categories": [
+    {
+      "product_id": "12130",
+      "category_ids": [
+        "1",
+        "143",
+        "151"
+      ]
+    },
+    {
+      "product_id": "12243",
+      "category_ids": [
+        "1",
+        "2",
+        "3",
+        "10"
+      ]
+    },
+    {
+      "product_id": "12244",
+      "category_ids": [
+        "1",
+        "2",
+        "3"
+      ]
+    },
+    {
+      "product_id": "12246",
+      "category_ids": [
+        "1",
+        "2",
+        "3",
+        "10"
+      ]
+    },
+    {
+      "product_id": "12879",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "70"
+      ]
+    },
+    {
+      "product_id": "12880",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "70"
+      ]
+    },
+    {
+      "product_id": "12882",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "70"
+      ]
+    },
+    {
+      "product_id": "12892",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "75"
+      ]
+    },
+    {
+      "product_id": "12893",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "75"
+      ]
+    },
+    {
+      "product_id": "12896",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "75"
+      ]
+    },
+    {
+      "product_id": "12898",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "75"
+      ]
+    },
+    {
+      "product_id": "12899",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "75"
+      ]
+    },
+    {
+      "product_id": "16535",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "72"
+      ]
+    },
+    {
+      "product_id": "16539",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "72"
+      ]
+    },
+    {
+      "product_id": "16540",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "72"
+      ]
+    },
+    {
+      "product_id": "1706",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "70"
+      ]
+    },
+    {
+      "product_id": "1707",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "70"
+      ]
+    },
+    {
+      "product_id": "1709",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "70"
+      ]
+    },
+    {
+      "product_id": "1710",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "70"
+      ]
+    },
+    {
+      "product_id": "1924",
+      "category_ids": []
+    },
+    {
+      "product_id": "20250",
+      "category_ids": [
+        "1",
+        "2",
+        "21",
+        "25",
+        "26"
+      ]
+    },
+    {
+      "product_id": "22891",
+      "category_ids": [
+        "323",
+        "324",
+        "325"
+      ]
+    },
+    {
+      "product_id": "23078",
+      "category_ids": [
+        "323",
+        "333",
+        "341",
+        "345"
+      ]
+    },
+    {
+      "product_id": "23080",
+      "category_ids": [
+        "323",
+        "333",
+        "341",
+        "342"
+      ]
+    },
+    {
+      "product_id": "23210",
+      "category_ids": [
+        "635",
+        "636",
+        "251",
+        "259",
+        "263"
+      ]
+    },
+    {
+      "product_id": "23213",
+      "category_ids": [
+        "635",
+        "636",
+        "251",
+        "259",
+        "263"
+      ]
+    },
+    {
+      "product_id": "23254",
+      "category_ids": [
+        "323",
+        "324"
+      ]
+    },
+    {
+      "product_id": "24168",
+      "category_ids": [
+        "395",
+        "407",
+        "408"
+      ]
+    },
+    {
+      "product_id": "24169",
+      "category_ids": [
+        "395",
+        "407",
+        "412"
+      ]
+    },
+    {
+      "product_id": "24170",
+      "category_ids": [
+        "395",
+        "407",
+        "410"
+      ]
+    },
+    {
+      "product_id": "24173",
+      "category_ids": [
+        "395",
+        "407",
+        "412"
+      ]
+    },
+    {
+      "product_id": "24183",
+      "category_ids": [
+        "395",
+        "407",
+        "412"
+      ]
+    },
+    {
+      "product_id": "24229",
+      "category_ids": [
+        "323",
+        "333",
+        "341",
+        "342"
+      ]
+    },
+    {
+      "product_id": "24236",
+      "category_ids": [
+        "323",
+        "333"
+      ]
+    },
+    {
+      "product_id": "24289",
+      "category_ids": [
+        "323",
+        "324",
+        "325"
+      ]
+    },
+    {
+      "product_id": "24448",
+      "category_ids": [
+        "704"
+      ]
+    },
+    {
+      "product_id": "24766",
+      "category_ids": [
+        "395",
+        "407",
+        "412"
+      ]
+    },
+    {
+      "product_id": "25071",
+      "category_ids": [
+        "323",
+        "324",
+        "326"
+      ]
+    },
+    {
+      "product_id": "25195",
+      "category_ids": [
+        "323",
+        "324",
+        "326"
+      ]
+    },
+    {
+      "product_id": "26109",
+      "category_ids": [
+        "635",
+        "636",
+        "251",
+        "319"
+      ]
+    },
+    {
+      "product_id": "262",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "70"
+      ]
+    },
+    {
+      "product_id": "263",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "70"
+      ]
+    },
+    {
+      "product_id": "268",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "70"
+      ]
+    },
+    {
+      "product_id": "272",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "70"
+      ]
+    },
+    {
+      "product_id": "273",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "70"
+      ]
+    },
+    {
+      "product_id": "276",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "72"
+      ]
+    },
+    {
+      "product_id": "280",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "72"
+      ]
+    },
+    {
+      "product_id": "285",
+      "category_ids": [
+        "1",
+        "32",
+        "69",
+        "75"
+      ]
+    },
+    {
+      "product_id": "3757",
+      "category_ids": [
+        "1",
+        "164",
+        "167"
+      ]
+    },
+    {
+      "product_id": "39511",
+      "category_ids": [
+        "189",
+        "202",
+        "701"
+      ]
+    },
+    {
+      "product_id": "39512",
+      "category_ids": [
+        "189",
+        "202",
+        "701"
+      ]
+    },
+    {
+      "product_id": "39516",
+      "category_ids": [
+        "189",
+        "202",
+        "701"
+      ]
+    },
+    {
+      "product_id": "39517",
+      "category_ids": [
+        "189",
+        "202",
+        "701"
+      ]
+    },
+    {
+      "product_id": "39520",
+      "category_ids": [
+        "189",
+        "202",
+        "701"
+      ]
+    },
+    {
+      "product_id": "39525",
+      "category_ids": [
+        "189",
+        "202",
+        "702"
+      ]
+    },
+    {
+      "product_id": "39528",
+      "category_ids": [
+        "189",
+        "202",
+        "702"
+      ]
+    },
+    {
+      "product_id": "39531",
+      "category_ids": [
+        "189",
+        "202",
+        "703"
+      ]
+    },
+    {
+      "product_id": "39532",
+      "category_ids": [
+        "189",
+        "202",
+        "703"
+      ]
+    },
+    {
+      "product_id": "39533",
+      "category_ids": [
+        "189",
+        "202",
+        "703"
+      ]
+    },
+    {
+      "product_id": "39534",
+      "category_ids": [
+        "189",
+        "202",
+        "703"
+      ]
+    },
+    {
+      "product_id": "39535",
+      "category_ids": [
+        "189",
+        "202",
+        "703"
+      ]
+    },
+    {
+      "product_id": "39536",
+      "category_ids": [
+        "189",
+        "202",
+        "703"
+      ]
+    },
+    {
+      "product_id": "39538",
+      "category_ids": [
+        "189",
+        "202",
+        "703"
+      ]
+    },
+    {
+      "product_id": "39540",
+      "category_ids": [
+        "189",
+        "202",
+        "703"
+      ]
+    },
+    {
+      "product_id": "39541",
+      "category_ids": [
+        "189",
+        "202",
+        "703"
+      ]
+    },
+    {
+      "product_id": "39543",
+      "category_ids": [
+        "189",
+        "202",
+        "703"
+      ]
+    },
+    {
+      "product_id": "39544",
+      "category_ids": [
+        "189",
+        "202",
+        "703"
+      ]
+    },
+    {
+      "product_id": "39545",
+      "category_ids": [
+        "189",
+        "202",
+        "703"
+      ]
+    },
+    {
+      "product_id": "39546",
+      "category_ids": [
+        "189",
+        "202",
+        "703"
+      ]
+    },
+    {
+      "product_id": "39572",
+      "category_ids": [
+        "323",
+        "324",
+        "325"
+      ]
+    },
+    {
+      "product_id": "39577",
+      "category_ids": [
+        "635",
+        "246",
+        "248"
+      ]
+    },
+    {
+      "product_id": "39582",
+      "category_ids": [
+        "635",
+        "246",
+        "248"
+      ]
+    },
+    {
+      "product_id": "39586",
+      "category_ids": [
+        "704"
+      ]
+    },
+    {
+      "product_id": "39587",
+      "category_ids": [
+        "704"
+      ]
+    },
+    {
+      "product_id": "39588",
+      "category_ids": [
+        "704"
+      ]
+    },
+    {
+      "product_id": "39601",
+      "category_ids": [
+        "704"
+      ]
+    },
+    {
+      "product_id": "39603",
+      "category_ids": [
+        "704"
+      ]
+    },
+    {
+      "product_id": "39605",
+      "category_ids": [
+        "704"
+      ]
+    },
+    {
+      "product_id": "39606",
+      "category_ids": [
+        "704"
+      ]
+    },
+    {
+      "product_id": "39607",
+      "category_ids": [
+        "704"
+      ]
+    },
+    {
+      "product_id": "39608",
+      "category_ids": [
+        "704"
+      ]
+    },
+    {
+      "product_id": "39622",
+      "category_ids": [
+        "635",
+        "246",
+        "248"
+      ]
+    },
+    {
+      "product_id": "39623",
+      "category_ids": [
+        "245",
+        "472",
+        "483"
+      ]
+    },
+    {
+      "product_id": "39672",
+      "category_ids": [
+        "245",
+        "312",
+        "705"
+      ]
+    },
+    {
+      "product_id": "39677",
+      "category_ids": [
+        "245",
+        "312",
+        "705"
+      ]
+    },
+    {
+      "product_id": "39805",
+      "category_ids": [
+        "323",
+        "324",
+        "327"
+      ]
+    },
+    {
+      "product_id": "6217",
+      "category_ids": [
+        "1",
+        "2",
+        "3",
+        "9"
+      ]
+    },
+    {
+      "product_id": "6680",
+      "category_ids": [
+        "1",
+        "143",
+        "145",
+        "146"
+      ]
+    },
+    {
+      "product_id": "6692",
+      "category_ids": [
+        "1",
+        "143",
+        "145"
+      ]
+    },
+    {
+      "product_id": "9038",
+      "category_ids": [
+        "323",
+        "333",
+        "341",
+        "342"
+      ]
+    },
+    {
+      "product_id": "9589",
+      "category_ids": [
+        "1",
+        "2",
+        "14",
+        "16"
+      ]
+    }
+  ],
+  "products_to_brands": [
+    {
+      "product_id": "12243",
+      "brand": {
+        "name": "Bic",
+        "external_id": "1",
+        "slug": "bic",
+        "href": "../../brand/1/bic.html"
+      }
+    },
+    {
+      "product_id": "12244",
+      "brand": {
+        "name": "Bic",
+        "external_id": "1",
+        "slug": "bic",
+        "href": "../../brand/1/bic.html"
+      }
+    },
+    {
+      "product_id": "12246",
+      "brand": {
+        "name": "Bic",
+        "external_id": "1",
+        "slug": "bic",
+        "href": "../../brand/1/bic.html"
+      }
+    },
+    {
+      "product_id": "12879",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "12880",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "12882",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "12892",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "12893",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "12896",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "12898",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "12899",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "16535",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "16539",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "16540",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "1706",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "1707",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "1709",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "1710",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "20250",
+      "brand": {
+        "name": "Bic",
+        "external_id": "1",
+        "slug": "bic",
+        "href": "../../brand/1/bic.html"
+      }
+    },
+    {
+      "product_id": "23078",
+      "brand": {
+        "name": "HB",
+        "external_id": "20",
+        "slug": "hb",
+        "href": "../../brand/20/hb.html"
+      }
+    },
+    {
+      "product_id": "23210",
+      "brand": {
+        "name": "Omega",
+        "external_id": "32",
+        "slug": "omega",
+        "href": "../../brand/32/omega.html"
+      }
+    },
+    {
+      "product_id": "23213",
+      "brand": {
+        "name": "Omega",
+        "external_id": "32",
+        "slug": "omega",
+        "href": "../../brand/32/omega.html"
+      }
+    },
+    {
+      "product_id": "24168",
+      "brand": {
+        "name": "TORK",
+        "external_id": "125",
+        "slug": "tork",
+        "href": "../../brand/125/tork.html"
+      }
+    },
+    {
+      "product_id": "24169",
+      "brand": {
+        "name": "TORK",
+        "external_id": "125",
+        "slug": "tork",
+        "href": "../../brand/125/tork.html"
+      }
+    },
+    {
+      "product_id": "24170",
+      "brand": {
+        "name": "TORK",
+        "external_id": "125",
+        "slug": "tork",
+        "href": "../../brand/125/tork.html"
+      }
+    },
+    {
+      "product_id": "24173",
+      "brand": {
+        "name": "TORK",
+        "external_id": "125",
+        "slug": "tork",
+        "href": "../../brand/125/tork.html"
+      }
+    },
+    {
+      "product_id": "24183",
+      "brand": {
+        "name": "TORK",
+        "external_id": "125",
+        "slug": "tork",
+        "href": "../../brand/125/tork.html"
+      }
+    },
+    {
+      "product_id": "24229",
+      "brand": {
+        "name": "HB",
+        "external_id": "20",
+        "slug": "hb",
+        "href": "../../brand/20/hb.html"
+      }
+    },
+    {
+      "product_id": "24236",
+      "brand": {
+        "name": "HB",
+        "external_id": "20",
+        "slug": "hb",
+        "href": "../../brand/20/hb.html"
+      }
+    },
+    {
+      "product_id": "24289",
+      "brand": {
+        "name": "HB",
+        "external_id": "20",
+        "slug": "hb",
+        "href": "../../brand/20/hb.html"
+      }
+    },
+    {
+      "product_id": "24766",
+      "brand": {
+        "name": "TORK",
+        "external_id": "125",
+        "slug": "tork",
+        "href": "../../brand/125/tork.html"
+      }
+    },
+    {
+      "product_id": "25071",
+      "brand": {
+        "name": "Carmen",
+        "external_id": "27",
+        "slug": "carmen",
+        "href": "../../brand/27/carmen.html"
+      }
+    },
+    {
+      "product_id": "25195",
+      "brand": {
+        "name": "Carmen",
+        "external_id": "27",
+        "slug": "carmen",
+        "href": "../../brand/27/carmen.html"
+      }
+    },
+    {
+      "product_id": "26109",
+      "brand": {
+        "name": "Omega",
+        "external_id": "32",
+        "slug": "omega",
+        "href": "../../brand/32/omega.html"
+      }
+    },
+    {
+      "product_id": "262",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "263",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "268",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "272",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "273",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "276",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "280",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "285",
+      "brand": {
+        "name": "Mas",
+        "external_id": "2",
+        "slug": "mas",
+        "href": "../../brand/2/mas.html"
+      }
+    },
+    {
+      "product_id": "3757",
+      "brand": {
+        "name": "Omega",
+        "external_id": "32",
+        "slug": "omega",
+        "href": "../../brand/32/omega.html"
+      }
+    },
+    {
+      "product_id": "39577",
+      "brand": {
+        "name": "HP",
+        "external_id": "81",
+        "slug": "hp",
+        "href": "../../brand/81/hp.html"
+      }
+    },
+    {
+      "product_id": "39582",
+      "brand": {
+        "name": "Apple",
+        "external_id": "139",
+        "slug": "apple",
+        "href": "../../brand/139/apple.html"
+      }
+    },
+    {
+      "product_id": "39622",
+      "brand": {
+        "name": "Apple",
+        "external_id": "139",
+        "slug": "apple",
+        "href": "../../brand/139/apple.html"
+      }
+    },
+    {
+      "product_id": "39623",
+      "brand": {
+        "name": "PHILIPS",
+        "external_id": "176",
+        "slug": "philips",
+        "href": "../../brand/176/philips.html"
+      }
+    },
+    {
+      "product_id": "39672",
+      "brand": {
+        "name": "LAVAZZA",
+        "external_id": "195",
+        "slug": "lavazza",
+        "href": "../../brand/195/lavazza.html"
+      }
+    },
+    {
+      "product_id": "39677",
+      "brand": {
+        "name": "LAVAZZA",
+        "external_id": "195",
+        "slug": "lavazza",
+        "href": "../../brand/195/lavazza.html"
+      }
+    },
+    {
+      "product_id": "6217",
+      "brand": {
+        "name": "Bic",
+        "external_id": "1",
+        "slug": "bic",
+        "href": "../../brand/1/bic.html"
+      }
+    },
+    {
+      "product_id": "9038",
+      "brand": {
+        "name": "Carmen",
+        "external_id": "27",
+        "slug": "carmen",
+        "href": "../../brand/27/carmen.html"
+      }
+    },
+    {
+      "product_id": "9589",
+      "brand": {
+        "name": "Bic",
+        "external_id": "1",
+        "slug": "bic",
+        "href": "../../brand/1/bic.html"
+      }
+    }
+  ]
+}

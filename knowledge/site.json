@@ -1,0 +1,28 @@
+{
+  "website_name": "Office Center BG",
+  "language": "bg",
+  "currency": "BGN",
+  "also_shows_currency": "EUR",
+  "source": "httrack",
+  "httrack_path": "C:\\Myfolder\\broffice\\officecenter-bg.com",
+  "total_html_pages": 394,
+  "total_products_html": 91,
+  "total_categories_html": 286,
+  "total_brands_html": 10,
+  "total_images": 3246,
+  "total_css": 11,
+  "total_js": 20,
+  "page_type_counts": {
+    "brand": 10,
+    "category": 286,
+    "home": 1,
+    "static": 3,
+    "product": 91,
+    "promotions": 1,
+    "search": 2
+  },
+  "parsed_products": 91,
+  "parsed_categories": 286,
+  "parsed_brands": 10,
+  "parsed_images": 316
+}
