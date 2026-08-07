@@ -53,7 +53,7 @@ def _active_promotion(**kwargs):
     defaults = {
         "name": "Test promo",
         "discount_type": Promotion.TYPE_PERCENT,
-        "value": Decimal("20"),
+        "value": Decimal(20),
         "active": True,
     }
     defaults.update(kwargs)

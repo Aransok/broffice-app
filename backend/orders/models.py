@@ -118,7 +118,7 @@ class Order(TimeStampedModel):
         ]
         if not profits:
             return None
-        return sum(profits, Decimal("0"))
+        return sum(profits, Decimal(0))
 
 
 class OrderItem(TimeStampedModel):

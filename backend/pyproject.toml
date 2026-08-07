@@ -1,0 +1,19 @@
+[tool.ruff]
+# extend-exclude adds to ruff's own sensible defaults (.venv, node_modules,
+# etc.) rather than replacing them — migrations are Django-generated, not
+# hand-authored, so linting their style (import order, mutable class
+# defaults for `dependencies`/`operations`, which is simply how Django
+# itself writes every migration) has no value.
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+# RUF012 (mutable default value for class attribute) fires on Django's own
+# `class Meta: ordering = [...]` / `indexes = [...]` / `fields = (...)`
+# pattern — the standard, unavoidable way every Django model/serializer
+# declares these, not an actual shared-mutable-state risk (Meta classes
+# aren't instantiated the way the rule assumes). Widely disabled for Django
+# projects for this reason.
+ignore = ["RUF012"]
+
+[tool.black]
+extend-exclude = "/migrations/"

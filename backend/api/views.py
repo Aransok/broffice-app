@@ -30,9 +30,15 @@ from brands.models import Brand
 from carts.models import CartItem
 from carts.services import (
     add_item as cart_add_item,
+)
+from carts.services import (
     get_or_create_cart,
     price_cart,
+)
+from carts.services import (
     remove_item as cart_remove_item,
+)
+from carts.services import (
     set_item_quantity as cart_set_item_quantity,
 )
 from categories.models import Category
@@ -44,7 +50,6 @@ from favorites.models import Favorite
 from favorites.services import get_favorited_product_ids
 from navigation.models import Menu
 from orders.models import Order, OrderItem, OrderNotification
-from pages.models import Page as PageModel
 from orders.services import (
     create_order,
     deactivate_used_item_promotions,
@@ -54,6 +59,7 @@ from orders.services import (
     send_admin_confirmation_email,
     send_customer_invoice_email,
 )
+from pages.models import Page as PageModel
 from pricing.models import AdminPriceOverride
 from pricing.services import get_user_overrides
 from products.management.commands.sync_supplier_catalog import (

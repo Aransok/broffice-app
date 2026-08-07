@@ -22,9 +22,10 @@ def get_valid_coupon(code: str, user) -> Coupon:
     if not coupon.active or coupon.is_redeemed:
         raise CouponError("Този купон вече е използван или неактивен.")
     is_authenticated = user is not None and getattr(user, "is_authenticated", False)
-    if coupon.user_id is not None:
-        if not is_authenticated or coupon.user_id != user.id:
-            raise CouponError("Този купон не важи за вашия акаунт.")
+    if coupon.user_id is not None and (
+        not is_authenticated or coupon.user_id != user.id
+    ):
+        raise CouponError("Този купон не важи за вашия акаунт.")
     return coupon
 
 
@@ -41,11 +42,11 @@ def check_min_order_amount(coupon: Coupon, subtotal: Decimal) -> None:
 
 def calculate_coupon_discount(coupon: Coupon, subtotal: Decimal) -> Decimal:
     if coupon.discount_type == Coupon.TYPE_PERCENT:
-        discount = subtotal * coupon.value / Decimal("100")
+        discount = subtotal * coupon.value / Decimal(100)
     else:
         discount = coupon.value
     # Never below zero, never more than the subtotal itself.
-    return max(Decimal("0"), min(discount, subtotal)).quantize(Decimal("0.01"))
+    return max(Decimal(0), min(discount, subtotal)).quantize(Decimal("0.01"))
 
 
 def redeem_coupon(coupon: Coupon, user, order) -> None:

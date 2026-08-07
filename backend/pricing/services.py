@@ -42,13 +42,13 @@ def compute_promo_price(base: Decimal, promotion: Promotion) -> Decimal:
     get_effective_price below and the promo banner generator (banners/services.py),
     so both apply "percent off" / "flat = final price" identically."""
     if promotion.discount_type == Promotion.TYPE_PERCENT:
-        candidate = base * (Decimal("1") - promotion.value / Decimal("100"))
+        candidate = base * (Decimal(1) - promotion.value / Decimal(100))
     else:
         # Flat is the final price itself ("this costs €X for this
         # customer"), not an amount subtracted off the base price — matches
         # how admins actually enter it (a target price).
         candidate = promotion.value
-    return max(candidate, Decimal("0")).quantize(Decimal("0.01"))
+    return max(candidate, Decimal(0)).quantize(Decimal("0.01"))
 
 
 def get_user_overrides(user) -> dict:

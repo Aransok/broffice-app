@@ -433,9 +433,12 @@ def sync_banners() -> None:
         # Regenerate only when new, or the promotion changed since the
         # banner was last rendered (name/price/discount edits) — not on
         # every ~10-minute beat tick for an already-current banner.
-        if banner is not None and banner.updated_at >= promotion.updated_at:
-            if (Path(settings.MEDIA_ROOT) / banner.image_path).exists():
-                continue
+        if (
+            banner is not None
+            and banner.updated_at >= promotion.updated_at
+            and (Path(settings.MEDIA_ROOT) / banner.image_path).exists()
+        ):
+            continue
 
         image = (
             _make_product_banner(promotion)

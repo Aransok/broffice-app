@@ -75,8 +75,9 @@ def find_matching_promotions(product, user, promotions):
         )
         if not target_matches:
             continue
-        if promo.user_id is not None:
-            if not (is_authenticated and promo.user_id == user.id):
-                continue
+        if promo.user_id is not None and not (
+            is_authenticated and promo.user_id == user.id
+        ):
+            continue
         matches.append(promo)
     return matches

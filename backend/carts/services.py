@@ -48,12 +48,12 @@ def price_cart(cart: Cart) -> dict:
     user_overrides = get_user_overrides(cart.user)
 
     lines = []
-    subtotal = Decimal("0")
+    subtotal = Decimal(0)
     for item in cart.items.select_related("product").prefetch_related(
         "product__images"
     ):
         product = item.product
-        base = get_base_price(product) or Decimal("0")
+        base = get_base_price(product) or Decimal(0)
         result = get_effective_price(
             product, cart.user, active_promotions, user_overrides
         )

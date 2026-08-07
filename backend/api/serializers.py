@@ -614,11 +614,12 @@ class OrderCreateSerializer(serializers.Serializer):
                 )
             if not get_speedy_client().get_office(office_id):
                 raise serializers.ValidationError("Unknown speedy_office_id")
-        if attrs.get("is_company_order"):
-            if not attrs.get("company_name") or not attrs.get("company_eik"):
-                raise serializers.ValidationError(
-                    "company_name and company_eik are required for a company order"
-                )
+        if attrs.get("is_company_order") and (
+            not attrs.get("company_name") or not attrs.get("company_eik")
+        ):
+            raise serializers.ValidationError(
+                "company_name and company_eik are required for a company order"
+            )
         return attrs
 
 

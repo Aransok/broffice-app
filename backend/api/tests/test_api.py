@@ -1,10 +1,9 @@
 import pytest
-
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
-from products.models import Product, ProductImage
 from categories.models import Category
+from products.models import Product, ProductImage
 
 
 @pytest.fixture
@@ -234,8 +233,8 @@ def test_promotion_global_percent_applies(api_client, sample_product):
 def test_individual_price_overrides_promotion(api_client, sample_product):
     """Priority rule: a customer's individual price must win over any
     promotion (global/category/product), never stack, never get overwritten."""
-    from promotions.models import Promotion
     from pricing.models import AdminPriceOverride
+    from promotions.models import Promotion
 
     Promotion.objects.create(
         name="Site-wide 50%", discount_type="percent", value="50.00", scope="global"
@@ -302,7 +301,7 @@ def test_promotion_target_and_audience_are_independent(api_client, sample_produc
     other_category = Category.objects.create(
         external_id="99", slug="other-cat", name="Other Category"
     )
-    other_product = Product.objects.create(
+    Product.objects.create(
         external_id="999",
         slug="other-product",
         name="Other Product",

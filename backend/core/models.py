@@ -1,6 +1,6 @@
 from django.db import models
 
-from common.models import SoftStatusModel, TimeStampedModel
+from common.models import TimeStampedModel
 
 
 class SiteSettings(TimeStampedModel):

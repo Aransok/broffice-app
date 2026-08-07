@@ -313,13 +313,13 @@ def recalc_order_total(order: Order) -> Decimal:
     # order.vat_rate_percent is a frozen snapshot set once at creation — reused
     # here, never refetched from settings, so a later VAT_RATE_PERCENT change
     # can't silently rewrite an existing order's totals.
-    subtotal = sum((item.line_total for item in order.items.all()), Decimal("0"))
+    subtotal = sum((item.line_total for item in order.items.all()), Decimal(0))
     # Coupon discounts the taxable base (same as an item-level discount
     # would already be baked into subtotal) — VAT is charged on what the
     # customer actually pays, not the pre-discount amount.
     taxable = subtotal + order.shipping_cost_bgn - order.coupon_discount_bgn
-    taxable = max(taxable, Decimal("0"))
-    vat_amount = (taxable * order.vat_rate_percent / Decimal("100")).quantize(
+    taxable = max(taxable, Decimal(0))
+    vat_amount = (taxable * order.vat_rate_percent / Decimal(100)).quantize(
         Decimal("0.01")
     )
     total = taxable + vat_amount
@@ -370,7 +370,7 @@ def create_order(
         coupon = get_valid_coupon(coupon_code, user)
 
     speedy_office_name = ""
-    shipping_cost = Decimal("0")
+    shipping_cost = Decimal(0)
     if shipping_method == Order.SHIPPING_SPEEDY_OFFICE:
         client = get_speedy_client()
         office = client.get_office(speedy_office_id)
@@ -432,7 +432,7 @@ def create_order(
 
         # The frontend never gets to name a price — it's always recomputed
         # here from the product + the customer's own pricing rules.
-        base = get_base_price(product) or Decimal("0")
+        base = get_base_price(product) or Decimal(0)
         result = get_effective_price(
             product, pricing_user, active_promotions, user_overrides
         )
@@ -493,7 +493,7 @@ def create_order(
             )
     if coupon is not None:
         subtotal_for_coupon = sum(
-            (item.line_total for item in order.items.all()), Decimal("0")
+            (item.line_total for item in order.items.all()), Decimal(0)
         )
         # Checked here (not just at the earlier get_valid_coupon call)
         # because the real subtotal isn't known until the items are priced —
