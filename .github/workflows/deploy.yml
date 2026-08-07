@@ -67,7 +67,14 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: self-hosted
     steps:
-      - name: Pull latest and redeploy
-        run: |
-          git pull origin main
-          docker compose -f docker-compose.prod.yml up -d --build
+      # clean: false is load-bearing — actions/checkout defaults to `git
+      # clean -ffdx` before checking out, which would wipe .env (never
+      # committed, holds real secrets) and media/ (real uploaded product
+      # images, bind-mounted from this same checkout) on every single
+      # deploy. false keeps those untracked files in place and only updates
+      # what's actually tracked in the repo.
+      - uses: actions/checkout@v4
+        with:
+          clean: false
+      - name: Redeploy
+        run: docker compose -f docker-compose.prod.yml up -d --build
