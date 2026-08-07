@@ -1,0 +1,44 @@
+{$DOMAIN} {
+	encode gzip
+
+	# Bare top-level directives in a Caddyfile do NOT run in the order
+	# they're written — Caddy applies a fixed internal phase order instead
+	# (try_files runs before reverse_proxy regardless of source order),
+	# which silently rewrote every /api/, /robots.txt, /sitemap.xml request
+	# to /index.html before the backend matcher ever got a chance (caught by
+	# actually curling the running stack, not by inspection). `handle`/
+	# `handle_path` blocks are the fix — they're mutually exclusive and
+	# evaluated in write order, first match wins, like a switch statement.
+
+	@backend path /api/* /django-admin/* /robots.txt /sitemap.xml /llms.txt
+
+	# Static/media files are served directly off disk, not proxied through
+	# gunicorn — the standard Django-in-production split. Volumes shared
+	# with the backend container (see docker-compose.prod.yml): /srv/static
+	# is collectstatic's output, /srv/media is Django's MEDIA_ROOT.
+	handle_path /static/* {
+		root * /srv/static
+		file_server
+	}
+	handle_path /media/* {
+		root * /srv/media
+		file_server
+	}
+
+	# Everything else Django actually owns — the API, the Django admin, and
+	# the three SEO endpoints (backend/seo/views.py — real DB-backed views,
+	# not static files, so these must reach Django).
+	handle @backend {
+		reverse_proxy backend:8000
+	}
+
+	# Everything else is the built React SPA. try_files falls back to
+	# index.html for any path that isn't a real static file, so client-side
+	# routes (react-router's /product/..., /category/..., etc.) work on a
+	# hard refresh or a direct/shared link, not just in-app navigation.
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

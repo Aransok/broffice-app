@@ -1,0 +1,18 @@
+# Multi-stage: build the SPA, then serve it (and reverse-proxy the backend)
+# from a single Caddy container. Caddy handles Let's Encrypt automatically —
+# no separate certbot container/cron/reload dance to keep working on a
+# machine nobody's actively administering day to day.
+
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+# Same-origin API calls (Caddy proxies /api/ on the same domain) — a
+# relative base URL means the built bundle doesn't hardcode any one domain.
+ENV VITE_API_BASE_URL=/api/v1
+RUN npm run build
+
+FROM caddy:2-alpine
+COPY --from=build /app/dist /srv
+COPY Caddyfile /etc/caddy/Caddyfile

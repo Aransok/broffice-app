@@ -1,0 +1,137 @@
+# Production deployment — standalone, not merged with docker-compose.yml
+# (dev), to avoid Compose override-merge edge cases. Run with:
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Requires a real .env (copy .env.example, fill in real values — see
+# docs/DEPLOYMENT.md). Only the frontend/Caddy container is reachable from
+# the internet (ports 80/443); everything else talks over the internal
+# Docker network only — Postgres/Redis/Django aren't directly exposed to
+# the host or the internet here, unlike the dev compose file.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-broffice}
+      POSTGRES_USER: ${POSTGRES_USER:-broffice}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-broffice} -d ${POSTGRES_DB:-broffice}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    env_file:
+      - .env
+    environment:
+      DJANGO_DEBUG: "False"
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_ROOT: /app/media
+    volumes:
+      - ./media:/app/media
+      # PROJECT_ROOT (config/settings.py) resolves to the container root here,
+      # not /app — only backend/'s own contents get COPY'd into /app (see
+      # backend/Dockerfile), so BASE_DIR.parent lands one level above that.
+      # Confirmed by actually running collectstatic in the container: it
+      # wrote to /static, not /app/static. Mount at the real path, not the
+      # assumed one.
+      - static_files:/static
+      - ./knowledge:/knowledge
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: celery -A config worker -l info
+    env_file:
+      - .env
+    environment:
+      DJANGO_DEBUG: "False"
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      MEDIA_ROOT: /app/media
+    volumes:
+      - ./media:/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: celery -A config beat -l info
+    env_file:
+      - .env
+    environment:
+      DJANGO_DEBUG: "False"
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      MEDIA_ROOT: /app/media
+    volumes:
+      - ./media:/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    environment:
+      # Caddy reads {$DOMAIN} from the Caddyfile — this is what it requests
+      # the Let's Encrypt certificate for. Must be the real public domain.
+      DOMAIN: ${FRONTEND_DOMAIN}
+    volumes:
+      - ./media:/srv/media:ro
+      - static_files:/srv/static:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  static_files:
+  caddy_data:
+  caddy_config:
