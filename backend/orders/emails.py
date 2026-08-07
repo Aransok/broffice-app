@@ -16,6 +16,8 @@ in a browser — email is a separate channel with one fixed look.
 import mimetypes
 from email.mime.image import MIMEImage
 
+from django.conf import settings
+
 from common.currency import format_both_currencies as _both_currencies
 from common.emails import BORDER, BRAND_BLUE, BRAND_ORANGE, MUTED, logo_header_html
 from common.media import resolve_media_path
