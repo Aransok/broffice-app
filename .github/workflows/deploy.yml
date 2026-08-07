@@ -1,0 +1,73 @@
+name: CI / Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+      - name: Lint (ruff)
+        working-directory: backend
+        run: python -m ruff check .
+      - name: Format check (black)
+        working-directory: backend
+        run: python -m black --check .
+      - name: Django system check
+        working-directory: backend
+        run: python manage.py check
+      - name: No missing migrations
+        working-directory: backend
+        run: python manage.py makemigrations --check --dry-run
+      - name: Test
+        working-directory: backend
+        run: python -m pytest -q
+
+  frontend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Lint (eslint)
+        working-directory: frontend
+        run: npx eslint src/
+      - name: Type check
+        working-directory: frontend
+        run: npx tsc --noEmit
+      - name: Test
+        working-directory: frontend
+        run: npm run test
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+  # Runs on the client's own machine (a self-hosted GitHub Actions runner
+  # installed there — see docs/DEPLOYMENT.md) rather than GitHub's
+  # infrastructure, since that's the only machine that can `docker compose`
+  # the live site. Only fires on a real push to main, and only after both
+  # test jobs above pass — never deploys something that failed CI.
+  deploy:
+    needs: [backend-test, frontend-test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: self-hosted
+    steps:
+      - name: Pull latest and redeploy
+        run: |
+          git pull origin main
+          docker compose -f docker-compose.prod.yml up -d --build
