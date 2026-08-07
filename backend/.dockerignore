@@ -1,0 +1,23 @@
+# No .dockerignore existed before, so `COPY . .` in Dockerfile was pulling
+# in everything — confirmed by actually inspecting a built image: it had a
+# 640MB copy of the local dev .venv (never used — the image does its own
+# pip install), and worse, a real local db.sqlite3 with this session's dev
+# test data baked directly into the image. Both fixed here.
+
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+*.sqlite3
+
+.git/
+.env
+.env.*
+
+media/

@@ -1,0 +1,15 @@
+# Missing before — meant COPY . . (which runs AFTER `npm ci` in
+# Dockerfile.prod) could silently overwrite the freshly-installed, correct
+# Linux node_modules with whatever's installed locally on the host
+# (Windows here), a real correctness risk, not just wasted build time.
+
+node_modules/
+dist/
+
+.git/
+.env
+.env.*
+
+coverage/
+playwright-report/
+test-results/
