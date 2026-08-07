@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { confirmPasswordReset } from '../api/auth'
 import { PasswordInput } from '../components/PasswordInput'
+import { Seo } from '../components/Seo'
 
 export function ResetPasswordPage() {
   const { uid, token } = useParams<{ uid: string; token: string }>()
@@ -31,6 +32,7 @@ export function ResetPasswordPage() {
 
   return (
     <div className="mx-auto max-w-sm px-4 py-12">
+      <Seo title="Нова парола | BRoffice" robots="noindex, follow" />
       <h1 className="mb-6 text-xl font-semibold text-slate-900">Нова парола</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1 text-sm text-slate-700">

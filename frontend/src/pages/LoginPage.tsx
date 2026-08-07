@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PasswordInput } from '../components/PasswordInput'
+import { Seo } from '../components/Seo'
 import { useAuth } from '../context/AuthContext'
 
 export function LoginPage() {
@@ -27,6 +28,7 @@ export function LoginPage() {
 
   return (
     <div className="mx-auto max-w-sm px-4 py-12">
+      <Seo title="Вход | BRoffice" robots="noindex, follow" />
       <h1 className="mb-6 text-xl font-semibold text-slate-900">Вход</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1 text-sm text-slate-700">

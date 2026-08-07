@@ -7,6 +7,7 @@ import sys
 from decimal import Decimal
 from pathlib import Path
 
+from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
@@ -278,6 +279,14 @@ CELERY_BEAT_SCHEDULE = {
     "sync-banners": {
         "task": "banners.tasks.sync_banners_task",
         "schedule": 600.0,
+    },
+    # Same sync the admin's manual "Sync" button runs (api/views.py
+    # ProductViewSet.sync) — 03:00 server time, off-peak, so nobody's
+    # mid-checkout while ~3000+ products get upserted. Previously only ran
+    # when an admin remembered to click the button.
+    "sync-supplier-catalog": {
+        "task": "products.tasks.sync_supplier_catalog_task",
+        "schedule": crontab(hour=3, minute=0),
     },
 }
 

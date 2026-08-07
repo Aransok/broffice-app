@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom'
 import { useSearch } from '../api/search'
 import { ProductCard } from '../components/product/ProductCard'
+import { Seo } from '../components/Seo'
 
 export function SearchPage() {
   const [searchParams] = useSearchParams()
@@ -9,6 +10,13 @@ export function SearchPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
+      {/* Internal search results are excluded from robots.txt too — infinite
+          query permutations have no indexing value, this is belt-and-suspenders
+          for any crawler that ignores robots.txt. */}
+      <Seo
+        title={q ? `Резултати за "${q}" | BRoffice` : 'Търсене | BRoffice'}
+        robots="noindex, follow"
+      />
       <h1 className="mb-6 text-xl font-semibold text-slate-900">
         Резултати за &quot;{q}&quot;
       </h1>

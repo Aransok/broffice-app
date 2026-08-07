@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from 'react'
 import { requestPasswordReset } from '../api/auth'
+import { Seo } from '../components/Seo'
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -22,6 +23,7 @@ export function ForgotPasswordPage() {
 
   return (
     <div className="mx-auto max-w-sm px-4 py-12">
+      <Seo title="Забравена парола | BRoffice" robots="noindex, follow" />
       <h1 className="mb-6 text-xl font-semibold text-slate-900">Забравена парола</h1>
       {submitted ? (
         <p className="text-slate-700">

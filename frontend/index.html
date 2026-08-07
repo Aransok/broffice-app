@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="bg">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
@@ -9,7 +9,17 @@
     <meta name="apple-mobile-web-app-title" content="BRoffice" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BRoffice</title>
+    <!-- Title only, no meta description: react-helmet-async doesn't remove
+         tags it didn't itself render, so any static tag here stays in the
+         DOM alongside Helmet's per-page one instead of being replaced. For
+         <title> that's harmless — document.title reads the first <title> in
+         the document, and Helmet inserts before this one, so its value always
+         wins for any page that renders <Seo>; pages that don't (yet) fall
+         back to this instead of a blank tab. A duplicate <meta
+         name="description"> has no such "first wins" rule (verified: the
+         wrong one won), so every route renders <Seo> for that field instead
+         of relying on a static fallback here. -->
+    <title>BRoffice | Онлайн магазин за офис консумативи</title>
   </head>
   <body>
     <div id="root"></div>

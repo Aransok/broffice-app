@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import { useProducts } from '../api/products'
 import { ProductCard } from '../components/product/ProductCard'
+import { Seo } from '../components/Seo'
 
 const PAGE_SIZE = 24
 
@@ -44,6 +45,10 @@ export function PromotionsPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
+      <Seo
+        title="Промоции | BRoffice"
+        description="Всички продукти в промоция в BRoffice — офис консумативи и техника с намаление."
+      />
       <nav className="mb-4 text-sm text-slate-500">
         <Link to="/" className="hover:text-primary">
           Начало

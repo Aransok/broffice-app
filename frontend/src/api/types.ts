@@ -1,3 +1,13 @@
+export interface SeoData {
+  title: string
+  description: string
+  keywords: string
+  canonical: string
+  robots: string
+  open_graph: Record<string, string>
+  json_ld: Record<string, unknown>[]
+}
+
 export interface Paginated<T> {
   count: number
   next: string | null
@@ -24,6 +34,8 @@ export interface Category {
   /** Only present on the single-category fetch (CategoryDetailSerializer),
    * never the paginated list — this category's own direct subcategories. */
   children?: Category[]
+  /** Only present on the single-category fetch, same as `children`. */
+  seo?: SeoData
 }
 
 export interface ProductImage {
@@ -69,6 +81,7 @@ export interface ProductDetail extends ProductListItem {
   pack_quantity: number | null
   specifications: Record<string, unknown>
   images: ProductImage[]
+  seo: SeoData
 }
 
 export interface MenuItem {

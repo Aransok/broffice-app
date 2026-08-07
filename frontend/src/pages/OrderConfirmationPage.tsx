@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import type { Order } from '../api/types'
+import { Seo } from '../components/Seo'
 import { formatBothCurrencies } from '../utils/currency'
 
 export function OrderConfirmationPage() {
@@ -19,6 +20,7 @@ export function OrderConfirmationPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
+      <Seo title="Поръчката е приета | BRoffice" robots="noindex, follow" />
       <h1 className="mb-2 text-2xl font-semibold text-slate-900">Благодарим за поръчката!</h1>
       <p className="mb-6 text-slate-600">
         Поръчка <span className="font-medium">{order.number}</span> е приета и очаква

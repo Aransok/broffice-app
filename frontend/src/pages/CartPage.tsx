@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { getImageUrl } from '../api/media'
+import { Seo } from '../components/Seo'
 import { useCart } from '../context/CartContext'
 import { useVat } from '../context/VatContext'
 import { bgnToEur } from '../utils/currency'
@@ -11,6 +12,7 @@ export function CartPage() {
   if (items.length === 0) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12 text-center">
+        <Seo title="Количка | BRoffice" robots="noindex, follow" />
         <h1 className="mb-4 text-xl font-semibold text-slate-900">Количката е празна</h1>
         <Link to="/" className="text-primary hover:underline">
           Разгледайте продуктите
@@ -21,6 +23,7 @@ export function CartPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
+      <Seo title="Количка | BRoffice" robots="noindex, follow" />
       <h1 className="mb-6 text-xl font-semibold text-slate-900">Количка</h1>
 
       <div className="divide-y divide-slate-100 rounded-ui border border-slate-200">

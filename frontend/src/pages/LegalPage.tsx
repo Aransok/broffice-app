@@ -1,4 +1,5 @@
 import { usePage } from '../api/pages'
+import { Seo } from '../components/Seo'
 
 /**
  * Minimal markdown-lite renderer for `Page.body` — blocks separated by a
@@ -31,6 +32,7 @@ export function LegalPage({ slug }: { slug: string }) {
       {isError && <p className="text-red-600">Страницата не може да бъде заредена.</p>}
       {page && (
         <>
+          <Seo data={page.seo} />
           <h1 className="mb-6 text-2xl font-semibold text-slate-900">{page.title}</h1>
           {renderBody(page.body)}
         </>

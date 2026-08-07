@@ -5,6 +5,7 @@ import { type CouponDiscountType, validateCoupon } from '../api/coupons'
 import { createOrder } from '../api/orders'
 import { fetchSpeedyQuote, useSpeedyOffices } from '../api/shipping'
 import type { ShippingMethod, SpeedyOffice } from '../api/types'
+import { Seo } from '../components/Seo'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { useVat } from '../context/VatContext'
@@ -239,6 +240,7 @@ export function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
+      <Seo title="Поръчка | BRoffice" robots="noindex, follow" />
       <h1 className="mb-6 text-xl font-semibold text-slate-900">Поръчка</h1>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-8">

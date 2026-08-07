@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useCategoryTree } from '../api/categories'
+import { Seo } from '../components/Seo'
 
 /** "Каталози" — the legacy site scrape found zero catalog PDFs or menu-target
  * data for this nav item (docs/discovery/downloads.md), so rather than invent
@@ -11,6 +12,10 @@ export function CatalogPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
+      <Seo
+        title="Каталози | BRoffice"
+        description="Разгледайте пълния каталог с продукти на BRoffice по категории."
+      />
       <nav className="mb-4 text-sm text-slate-500">
         <Link to="/" className="hover:text-primary">
           Начало

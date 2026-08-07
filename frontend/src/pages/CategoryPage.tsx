@@ -4,6 +4,7 @@ import { useCategory } from '../api/categories'
 import { useProducts } from '../api/products'
 import { PriceRangeSlider } from '../components/PriceRangeSlider'
 import { ProductCard } from '../components/product/ProductCard'
+import { Seo } from '../components/Seo'
 
 const PAGE_SIZE = 24
 // Static bounds for the slider track — a convenience on top of the manual
@@ -88,6 +89,7 @@ export function CategoryPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
+      {category && <Seo data={category.seo} />}
       <nav className="mb-4 text-sm text-slate-500">
         <Link to="/" className="transition-colors duration-200 hover:text-primary">
           Начало

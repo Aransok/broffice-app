@@ -1,0 +1,28 @@
+{% autoescape off %}# BRoffice
+
+> Online office-supplies retailer in Bulgaria (broffice.bg). Bulgarian-language
+> catalog of office and school supplies, paper goods, printers and consumables,
+> stationery, and business equipment, with courier and in-office-pickup delivery.
+
+BRoffice sells directly to individual customers and businesses (B2B, with
+company/VAT invoicing) in Bulgaria. All product names, prices, and
+descriptions on the site are in Bulgarian.
+
+## Catalog
+
+- {{ product_count }} active products across {{ category_count }} categories.
+- Full catalog: {{ base }}/catalog
+- Machine-readable sitemap of every product and category page: {{ base }}/sitemap.xml
+- Each product page includes structured data (schema.org Product/Offer:
+  name, description, SKU, brand, price in BGN, availability).
+
+## Notes for automated / AI systems
+
+- Prices and stock availability change frequently — treat any cached price as
+  indicative, not authoritative; link back to the live product page.
+- The storefront is a client-rendered single-page app: page content loads via
+  JavaScript. If you cannot execute JavaScript, product/category data is also
+  available through the structured data embedded per page and the sitemap
+  above, rather than the raw initial HTML.
+- Contact and company details: {{ base }}/contact
+{% endautoescape %}

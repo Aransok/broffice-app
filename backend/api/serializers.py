@@ -109,13 +109,19 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 class PageSerializer(serializers.ModelSerializer):
     body = serializers.SerializerMethodField()
+    seo = serializers.SerializerMethodField()
 
     class Meta:
         model = Page
-        fields = ("id", "slug", "title", "body", "updated_at")
+        fields = ("id", "slug", "title", "body", "updated_at", "seo")
 
     def get_body(self, obj):
         return render_page_body(obj.body)
+
+    def get_seo(self, obj):
+        from seo.services import build_page_seo
+
+        return build_page_seo(obj)
 
 
 class ContactMessageSerializer(serializers.Serializer):
@@ -174,15 +180,21 @@ class CategoryDetailSerializer(CategorySerializer):
     there needs (see CategoryViewSet.get_serializer_class)."""
 
     children = serializers.SerializerMethodField()
+    seo = serializers.SerializerMethodField()
 
     class Meta(CategorySerializer.Meta):
-        fields = CategorySerializer.Meta.fields + ("children",)
+        fields = CategorySerializer.Meta.fields + ("children", "seo")
 
     def get_children(self, obj):
         children = obj.children.filter(status=Category.STATUS_PUBLISHED).order_by(
             "sort_order", "name"
         )
         return CategorySerializer(children, many=True).data
+
+    def get_seo(self, obj):
+        from seo.services import build_category_seo
+
+        return build_category_seo(obj)
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
@@ -277,6 +289,7 @@ class ProductListSerializer(serializers.ModelSerializer):
 class ProductDetailSerializer(ProductListSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
     specifications = serializers.JSONField()
+    seo = serializers.SerializerMethodField()
 
     class Meta(ProductListSerializer.Meta):
         fields = ProductListSerializer.Meta.fields + (
@@ -285,7 +298,13 @@ class ProductDetailSerializer(ProductListSerializer):
             "pack_quantity",
             "specifications",
             "images",
+            "seo",
         )
+
+    def get_seo(self, obj):
+        from seo.services import build_product_seo
+
+        return build_product_seo(obj)
 
 
 class FavoriteSerializer(serializers.ModelSerializer):

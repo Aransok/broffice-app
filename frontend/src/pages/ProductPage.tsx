@@ -6,6 +6,7 @@ import { getImageUrl } from '../api/media'
 import { getDisplayPrice } from '../api/pricing'
 import { AdminPriceEditor } from '../components/product/AdminPriceEditor'
 import { ProductCard } from '../components/product/ProductCard'
+import { Seo } from '../components/Seo'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { useVat } from '../context/VatContext'
@@ -62,6 +63,7 @@ export function ProductPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
+      <Seo data={product.seo} />
       <nav className="mb-6 text-sm text-slate-500">
         <Link to="/" className="hover:text-primary">
           Начало

@@ -2,6 +2,27 @@ import { useHomeSections } from '../api/homeSections'
 import type { ProductListItem } from '../api/types'
 import { BannerCarousel } from '../components/home/BannerCarousel'
 import { ProductCard } from '../components/product/ProductCard'
+import { Seo } from '../components/Seo'
+
+const HOME_JSON_LD = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'BRoffice',
+    url: window.location.origin,
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'BRoffice',
+    url: window.location.origin,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: `${window.location.origin}/search?q={search_term_string}`,
+      'query-input': 'required name=search_term_string',
+    },
+  },
+]
 
 function ProductSection({
   title,
@@ -32,6 +53,11 @@ export function HomePage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
+      <Seo
+        title="BRoffice | Онлайн магазин за офис консумативи"
+        description="BRoffice — онлайн магазин за офис консумативи, канцеларски материали и техника с доставка в цяла България."
+        jsonLd={HOME_JSON_LD}
+      />
       {isError && <p className="text-red-600">Продуктите не могат да бъдат заредени в момента.</p>}
 
       <BannerCarousel />

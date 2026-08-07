@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PasswordInput } from '../components/PasswordInput'
+import { Seo } from '../components/Seo'
 import { useAuth } from '../context/AuthContext'
 
 export function RegisterPage() {
@@ -53,6 +54,7 @@ export function RegisterPage() {
 
   return (
     <div className="mx-auto max-w-sm px-4 py-12">
+      <Seo title="Регистрация | BRoffice" robots="noindex, follow" />
       <h1 className="mb-6 text-xl font-semibold text-slate-900">Регистрация</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">

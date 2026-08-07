@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { submitContactForm } from '../api/contact'
 import { usePublicConfig } from '../api/config'
+import { Seo } from '../components/Seo'
 
 export function ContactPage() {
   const { data: config } = usePublicConfig()
@@ -31,6 +32,10 @@ export function ContactPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
+      <Seo
+        title="Контакти | BRoffice"
+        description="Свържете се с BRoffice — адрес, телефон и имейл за връзка."
+      />
       <h1 className="mb-6 text-2xl font-semibold text-slate-900">Контакти</h1>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
