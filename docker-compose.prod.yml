@@ -135,6 +135,14 @@ services:
     depends_on:
       - backend
 
+# Named volumes survive `docker compose up -d --build` (a normal
+# push-triggered redeploy) untouched — they're only ever removed by an
+# explicit `down -v`, which nothing in the automated pipeline runs. So a
+# code push and redeploy updates the running app without touching the
+# real database, uploaded product images, or anything else already
+# synced/created — verified 2026-08-10 by pushing a real commit against a
+# live deployment with real synced data and confirming the exact same
+# data was still there after the redeploy completed.
 volumes:
   postgres_data:
   static_files:
