@@ -47,5 +47,6 @@ docs/DEPLOYMENT.md
 docs/GO_LIVE_CHECKLIST.txt
 docs/GO_LIVE_CHECKLIST.pdf
 scripts/bootstrap-deploy-machine.ps1
+scripts/post-deploy-setup.ps1
 docs/discovery/
 docs/tasks/
