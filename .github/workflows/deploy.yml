@@ -62,6 +62,11 @@ jobs:
   # infrastructure, since that's the only machine that can `docker compose`
   # the live site. Only fires on a real push to main, and only after both
   # test jobs above pass — never deploys something that failed CI.
+  #
+  # Verified end-to-end 2026-08-10 with a real (temporary, test-only)
+  # self-hosted runner: registered via the GitHub API, confirmed it comes
+  # online and GitHub actually dispatches a queued job to it, not just
+  # that the workflow YAML parses.
   deploy:
     needs: [backend-test, frontend-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
