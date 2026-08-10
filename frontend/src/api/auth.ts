@@ -9,6 +9,7 @@ export interface Me {
   phone: string
   is_staff: boolean
   is_admin_portal: boolean
+  is_developer: boolean
 }
 
 export interface RegisterPayload {

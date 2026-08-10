@@ -17,23 +17,34 @@ const NAV_ITEMS = [
   { to: '/admin/chat', label: 'Чат', helpKey: 'помощ' },
 ]
 
+// Not in NAV_ITEMS above: only shown to settings.DEVELOPER_USERNAMES
+// accounts (backend/api/views.py IsDeveloperUser), never the client's own
+// admin account - a database restore replaces everything currently live.
+const DEVELOPER_NAV_ITEM = {
+  to: '/admin/backups',
+  label: 'Резервни копия',
+  helpKey: 'резервни копия',
+}
+
 /**
  * Deliberately its own shell (no customer Header/Footer/mega-menu/cart) so
  * the admin panel reads as a clearly separate area, not a page bolted onto
  * the storefront (spec #2).
  */
 function SidebarNav({
+  items,
   stats,
   onNavigate,
   onAskHelp,
 }: {
+  items: typeof NAV_ITEMS
   stats: { unread_notifications: number } | undefined
   onNavigate?: () => void
   onAskHelp: (topic: string) => void
 }) {
   return (
     <nav className="flex flex-col gap-1 p-3">
-      {NAV_ITEMS.map((item) => (
+      {items.map((item) => (
         <div key={item.to} className="flex items-center gap-1">
           <NavLink
             to={item.to}
@@ -70,6 +81,7 @@ function SidebarNav({
 export function AdminLayout() {
   const { user, logout } = useAuth()
   const { data: stats } = useDashboardStats()
+  const navItems = user?.is_developer ? [...NAV_ITEMS, DEVELOPER_NAV_ITEM] : NAV_ITEMS
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState<string | null>(null)
   // The fixed-width sidebar squeezes admin content into a sliver on a phone
@@ -101,7 +113,7 @@ export function AdminLayout() {
             Админ панел
           </Link>
         </div>
-        <SidebarNav stats={stats} onAskHelp={askHelp} />
+        <SidebarNav items={navItems} stats={stats} onAskHelp={askHelp} />
       </aside>
 
       <div className="flex flex-1 flex-col">
@@ -151,6 +163,7 @@ export function AdminLayout() {
         {mobileNavOpen && (
           <div className="border-b border-slate-200 bg-surface lg:hidden">
             <SidebarNav
+              items={navItems}
               stats={stats}
               onNavigate={() => setMobileNavOpen(false)}
               onAskHelp={askHelp}

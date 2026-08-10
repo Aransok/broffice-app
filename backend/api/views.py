@@ -117,6 +117,22 @@ class IsAdminPortalUser(BasePermission):
         return is_admin_user(request.user)
 
 
+class IsDeveloperUser(BasePermission):
+    """Gates the backups endpoints — deliberately narrower than
+    IsAdminPortalUser. Any admin can manage products/orders, but restoring
+    the database replaces everything currently live, so it's restricted to
+    settings.DEVELOPER_USERNAMES (whoever's actually operating this
+    deployment), not every admin account — e.g. not the client's own."""
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and user.username in settings.DEVELOPER_USERNAMES
+        )
+
+
 class PublicConfigView(APIView):
     """Central VAT + company config exposed read-only so the frontend never
     hardcodes a rate or a company fact — one source of truth in
@@ -957,6 +973,7 @@ def serialize_user(user):
         "phone": profile.phone if profile else "",
         "is_staff": user.is_staff,
         "is_admin_portal": bool(profile and profile.is_admin_portal) or user.is_staff,
+        "is_developer": user.username in settings.DEVELOPER_USERNAMES,
     }
 
 
@@ -1228,3 +1245,34 @@ class SpeedyQuoteView(APIView):
             shipping_method=shipping_method, city=city
         )
         return Response({"shipping_cost_bgn": str(price)})
+
+
+class BackupListView(APIView):
+    permission_classes = [IsDeveloperUser]
+
+    def get(self, request):
+        from backups.services import list_backups
+
+        return Response(list_backups())
+
+
+class BackupRestoreView(APIView):
+    permission_classes = [IsDeveloperUser]
+
+    def post(self, request, name):
+        from backups.services import request_restore
+
+        try:
+            request_restore(name)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": "Restore requested."})
+
+
+class BackupRestoreStatusView(APIView):
+    permission_classes = [IsDeveloperUser]
+
+    def get(self, request):
+        from backups.services import get_restore_status
+
+        return Response(get_restore_status())

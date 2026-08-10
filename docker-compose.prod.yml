@@ -65,6 +65,14 @@ services:
       # assumed one.
       - static_files:/static
       - ./knowledge:/knowledge
+      # Read-write: the backups app lists real backups here and writes the
+      # restore-request marker file that scripts/restore-watcher.ps1 (on
+      # the host) picks up — see backend/backups/services.py for why the
+      # actual restore never happens inside this container. Host path is
+      # whatever scripts/backup-database.ps1 was actually pointed at
+      # (defaults to C:\broffice-backups in both places — keep them in
+      # sync if you ever change one).
+      - ${BACKUP_ROOT_HOST:-C:/broffice-backups}:/backups
     depends_on:
       postgres:
         condition: service_healthy

@@ -13,6 +13,9 @@ from .views import (
     AdminProductViewSet,
     AdminPromotionViewSet,
     AdminUserListView,
+    BackupListView,
+    BackupRestoreStatusView,
+    BackupRestoreView,
     BrandViewSet,
     CartItemDetailView,
     CartItemsView,
@@ -108,6 +111,17 @@ urlpatterns = [
         name="admin-customer-activity",
     ),
     path("activity/track/", TrackProductViewView.as_view(), name="activity-track"),
+    path("admin/backups/", BackupListView.as_view(), name="admin-backups"),
+    path(
+        "admin/backups/status/",
+        BackupRestoreStatusView.as_view(),
+        name="admin-backup-status",
+    ),
+    path(
+        "admin/backups/<str:name>/restore/",
+        BackupRestoreView.as_view(),
+        name="admin-backup-restore",
+    ),
     path("cart/", CartView.as_view(), name="cart"),
     path("cart/items/", CartItemsView.as_view(), name="cart-items"),
     path(

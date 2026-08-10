@@ -11,6 +11,7 @@ import { AccountInvoicesPage } from './pages/account/AccountInvoicesPage'
 import { AccountOrderDetailPage } from './pages/account/AccountOrderDetailPage'
 import { AccountOrdersPage } from './pages/account/AccountOrdersPage'
 import { AccountProfilePage } from './pages/account/AccountProfilePage'
+import { AdminBackupsPage } from './pages/admin/AdminBackupsPage'
 import { AdminChatPage } from './pages/admin/AdminChatPage'
 import { AdminCustomerDetailPage } from './pages/admin/AdminCustomerDetailPage'
 import { AdminCustomersPage } from './pages/admin/AdminCustomersPage'
@@ -102,6 +103,7 @@ export const router = createBrowserRouter([
       { path: 'promotions', element: <AdminPromotionsPage /> },
       { path: 'coupons', element: <AdminCouponsPage /> },
       { path: 'chat', element: <AdminChatPage /> },
+      { path: 'backups', element: <AdminBackupsPage /> },
     ],
   },
 ])

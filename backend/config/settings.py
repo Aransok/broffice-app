@@ -87,6 +87,7 @@ INSTALLED_APPS = [
     "favorites",
     "activity",
     "carts",
+    "backups",
     "orders",
     "shipping",
     "api",
@@ -289,6 +290,24 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=3, minute=0),
     },
 }
+
+# Usernames allowed to see/trigger database restores (backups app) — a
+# separate, narrower concept from IsAdminPortalUser: any admin can manage
+# products/orders, but restoring the database replaces everything live,
+# so it's restricted to whoever's actually developing/operating this
+# deployment, not every admin account (e.g. not the client's own account).
+DEVELOPER_USERNAMES = [
+    u.strip()
+    for u in os.getenv("DEVELOPER_USERNAMES", "doanchetoidriz").split(",")
+    if u.strip()
+]
+
+# Where scripts/backup-database.ps1 writes backups on the host, bind-mounted
+# read-write into this container at the same path (see docker-compose.prod.yml)
+# so the backups app can list them and request a restore. The actual restore
+# runs outside this container entirely (scripts/restore-watcher.ps1, on the
+# host) — see backups/services.py for why.
+BACKUP_ROOT = os.getenv("BACKUP_ROOT", "/backups")
 
 EMAIL_BACKEND = os.getenv(
     "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
