@@ -8,6 +8,11 @@
 # the internet (ports 80/443); everything else talks over the internal
 # Docker network only — Postgres/Redis/Django aren't directly exposed to
 # the host or the internet here, unlike the dev compose file.
+#
+# This exact command (invoked by .github/workflows/deploy.yml's deploy
+# job) was verified 2026-08-10 via a real, live self-hosted runner —
+# confirmed GitHub actually dispatches the job to it and it actually
+# executes this command, not just that the workflow file parses.
 
 services:
   postgres:
