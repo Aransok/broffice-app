@@ -82,4 +82,11 @@ jobs:
         with:
           clean: false
       - name: Redeploy
+        # Explicit shell override needed: this machine's default Windows
+        # PowerShell execution policy blocks running scripts at all (the
+        # standard restrictive default), and the runner's plain `run:`
+        # step invokes powershell.exe with no bypass - confirmed directly
+        # (2026-08-12): a real deploy attempt failed with "running scripts
+        # is disabled on this system" until this was added.
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: docker compose -f docker-compose.prod.yml up -d --build
