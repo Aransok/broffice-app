@@ -1,6 +1,17 @@
 {$DOMAIN} {
 	encode gzip
 
+	# Caddy's default automatic HTTPS issues an ECDSA certificate, which
+	# chains through Let's Encrypt's newer "ISRG Root X2" - not yet
+	# trusted by every device (confirmed directly: worked in Chrome/
+	# Android, failed on an iPhone and 2 of 5 test computers, all with the
+	# exact same TLS handshake failure). rsa2048 chains through the
+	# original "ISRG Root X1" instead, which is trusted essentially
+	# universally, including by older devices.
+	tls {
+		key_type rsa2048
+	}
+
 	# Bare top-level directives in a Caddyfile do NOT run in the order
 	# they're written — Caddy applies a fixed internal phase order instead
 	# (try_files runs before reverse_proxy regardless of source order),
