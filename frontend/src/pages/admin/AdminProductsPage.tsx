@@ -7,9 +7,20 @@ import { AdminProductForm } from './AdminProductForm'
 
 const PAGE_SIZE = 24
 
+const SORT_OPTIONS = [
+  { value: '', label: 'Без сортиране' },
+  { value: 'client_price', label: 'Клиентска цена (ниска-висока)' },
+  { value: '-client_price', label: 'Клиентска цена (висока-ниска)' },
+  { value: 'admin_price', label: 'Цена за реселър (ниска-висока)' },
+  { value: '-admin_price', label: 'Цена за реселър (висока-ниска)' },
+  { value: 'profit', label: 'Печалба (ниска-висока)' },
+  { value: '-profit', label: 'Печалба (висока-ниска)' },
+] as const
+
 export function AdminProductsPage() {
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState('')
+  const [ordering, setOrdering] = useState('')
   const [page, setPage] = useState(1)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -18,6 +29,7 @@ export function AdminProductsPage() {
   const { data, isLoading, refetch } = useAdminProducts({
     search,
     category__external_id: categoryId || undefined,
+    ordering: ordering || undefined,
     page,
   })
   const totalPages = data ? Math.max(1, Math.ceil(data.count / PAGE_SIZE)) : 1
@@ -29,6 +41,11 @@ export function AdminProductsPage() {
 
   function updateCategoryFilter(value: string) {
     setCategoryId(value)
+    setPage(1)
+  }
+
+  function updateOrdering(value: string) {
+    setOrdering(value)
     setPage(1)
   }
 
@@ -106,6 +123,21 @@ export function AdminProductsPage() {
           {categories?.results.map((category) => (
             <option key={category.id} value={category.external_id}>
               {category.name}
+            </option>
+          ))}
+        </select>
+        <label className="sr-only" htmlFor="admin-products-sort">
+          Сортиране
+        </label>
+        <select
+          id="admin-products-sort"
+          value={ordering}
+          onChange={(event) => updateOrdering(event.target.value)}
+          className="rounded-ui border border-slate-300 bg-surface px-3 py-2 text-sm text-slate-700"
+        >
+          {SORT_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
             </option>
           ))}
         </select>

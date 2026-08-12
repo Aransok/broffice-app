@@ -415,6 +415,40 @@ def test_admin_products_ok(api_client, admin_user, sample_product):
 
 
 @pytest.mark.django_db
+def test_admin_products_ordering_by_profit(api_client, admin_user):
+    cat = Category.objects.create(external_id="9", slug="profit-cat", name="Profit Cat")
+    low = Product.objects.create(
+        external_id="low",
+        slug="low-profit",
+        name="Low Profit",
+        category=cat,
+        price_bgn="10.00",
+        client_price="10.00",
+        admin_price="9.00",
+    )
+    high = Product.objects.create(
+        external_id="high",
+        slug="high-profit",
+        name="High Profit",
+        category=cat,
+        price_bgn="50.00",
+        client_price="50.00",
+        admin_price="5.00",
+    )
+    api_client.force_authenticate(user=admin_user)
+
+    resp = api_client.get("/api/v1/admin/products/", {"ordering": "profit"})
+    assert resp.status_code == 200
+    ids = [p["id"] for p in resp.data["results"]]
+    assert ids.index(str(low.id)) < ids.index(str(high.id))
+
+    resp = api_client.get("/api/v1/admin/products/", {"ordering": "-profit"})
+    assert resp.status_code == 200
+    ids = [p["id"] for p in resp.data["results"]]
+    assert ids.index(str(high.id)) < ids.index(str(low.id))
+
+
+@pytest.mark.django_db
 def test_admin_product_create_requires_auth(api_client):
     resp = api_client.post("/api/v1/admin/products/", {"name": "New Product"})
     assert resp.status_code in (401, 403)

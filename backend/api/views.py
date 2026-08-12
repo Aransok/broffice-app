@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate, login, logout, update_session_auth
 from django.contrib.auth.models import User
 from django.core.files.storage import default_storage
 from django.core.mail import EmailMessage
-from django.db.models import Count, Max, Q, Sum
+from django.db.models import Count, F, Max, Q, Sum
 from django.http import HttpResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
@@ -586,6 +586,12 @@ class AdminProductViewSet(viewsets.ModelViewSet):
     queryset = (
         Product.objects.select_related("category", "brand")
         .prefetch_related("images")
+        # profit isn't a stored column - annotated here so it's sortable
+        # via ?ordering=profit the same way as any real field. Matches
+        # the frontend's own computeProfitBgn (client_price - admin_price)
+        # exactly, including staying NULL (sorts to one end) when either
+        # price is unset, same as the "—" it shows in that case.
+        .annotate(profit=F("client_price") - F("admin_price"))
         .all()
     )
     search_fields = ("name", "slug", "external_id", "sku", "supplier_id")
@@ -596,6 +602,7 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         "price_bgn",
         "client_price",
         "admin_price",
+        "profit",
     )
 
     def get_serializer_class(self):

@@ -26,6 +26,7 @@ export interface AdminProductListParams {
   search?: string
   page?: number
   category__external_id?: string
+  ordering?: string
 }
 
 export function fetchAdminProducts(params: AdminProductListParams = {}) {
