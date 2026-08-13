@@ -24,6 +24,19 @@ jobs:
         with:
           clean: false
 
+      - name: Current EMAIL_* lines in .env (password line redacted)
+        # Added after the first run of this workflow surfaced EMAIL_BACKEND
+        # still on the console fallback in production - it was never
+        # actually switched to SMTP, unlike local dev's .env. Checking the
+        # full picture before touching anything else, rather than guessing
+        # at what else might be missing/wrong (EMAIL_HOST, EMAIL_PORT,
+        # EMAIL_USE_TLS could all be unset too).
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          Get-Content .env | Where-Object { $_ -match '^EMAIL_|^DEFAULT_FROM_EMAIL' } | ForEach-Object {
+            if ($_ -match '^EMAIL_HOST_PASSWORD=') { 'EMAIL_HOST_PASSWORD=<redacted>' } else { $_ }
+          }
+
       - name: Update EMAIL_HOST_USER / EMAIL_HOST_PASSWORD / DEFAULT_FROM_EMAIL in .env
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         env:
