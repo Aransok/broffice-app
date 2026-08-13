@@ -24,7 +24,7 @@ jobs:
         with:
           clean: false
 
-      - name: Current EMAIL_* lines in .env (password line redacted)
+      - name: Current EMAIL_*/ADMIN_ORDER_EMAIL lines in .env (password line redacted)
         # Added after the first run of this workflow surfaced EMAIL_BACKEND
         # still on the console fallback in production - it was never
         # actually switched to SMTP, unlike local dev's .env. Checking the
@@ -33,16 +33,18 @@ jobs:
         # EMAIL_USE_TLS could all be unset too).
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
-          Get-Content .env | Where-Object { $_ -match '^EMAIL_|^DEFAULT_FROM_EMAIL' } | ForEach-Object {
+          Get-Content .env | Where-Object { $_ -match '^EMAIL_|^DEFAULT_FROM_EMAIL|^ADMIN_ORDER_EMAIL' } | ForEach-Object {
             if ($_ -match '^EMAIL_HOST_PASSWORD=') { 'EMAIL_HOST_PASSWORD=<redacted>' } else { $_ }
           }
 
-      - name: Update EMAIL_BACKEND / EMAIL_HOST / EMAIL_HOST_USER / EMAIL_HOST_PASSWORD / DEFAULT_FROM_EMAIL in .env
-        # The redacted inspection step above found the actual root cause:
-        # EMAIL_BACKEND was still the console fallback and EMAIL_HOST was
-        # blank - both left over from the bootstrap script's skippable SMTP
-        # prompt. EMAIL_PORT/EMAIL_USE_TLS were already correctly set, so
-        # fixing just these two is enough to make sending actually work.
+      - name: Update EMAIL_BACKEND / EMAIL_HOST / EMAIL_HOST_USER / EMAIL_HOST_PASSWORD / DEFAULT_FROM_EMAIL / ADMIN_ORDER_EMAIL in .env
+        # The redacted inspection step above found the actual root causes:
+        # EMAIL_BACKEND was still the console fallback, EMAIL_HOST was
+        # blank, and ADMIN_ORDER_EMAIL was a leftover placeholder
+        # (admin@broffice.bg - not either real admin address) - confirmed
+        # by the real test email in this same run actually landing there
+        # instead of the two real addresses. EMAIL_PORT/EMAIL_USE_TLS were
+        # already correctly set.
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         env:
           BROFFICE_EMAIL_APP_PASSWORD: ${{ secrets.BROFFICE_EMAIL_APP_PASSWORD }}
@@ -66,6 +68,9 @@ jobs:
             } elseif ($_ -match '^DEFAULT_FROM_EMAIL=') {
               $changed += 'DEFAULT_FROM_EMAIL'
               'DEFAULT_FROM_EMAIL=broffice.bg@gmail.com'
+            } elseif ($_ -match '^ADMIN_ORDER_EMAIL=') {
+              $changed += 'ADMIN_ORDER_EMAIL'
+              'ADMIN_ORDER_EMAIL=doanchetoidriz@gmail.com,broffice.bg@gmail.com'
             } else {
               $_
             }

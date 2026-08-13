@@ -25,10 +25,18 @@ const SHIPPING_LABELS: Record<string, string> = {
  * There's no way to go further and auto-add it to their cart — their "Добави
  * в количката" button is a plain `href="#"` driven entirely by JS + a CSRF
  * token from an active session on their site, not a URL a link can trigger. */
-function supplierProductUrl(externalId: string): string | null {
+/** The supplier's own numeric product id (the same "№..." shown on every
+ * product card storefront-wide) parsed out of external_id ("supplier-337"
+ * -> "337") - shown to admins instead of SKU so it matches how they already
+ * identify products everywhere else in the app. */
+function supplierNumericId(externalId: string): string | null {
   const match = /^supplier-(\d+)$/.exec(externalId)
-  if (!match) return null
-  return `https://officecenter-bg.com/product/${match[1]}/x`
+  return match ? match[1] : null
+}
+
+function supplierProductUrl(externalId: string): string | null {
+  const id = supplierNumericId(externalId)
+  return id ? `https://officecenter-bg.com/product/${id}/x` : null
 }
 
 export function AdminNotificationsPage() {
@@ -144,6 +152,7 @@ export function AdminNotificationsPage() {
                 {order.items.map((item) => {
                   const imageUrl = getImageUrl(item.product_image)
                   const supplierUrl = supplierProductUrl(item.product_external_id)
+                  const supplierId = supplierNumericId(item.product_external_id)
                   return (
                     <li key={item.id} className="flex items-center justify-between gap-3 py-1.5">
                       <div className="flex min-w-0 items-center gap-2">
@@ -171,8 +180,8 @@ export function AdminNotificationsPage() {
                             ) : (
                               item.product_name
                             )}
-                            {item.product_sku && (
-                              <span className="text-slate-400"> · SKU: {item.product_sku}</span>
+                            {supplierId && (
+                              <span className="text-slate-400"> · №{supplierId}</span>
                             )}{' '}
                             x{item.quantity}
                           </span>
