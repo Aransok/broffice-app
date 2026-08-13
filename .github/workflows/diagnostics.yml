@@ -161,6 +161,12 @@ jobs:
             '    print(f"#{p.item_number} | {p.name[:70]} | external_id={p.external_id} | client_price={p.client_price} | admin_price={p.admin_price} | category={cat}")'
           )
           $script = $lines -join "`n"
+          # PowerShell 5.1's default pipe-to-native-process encoding prepends
+          # a UTF-8 BOM, which Python's exec() rejects outright
+          # (SyntaxError: invalid non-printable character U+FEFF) - found by
+          # actually running this against the real container. Explicit
+          # BOM-less UTF8Encoding fixes it.
+          $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
           $script | docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell
 
       - name: Scheduled task status (backup, restore watcher, watchdog)
