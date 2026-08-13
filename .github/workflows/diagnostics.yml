@@ -122,8 +122,17 @@ jobs:
           Write-Host "--- HTTP.sys URL reservations (any process, not just IIS) ---"
           cmd /c "netsh http show urlacl 2>&1"
           Write-Host "--- IIS HTTPS site bindings, if IIS is even present ---"
+          # Found 2026-08-13: the Get-WebBinding cmdlet can exist (as a stub)
+          # without the WebAdministration provider actually being registered
+          # - it then throws a terminating error that -ErrorAction
+          # SilentlyContinue does NOT suppress, which crashed this step and
+          # every step after it in the same job. try/catch actually catches it.
           if (Get-Command Get-WebBinding -ErrorAction SilentlyContinue) {
-            Get-WebBinding -Protocol https -ErrorAction SilentlyContinue
+            try {
+              Get-WebBinding -Protocol https -ErrorAction Stop
+            } catch {
+              Write-Host "Get-WebBinding failed (consistent with IIS not being really set up): $($_.Exception.Message)"
+            }
           } else {
             Write-Host "IIS management cmdlets not available (consistent with IIS not being really set up)."
           }
