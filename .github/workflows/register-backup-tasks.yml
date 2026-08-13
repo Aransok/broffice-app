@@ -22,6 +22,13 @@ jobs:
           clean: false
 
       - name: Current status (before)
+        # Root-caused (not just worked around like the earlier diagnostics.yml
+        # instance of this same bug): GitHub Actions appends
+        # `exit $LASTEXITCODE` after every PowerShell run: step, which fails
+        # the step on schtasks's own non-zero "not found" exit code - even
+        # though that's the expected, correctly-handled result here (the
+        # whole point of asking is to find out whether it's registered yet).
+        # Resetting $LASTEXITCODE at the end is the actual fix.
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
           $ErrorActionPreference = "Continue"
@@ -29,6 +36,7 @@ jobs:
           cmd /c "schtasks /query /tn `"BRoffice Nightly Backup`" /fo list 2>&1"
           Write-Host "--- Restore Watcher ---"
           cmd /c "schtasks /query /tn `"BRoffice Restore Watcher`" /fo list 2>&1"
+          $global:LASTEXITCODE = 0
 
       - name: Register both tasks (same commands as bootstrap Step 5)
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
