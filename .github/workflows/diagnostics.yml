@@ -107,6 +107,11 @@ jobs:
           Get-ScheduledTask -TaskName "BRoffice Docker Watchdog" -ErrorAction SilentlyContinue | Select-Object TaskName, State
           Get-ScheduledTaskInfo -TaskName "BRoffice Docker Watchdog" -ErrorAction SilentlyContinue | Select-Object LastRunTime, LastTaskResult, NextRunTime
 
+      - name: What's listening on port 81 (and 80/443 for comparison)
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          cmd /c 'netstat -ano | findstr ":81 :80 :443"'
+
       - name: Disk space
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: Get-PSDrive C | Select-Object Used, Free
