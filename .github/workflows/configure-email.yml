@@ -1,0 +1,77 @@
+name: Configure email sender (self-hosted, on-demand)
+
+# Manually-triggered only - switches the production outgoing-mail identity
+# from the personal Gmail account (doanchetoidriz@gmail.com) used at
+# launch to the business one (broffice.bg@gmail.com), using a fresh app
+# password generated on that account 2026-08-13. Stored as a GitHub Actions
+# secret (BROFFICE_EMAIL_APP_PASSWORD) rather than committed anywhere -
+# GitHub automatically masks any log output matching a secret's value, so
+# this workflow is safe to inspect afterward even though it handles a real
+# credential.
+#
+# Only recreates backend/celery-worker/celery-beat (the services that
+# actually read EMAIL_* env vars) - frontend/Caddy is untouched, so this
+# doesn't cause the storefront-facing downtime a full redeploy would.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  configure-email:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          clean: false
+
+      - name: Update EMAIL_HOST_USER / EMAIL_HOST_PASSWORD / DEFAULT_FROM_EMAIL in .env
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        env:
+          BROFFICE_EMAIL_APP_PASSWORD: ${{ secrets.BROFFICE_EMAIL_APP_PASSWORD }}
+        run: |
+          $envPath = ".env"
+          $content = Get-Content $envPath
+          $changed = @()
+          $updated = $content | ForEach-Object {
+            if ($_ -match '^EMAIL_HOST_USER=') {
+              $changed += 'EMAIL_HOST_USER'
+              'EMAIL_HOST_USER=broffice.bg@gmail.com'
+            } elseif ($_ -match '^EMAIL_HOST_PASSWORD=') {
+              $changed += 'EMAIL_HOST_PASSWORD'
+              "EMAIL_HOST_PASSWORD=$env:BROFFICE_EMAIL_APP_PASSWORD"
+            } elseif ($_ -match '^DEFAULT_FROM_EMAIL=') {
+              $changed += 'DEFAULT_FROM_EMAIL'
+              'DEFAULT_FROM_EMAIL=broffice.bg@gmail.com'
+            } else {
+              $_
+            }
+          }
+          # Set-Content -Encoding UTF8 writes a BOM on PS 5.1, which
+          # python-dotenv would then choke on for whichever key ends up
+          # first in the file (same class of issue found earlier today in
+          # diagnostics.yml) - write it BOM-less explicitly instead.
+          [System.IO.File]::WriteAllLines(
+            (Resolve-Path $envPath),
+            $updated,
+            [System.Text.UTF8Encoding]::new($false)
+          )
+          Write-Host "Updated in .env (values not shown): $($changed -join ', ')"
+
+      - name: Recreate backend/celery services so the new .env takes effect
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          docker compose -f docker-compose.prod.yml up -d --force-recreate backend celery-worker celery-beat
+
+      - name: Verify the new sender identity is live (non-secret fields only)
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          $lines = @(
+            'from django.conf import settings',
+            'print("EMAIL_HOST_USER:", settings.EMAIL_HOST_USER)',
+            'print("DEFAULT_FROM_EMAIL:", settings.DEFAULT_FROM_EMAIL)',
+            'print("EMAIL_BACKEND:", settings.EMAIL_BACKEND)',
+            'print("EMAIL_HOST_PASSWORD set:", bool(settings.EMAIL_HOST_PASSWORD))'
+          )
+          $pythonSource = $lines -join "`n"
+          $b64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($pythonSource))
+          docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell -c "import base64; exec(base64.b64decode('$b64').decode('utf-8'))"
