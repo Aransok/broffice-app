@@ -164,8 +164,11 @@ jobs:
           # PowerShell 5.1's default pipe-to-native-process encoding prepends
           # a UTF-8 BOM, which Python's exec() rejects outright
           # (SyntaxError: invalid non-printable character U+FEFF) - found by
-          # actually running this against the real container. Explicit
-          # BOM-less UTF8Encoding fixes it.
+          # actually running this against the real container. Setting just
+          # $OutputEncoding did NOT fix it (confirmed - same error, same
+          # run) - [Console]::OutputEncoding is the one that actually
+          # governs `|` to a native process here, so set both.
+          [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
           $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
           $script | docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell
 
