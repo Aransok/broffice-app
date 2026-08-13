@@ -4,6 +4,17 @@
 # so going there in person to restart it manually is only needed if this
 # genuinely can't recover on its own (check the log below for that case).
 #
+# Also checks the site itself, not just the engine (added 2026-08-13,
+# real incident - a customer in a different city hit a connection
+# failure while `docker info`/container health looked completely fine
+# the whole time). WSL2's own network relay (wslrelay.exe) is a known,
+# separate point of failure from the Docker engine or containers
+# themselves - it can get stuck while `docker info` and every container
+# still report healthy, so the engine/container checks alone can't catch
+# it. This escalates: try restarting just the frontend container first
+# (cheap), and only restart Docker Desktop entirely if that doesn't fix
+# it - a full restart is what actually resets a stuck WSL2 relay.
+#
 # Also force-minimizes Docker Desktop's window whenever it's open - the
 # client only needs the background engine, never the GUI, and a surprise
 # window popping up (at boot, after a relaunch, or if they double-click
@@ -23,9 +34,9 @@
 # Meant to run on a short interval via Windows Task Scheduler (every 1
 # minute - cheap on the healthy path, and keeps the window-minimizing
 # reaction fast). If the engine is already up, the stack is already
-# running, and no window is open, this does nothing and writes nothing to
-# the log - the log exists to explain failures/actions, not to confirm
-# routine health.
+# running, the site itself is reachable, and no window is open, this
+# does nothing and writes nothing to the log - the log exists to explain
+# failures/actions, not to confirm routine health.
 #
 # One-time setup (run once, as Administrator):
 #   schtasks /create /tn "BRoffice Docker Watchdog" /tr "powershell.exe -ExecutionPolicy Bypass -File \"C:\path\to\watchdog.ps1\"" /sc minute /mo 1 /ru SYSTEM
@@ -65,6 +76,78 @@ function Set-DockerWindowMinimized {
     return $true
 }
 
+function Test-SiteReachable {
+    # Checked against localhost, not the real public domain - this is
+    # specifically testing the local Docker/WSL2 network path, not the
+    # router/internet/DNS path (already covered by other, separate means).
+    try {
+        $r = Invoke-WebRequest -Uri "https://localhost/" -TimeoutSec 10 -UseBasicParsing
+        return $r.StatusCode -eq 200
+    } catch {
+        return $false
+    }
+}
+
+function Restart-DockerDesktopFully {
+    # Shared by both failure paths below: the engine being down from the
+    # start, and the engine looking fine but the site still not being
+    # reachable even after a plain container restart (the WSL2-relay-
+    # stuck scenario, which needs the whole of Docker Desktop restarted
+    # to clear, not just a container).
+    $proc = Get-Process -Name "Docker Desktop" -ErrorAction SilentlyContinue
+    if ($proc) {
+        Write-Log "Stopping Docker Desktop so it can be relaunched cleanly."
+        $proc | Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 3
+    }
+
+    if (-not (Test-Path $DockerDesktopExe)) {
+        Write-Log "ERROR: Docker Desktop.exe not found at $DockerDesktopExe - cannot auto-recover, manual intervention needed."
+        return $false
+    }
+    Write-Log "Relaunching Docker Desktop."
+    Start-Process $DockerDesktopExe
+    # Its window will appear a few seconds after the process starts, not
+    # immediately - poll briefly so the minimize actually lands instead of
+    # missing an empty MainWindowHandle on the first try.
+    $minimizeWait = 0
+    while ($minimizeWait -lt 30) {
+        Start-Sleep -Seconds 2
+        $minimizeWait += 2
+        if (Set-DockerWindowMinimized) {
+            Write-Log "Minimized the Docker Desktop window after relaunch."
+            break
+        }
+    }
+
+    Write-Log "Waiting up to $EngineTimeoutSeconds seconds for the Docker engine to become ready..."
+    $waited = 0
+    $ready = $false
+    while ($waited -lt $EngineTimeoutSeconds) {
+        Start-Sleep -Seconds 10
+        $waited += 10
+        docker info 1> $null
+        if ($LASTEXITCODE -eq 0) {
+            $ready = $true
+            break
+        }
+    }
+
+    if (-not $ready) {
+        Write-Log "ERROR: Docker engine still not responding after $EngineTimeoutSeconds seconds - needs manual intervention (open Docker Desktop and check for errors)."
+        return $false
+    }
+
+    Write-Log "Docker engine is ready after ${waited}s. Bringing the site back up."
+    Set-Location $DeployDir
+    docker compose -f docker-compose.prod.yml up -d
+    if ($LASTEXITCODE -ne 0) {
+        Write-Log "ERROR: 'docker compose up -d' failed (exit $LASTEXITCODE) after the engine came back - manual check needed."
+        return $false
+    }
+    return $true
+}
+
 New-Item -ItemType Directory -Force -Path (Split-Path $LogFile) | Out-Null
 
 # Keep the log from growing forever - this fires every minute,
@@ -79,76 +162,50 @@ if (Set-DockerWindowMinimized) {
 }
 
 docker info 1> $null
-if ($LASTEXITCODE -eq 0) {
-    # Engine is fine. Idempotent no-op if the stack already matches -
-    # cheap defensive fallback for "engine's up but a container isn't"
-    # without needing a separate status-parsing check.
-    #
-    # Deliberately not redirecting docker's own stderr (e.g. `*> $null`) -
-    # PowerShell 5.1 wraps a native command's stderr lines in a
-    # NativeCommandError and sets $? to false even on a real exit code 0,
-    # which under $ErrorActionPreference = "Stop" throws here even after
-    # a genuinely successful recovery (verified: the container came back
-    # up but the script errored out before logging success).
-    Set-Location $DeployDir
-    docker compose -f docker-compose.prod.yml up -d
-    if ($LASTEXITCODE -ne 0) {
-        Write-Log "ERROR: engine is up but 'docker compose up -d' failed (exit $LASTEXITCODE) - manual check needed."
-        exit 1
-    }
+if ($LASTEXITCODE -ne 0) {
+    Write-Log "Docker engine is not responding - checking if Docker Desktop is running."
+    if (-not (Restart-DockerDesktopFully)) { exit 1 }
+    Write-Log "Recovered successfully - site is back up."
     exit 0
 }
 
-Write-Log "Docker engine is not responding - checking if Docker Desktop is running."
-
-$proc = Get-Process -Name "Docker Desktop" -ErrorAction SilentlyContinue
-if (-not $proc) {
-    Write-Log "Docker Desktop is not running (likely closed by accident) - relaunching."
-    if (-not (Test-Path $DockerDesktopExe)) {
-        Write-Log "ERROR: Docker Desktop.exe not found at $DockerDesktopExe - cannot auto-recover, manual intervention needed."
-        exit 1
-    }
-    Start-Process $DockerDesktopExe
-    # Its window will appear a few seconds after the process starts, not
-    # immediately - poll briefly so the minimize actually lands instead of
-    # missing an empty MainWindowHandle on the first try.
-    $minimizeWait = 0
-    while ($minimizeWait -lt 30) {
-        Start-Sleep -Seconds 2
-        $minimizeWait += 2
-        if (Set-DockerWindowMinimized) {
-            Write-Log "Minimized the Docker Desktop window after relaunch."
-            break
-        }
-    }
-} else {
-    Write-Log "Docker Desktop process is running but the engine isn't responding yet - waiting for it to finish starting."
-}
-
-Write-Log "Waiting up to $EngineTimeoutSeconds seconds for the Docker engine to become ready..."
-$waited = 0
-$ready = $false
-while ($waited -lt $EngineTimeoutSeconds) {
-    Start-Sleep -Seconds 10
-    $waited += 10
-    docker info 1> $null
-    if ($LASTEXITCODE -eq 0) {
-        $ready = $true
-        break
-    }
-}
-
-if (-not $ready) {
-    Write-Log "ERROR: Docker engine still not responding after $EngineTimeoutSeconds seconds - needs manual intervention (open Docker Desktop and check for errors)."
+# Engine is fine. Idempotent no-op if the stack already matches - cheap
+# defensive fallback for "engine's up but a container isn't" without
+# needing a separate status-parsing check.
+#
+# Deliberately not redirecting docker's own stderr (e.g. `*> $null`) -
+# PowerShell 5.1 wraps a native command's stderr lines in a
+# NativeCommandError and sets $? to false even on a real exit code 0,
+# which under $ErrorActionPreference = "Stop" throws here even after a
+# genuinely successful recovery (verified: the container came back up
+# but the script errored out before logging success).
+Set-Location $DeployDir
+docker compose -f docker-compose.prod.yml up -d
+if ($LASTEXITCODE -ne 0) {
+    Write-Log "ERROR: engine is up but 'docker compose up -d' failed (exit $LASTEXITCODE) - manual check needed."
     exit 1
 }
 
-Write-Log "Docker engine is ready after ${waited}s. Bringing the site back up."
-Set-Location $DeployDir
-docker compose -f docker-compose.prod.yml up -d
-if ($LASTEXITCODE -eq 0) {
-    Write-Log "Recovered successfully - site is back up."
+if (Test-SiteReachable) {
+    exit 0
+}
+
+Write-Log "Docker and containers look healthy, but the site itself isn't responding locally - likely a stuck WSL2 network relay, not an engine problem. Restarting the frontend container."
+docker compose -f docker-compose.prod.yml restart frontend
+Start-Sleep -Seconds 8
+
+if (Test-SiteReachable) {
+    Write-Log "Frontend restart fixed it - site responding again."
+    exit 0
+}
+
+Write-Log "Frontend restart didn't fix it - restarting Docker Desktop entirely (a full restart is what actually clears a stuck WSL2 relay)."
+if (-not (Restart-DockerDesktopFully)) { exit 1 }
+
+if (Test-SiteReachable) {
+    Write-Log "Recovered successfully after a full Docker Desktop restart - site is back up."
+    exit 0
 } else {
-    Write-Log "ERROR: 'docker compose up -d' failed (exit $LASTEXITCODE) after the engine came back - manual check needed."
+    Write-Log "ERROR: still not reachable even after a full Docker Desktop restart - needs manual investigation."
     exit 1
 }
