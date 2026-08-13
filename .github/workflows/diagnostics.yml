@@ -81,8 +81,12 @@ jobs:
       - name: Scheduled task status (backup, restore watcher, watchdog)
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
-          schtasks /query /tn "BRoffice Nightly Backup" /fo list 2>&1 | Select-String "TaskName|Status|Last Run|Next Run"
-          schtasks /query /tn "BRoffice Restore Watcher" /fo list 2>&1 | Select-String "TaskName|Status|Last Run|Next Run"
+          $ErrorActionPreference = "Continue"
+          Write-Host "--- Nightly Backup ---"
+          cmd /c "schtasks /query /tn `"BRoffice Nightly Backup`" /fo list 2>&1"
+          Write-Host "--- Restore Watcher ---"
+          cmd /c "schtasks /query /tn `"BRoffice Restore Watcher`" /fo list 2>&1"
+          Write-Host "--- Docker Watchdog ---"
           Get-ScheduledTask -TaskName "BRoffice Docker Watchdog" -ErrorAction SilentlyContinue | Select-Object TaskName, State
           Get-ScheduledTaskInfo -TaskName "BRoffice Docker Watchdog" -ErrorAction SilentlyContinue | Select-Object LastRunTime, LastTaskResult, NextRunTime
 
