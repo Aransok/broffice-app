@@ -54,14 +54,28 @@ jobs:
       - name: Local reachability check (from the machine itself)
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
+          # No -SkipCertificateCheck - that flag doesn't exist in Windows
+          # PowerShell 5.1 (this runner's shell, confirmed from earlier
+          # runs). Not needed anyway now that the certificate is genuinely
+          # valid - default validation actually proves it works.
           for ($i = 1; $i -le 5; $i++) {
             try {
-              $r = Invoke-WebRequest -Uri "https://www.broffice.bg/" -SkipCertificateCheck -TimeoutSec 8 -UseBasicParsing
+              $r = Invoke-WebRequest -Uri "https://www.broffice.bg/" -TimeoutSec 8 -UseBasicParsing
               Write-Host "attempt ${i}: $($r.StatusCode)"
             } catch {
               Write-Host "attempt ${i}: FAILED - $($_.Exception.Message)"
             }
             Start-Sleep -Seconds 1
+          }
+
+      - name: Watchdog log (last 40 lines)
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          $log = "C:\broffice-backups\watchdog.log"
+          if (Test-Path $log) {
+            Get-Content $log -Tail 40
+          } else {
+            Write-Host "No watchdog log found at $log"
           }
 
       - name: Disk space
