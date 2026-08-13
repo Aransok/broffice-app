@@ -77,11 +77,18 @@ function Set-DockerWindowMinimized {
 }
 
 function Test-SiteReachable {
-    # Checked against localhost, not the real public domain - this is
-    # specifically testing the local Docker/WSL2 network path, not the
-    # router/internet/DNS path (already covered by other, separate means).
+    # Real bug found and fixed 2026-08-13, same day this check was added:
+    # this originally hit https://localhost/ to isolate the local Docker
+    # path from DNS/router - but Caddy has no site block for "localhost"
+    # at all (only broffice.bg and www.broffice.bg), so every single
+    # check failed with a real TLS handshake error - not because the site
+    # was down, but because Caddy correctly had nothing to serve for that
+    # hostname. This caused the watchdog to "recover" a site that was
+    # never actually broken, restarting Docker Desktop every single
+    # minute for no reason. Testing the real hostname instead - same
+    # method already proven reliable in the diagnostics workflow.
     try {
-        $r = Invoke-WebRequest -Uri "https://localhost/" -TimeoutSec 10 -UseBasicParsing
+        $r = Invoke-WebRequest -Uri "https://www.broffice.bg/" -TimeoutSec 10 -UseBasicParsing
         return $r.StatusCode -eq 200
     } catch {
         return $false
