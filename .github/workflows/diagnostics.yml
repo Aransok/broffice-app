@@ -145,9 +145,16 @@ jobs:
         # Added 2026-08-13 - client reported seeing "a lot" of €0.00 items
         # after the EUR-only display change. That change only touched
         # formatting, not data, so this checks what's actually stored
-        # instead of guessing at the scope. Built as a joined array (not a
-        # PowerShell here-string) since a here-string's closing `'@` must
-        # sit at column 0, which breaks this YAML block scalar's indentation.
+        # instead of guessing at the scope.
+        #
+        # Piping the script via stdin (`$script | docker compose exec ...`)
+        # reliably prepended a UTF-8 BOM that Python's exec() rejected
+        # (SyntaxError: invalid non-printable character U+FEFF) - confirmed
+        # by actually running it, twice, including after setting both
+        # $OutputEncoding and [Console]::OutputEncoding to a BOM-less
+        # UTF8Encoding (neither changed the outcome at all - same error,
+        # byte for byte). Passing the code as a base64 argument instead
+        # sidesteps text-encoding entirely (base64 is pure ASCII).
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
           $lines = @(
@@ -160,17 +167,9 @@ jobs:
             '    cat = p.category.name if p.category else None',
             '    print(f"#{p.item_number} | {p.name[:70]} | external_id={p.external_id} | client_price={p.client_price} | admin_price={p.admin_price} | category={cat}")'
           )
-          $script = $lines -join "`n"
-          # PowerShell 5.1's default pipe-to-native-process encoding prepends
-          # a UTF-8 BOM, which Python's exec() rejects outright
-          # (SyntaxError: invalid non-printable character U+FEFF) - found by
-          # actually running this against the real container. Setting just
-          # $OutputEncoding did NOT fix it (confirmed - same error, same
-          # run) - [Console]::OutputEncoding is the one that actually
-          # governs `|` to a native process here, so set both.
-          [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-          $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-          $script | docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell
+          $pythonSource = $lines -join "`n"
+          $b64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($pythonSource))
+          docker compose -f docker-compose.prod.yml exec -T backend python -c "import base64; exec(base64.b64decode('$b64').decode('utf-8'))"
 
       - name: Scheduled task status (backup, restore watcher, watchdog)
         # Moved last - this step has some intermittent crash after
