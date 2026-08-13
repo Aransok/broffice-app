@@ -1,0 +1,63 @@
+name: Register backup/restore Task Scheduler jobs (self-hosted, on-demand)
+
+# Manually-triggered only. These two jobs were flagged during the original
+# go-live as needing Administrator rights to register (they run as SYSTEM,
+# see scripts/bootstrap-deploy-machine.ps1 Step 5) - confirmed still
+# missing on production 2026-08-13 via a real diagnostics run
+# (schtasks /query returned "system cannot find the file specified" for
+# both). Real customers are placing real orders now, so this is worth
+# actually attempting via the self-hosted runner rather than continuing to
+# assume it's blocked - if the runner isn't elevated enough, this will
+# fail cleanly and say so, rather than silently doing nothing.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  register-backup-tasks:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          clean: false
+
+      - name: Current status (before)
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          $ErrorActionPreference = "Continue"
+          Write-Host "--- Nightly Backup ---"
+          cmd /c "schtasks /query /tn `"BRoffice Nightly Backup`" /fo list 2>&1"
+          Write-Host "--- Restore Watcher ---"
+          cmd /c "schtasks /query /tn `"BRoffice Restore Watcher`" /fo list 2>&1"
+
+      - name: Register both tasks (same commands as bootstrap Step 5)
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          $ScriptsDir = (Resolve-Path "scripts").Path
+          $BackupRoot = "C:\broffice-backups"
+          New-Item -ItemType Directory -Force -Path $BackupRoot | Out-Null
+
+          if (-not (Test-Path "$ScriptsDir\backup-database.ps1") -or -not (Test-Path "$ScriptsDir\restore-watcher.ps1")) {
+            Write-Host "##[error]backup-database.ps1/restore-watcher.ps1 not found at $ScriptsDir"
+            exit 1
+          }
+
+          cmd /c "schtasks /create /tn `"BRoffice Nightly Backup`" /tr `"powershell.exe -ExecutionPolicy Bypass -File \`"$ScriptsDir\backup-database.ps1\`"`" /sc daily /st 01:00 /ru SYSTEM /f"
+          $backupExit = $LASTEXITCODE
+
+          cmd /c "schtasks /create /tn `"BRoffice Restore Watcher`" /tr `"powershell.exe -ExecutionPolicy Bypass -File \`"$ScriptsDir\restore-watcher.ps1\`"`" /sc minute /mo 1 /ru SYSTEM /f"
+          $restoreExit = $LASTEXITCODE
+
+          Write-Host "backup exit=$backupExit restore exit=$restoreExit"
+          if ($backupExit -ne 0 -or $restoreExit -ne 0) {
+            Write-Host "##[error]Registration failed - this runner likely isn't elevated enough to create a SYSTEM-run task. Needs to be done from an actual Administrator session on the machine (docs/GO_LIVE_CHECKLIST.txt Phase 3a)."
+            exit 1
+          }
+
+      - name: Status after (only runs if registration succeeded)
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          Write-Host "--- Nightly Backup ---"
+          cmd /c "schtasks /query /tn `"BRoffice Nightly Backup`" /fo list"
+          Write-Host "--- Restore Watcher ---"
+          cmd /c "schtasks /query /tn `"BRoffice Restore Watcher`" /fo list"
