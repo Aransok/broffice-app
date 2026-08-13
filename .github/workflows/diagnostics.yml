@@ -115,6 +115,19 @@ jobs:
               @{N="ProcessName";E={(Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue).ProcessName}} |
             Format-Table -AutoSize | Out-String -Width 200
 
+      - name: IIS (W3SVC) status and any HTTPS bindings
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          Get-Service W3SVC -ErrorAction SilentlyContinue | Select-Object Name, Status, StartType
+          Write-Host "--- HTTP.sys URL reservations (any process, not just IIS) ---"
+          cmd /c "netsh http show urlacl 2>&1"
+          Write-Host "--- IIS HTTPS site bindings, if IIS is even present ---"
+          if (Get-Command Get-WebBinding -ErrorAction SilentlyContinue) {
+            Get-WebBinding -Protocol https -ErrorAction SilentlyContinue
+          } else {
+            Write-Host "IIS management cmdlets not available (consistent with IIS not being really set up)."
+          }
+
       - name: Disk space
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: Get-PSDrive C | Select-Object Used, Free
