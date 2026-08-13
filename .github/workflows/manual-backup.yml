@@ -1,0 +1,39 @@
+name: One-off database backup, downloadable (self-hosted, on-demand)
+
+# Manually-triggered only. A safety-net backup for right now, while the
+# nightly backup task is still unregistered on production (confirmed
+# 2026-08-13: registering it remotely failed with "Access is denied" - the
+# runner isn't elevated enough; needs an Administrator session on the
+# machine itself, planned for tomorrow via TeamViewer). Real customers are
+# placing real orders today, so this gets one real backup off the
+# production machine and onto GitHub (downloadable to any laptop) in the
+# meantime, using the exact same script the nightly task will eventually
+# run - not a separate, untested path.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  manual-backup:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          clean: false
+
+      - name: Run the real backup script
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          $DeployDir = (Get-Location).Path
+          & ".\scripts\backup-database.ps1" -DeployDir $DeployDir -BackupRoot "$env:RUNNER_TEMP\manual-backup"
+
+      - name: List what was produced
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          Get-ChildItem "$env:RUNNER_TEMP\manual-backup" -Recurse | Select-Object FullName, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: broffice-manual-backup
+          path: ${{ runner.temp }}\manual-backup
+          retention-days: 14
