@@ -35,6 +35,14 @@ jobs:
           docker info --format "ServerVersion={{.ServerVersion}}  Containers={{.Containers}}  ContainersRunning={{.ContainersRunning}}"
           Get-Process "Docker Desktop" -ErrorAction SilentlyContinue | Select-Object Id, StartTime
 
+      - name: System boot time and uptime
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          $os = Get-CimInstance Win32_OperatingSystem
+          Write-Host "Last boot: $($os.LastBootUpTime)"
+          Write-Host "Now:       $(Get-Date)"
+          Write-Host "Uptime:    $((Get-Date) - $os.LastBootUpTime)"
+
       - name: Recent frontend (Caddy) logs
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: docker compose -f docker-compose.prod.yml logs frontend --tail 100 --timestamps
@@ -49,9 +57,9 @@ jobs:
           for ($i = 1; $i -le 5; $i++) {
             try {
               $r = Invoke-WebRequest -Uri "https://www.broffice.bg/" -SkipCertificateCheck -TimeoutSec 8 -UseBasicParsing
-              Write-Host "attempt $i: $($r.StatusCode)"
+              Write-Host "attempt ${i}: $($r.StatusCode)"
             } catch {
-              Write-Host "attempt $i: FAILED - $($_.Exception.Message)"
+              Write-Host "attempt ${i}: FAILED - $($_.Exception.Message)"
             }
             Start-Sleep -Seconds 1
           }
