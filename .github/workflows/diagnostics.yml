@@ -26,7 +26,7 @@ jobs:
           Write-Host "---"
           foreach ($svc in "frontend","backend","postgres","redis","celery-worker","celery-beat") {
             $name = "broffice-app-$svc-1"
-            docker inspect $name --format "$name  started={{.State.StartedAt}}  restarts={{.RestartCount}}  status={{.State.Status}}  health={{.State.Health.Status}}" 2>$null
+            docker inspect $name --format "$name  started={{.State.StartedAt}}  restarts={{.RestartCount}}  status={{.State.Status}}  health={{if .State.Health}}{{.State.Health.Status}}{{else}}n/a{{end}}"
           }
 
       - name: Docker engine / Desktop status
