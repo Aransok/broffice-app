@@ -449,6 +449,41 @@ def test_admin_products_ordering_by_profit(api_client, admin_user):
 
 
 @pytest.mark.django_db
+def test_admin_products_zero_price_filter(api_client, admin_user):
+    cat = Category.objects.create(
+        external_id="10", slug="zero-price-cat", name="Zero Price Cat"
+    )
+    zero = Product.objects.create(
+        external_id="zero",
+        slug="zero-price",
+        name="Zero Price",
+        category=cat,
+        client_price="0.00",
+    )
+    missing = Product.objects.create(
+        external_id="missing", slug="missing-price", name="Missing Price", category=cat
+    )
+    priced = Product.objects.create(
+        external_id="priced",
+        slug="real-price",
+        name="Real Price",
+        category=cat,
+        client_price="9.99",
+    )
+    api_client.force_authenticate(user=admin_user)
+
+    resp = api_client.get("/api/v1/admin/products/", {"zero_price": "1"})
+    assert resp.status_code == 200
+    ids = {p["id"] for p in resp.data["results"]}
+    assert ids == {str(zero.id), str(missing.id)}
+    assert str(priced.id) not in ids
+
+    resp = api_client.get("/api/v1/admin/products/")
+    ids = {p["id"] for p in resp.data["results"]}
+    assert str(priced.id) in ids
+
+
+@pytest.mark.django_db
 def test_admin_product_create_requires_auth(api_client):
     resp = api_client.post("/api/v1/admin/products/", {"name": "New Product"})
     assert resp.status_code in (401, 403)

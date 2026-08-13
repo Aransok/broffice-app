@@ -27,6 +27,9 @@ export interface AdminProductListParams {
   page?: number
   category__external_id?: string
   ordering?: string
+  /** '1' to only return products with a missing/zero client price - powers
+   * the admin products page's quick-fix panel. */
+  zero_price?: string
 }
 
 export function fetchAdminProducts(params: AdminProductListParams = {}) {

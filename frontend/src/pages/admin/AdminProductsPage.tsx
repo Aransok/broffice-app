@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { deleteAdminProduct, useAdminProducts } from '../../api/adminProducts'
+import { deleteAdminProduct, updateProductPricing, useAdminProducts } from '../../api/adminProducts'
 import { useCategories } from '../../api/categories'
 import { getImageUrl } from '../../api/media'
-import { computeProfitBgn, formatEur } from '../../utils/currency'
+import type { ProductListItem } from '../../api/types'
+import { computeProfitBgn, eurToBgn, formatEur } from '../../utils/currency'
 import { AdminProductForm } from './AdminProductForm'
 
 const PAGE_SIZE = 24
@@ -97,6 +98,8 @@ export function AdminProductsPage() {
           Нов продукт
         </button>
       </div>
+
+      <ZeroPriceQuickFix />
 
       {showForm && (
         <div className="mb-6">
@@ -390,5 +393,88 @@ export function AdminProductsPage() {
         </>
       )}
     </div>
+  )
+}
+
+/** Surfaces products with no real client price (missing or 0 — the
+ * supplier sync leaves these stuck until someone notices and fixes them by
+ * hand, see docs/issues) so they can be corrected without hunting through
+ * the full catalog. Renders nothing at all once there are none left. */
+function ZeroPriceQuickFix() {
+  const { data, refetch } = useAdminProducts({ zero_price: '1', page: 1 })
+
+  if (!data || data.count === 0) return null
+
+  return (
+    <div className="mb-6 rounded-ui border border-amber-300 bg-amber-50 p-4">
+      <h2 className="mb-1 font-semibold text-amber-900">
+        Продукти без реална цена ({data.count})
+      </h2>
+      <p className="mb-3 text-sm text-amber-800">
+        Доставчикът е върнал 0 за тези продукти — клиентите виждат €0.00. Задайте истинска цена:
+      </p>
+      <ul className="flex flex-col gap-2">
+        {data.results.map((product) => (
+          <ZeroPriceRow key={product.id} product={product} onSaved={refetch} />
+        ))}
+      </ul>
+      {data.count > data.results.length && (
+        <p className="mt-3 text-xs text-amber-700">
+          Показани са първите {data.results.length} от {data.count} — коригирайте тези и списъкът
+          ще се обнови автоматично.
+        </p>
+      )}
+    </div>
+  )
+}
+
+function ZeroPriceRow({
+  product,
+  onSaved,
+}: {
+  product: ProductListItem
+  onSaved: () => void
+}) {
+  const [priceEur, setPriceEur] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function handleSave() {
+    if (!priceEur) return
+    setSaving(true)
+    try {
+      await updateProductPricing(product.id, { client_price: eurToBgn(priceEur) })
+      setPriceEur('')
+      await onSaved()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <li className="flex items-center gap-2 rounded-ui bg-surface px-3 py-2 text-sm">
+      <span className="min-w-0 flex-1 truncate text-slate-800">
+        {product.supplier_id && <span className="text-slate-400">№{product.supplier_id} </span>}
+        {product.name}
+        {product.category_name && (
+          <span className="text-slate-400"> · {product.category_name}</span>
+        )}
+      </span>
+      <input
+        type="text"
+        placeholder="Цена (€)"
+        value={priceEur}
+        onChange={(event) => setPriceEur(event.target.value)}
+        onKeyDown={(event) => event.key === 'Enter' && handleSave()}
+        className="w-24 shrink-0 rounded-ui border border-slate-300 px-2 py-1"
+      />
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={saving || !priceEur}
+        className="shrink-0 rounded-ui bg-primary px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+      >
+        {saving ? '...' : 'Запази'}
+      </button>
+    </li>
   )
 }

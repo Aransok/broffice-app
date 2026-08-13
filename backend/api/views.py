@@ -636,6 +636,18 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         "profit",
     )
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # ?zero_price=1 powers the admin products page's "needs a real
+        # price" quick-fix panel - client_price is set once from the
+        # supplier feed at creation and never auto-corrected on resync (so a
+        # manual price edit always survives), so a bad starting value (the
+        # supplier had no price for that SKU yet) otherwise sits there
+        # unnoticed until someone happens to open that exact product.
+        if self.request.query_params.get("zero_price"):
+            qs = qs.filter(Q(client_price__isnull=True) | Q(client_price=0))
+        return qs
+
     def get_serializer_class(self):
         if self.action in ("create", "update", "partial_update"):
             return AdminProductWriteSerializer
