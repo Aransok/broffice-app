@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
 from categories.models import Category
+from orders.models import Order
 from products.models import Product, ProductImage
 
 
@@ -1390,6 +1391,60 @@ def test_admin_customers_list_counts(api_client, admin_user, sample_product):
     row = next(c for c in resp.data["results"] if c["id"] == customer.id)
     assert row["promotion_count"] == 1
     assert row["cart_item_count"] == 0
+
+
+@pytest.mark.django_db
+def test_admin_can_delete_customer(api_client, admin_user):
+    customer = User.objects.create_user(username="to-delete", password="pass12345")
+    api_client.force_authenticate(user=admin_user)
+
+    resp = api_client.delete(f"/api/v1/admin/customers/{customer.id}/")
+    assert resp.status_code == 204
+    assert not User.objects.filter(id=customer.id).exists()
+
+
+@pytest.mark.django_db
+def test_admin_delete_customer_requires_admin(api_client):
+    customer = User.objects.create_user(username="protected", password="pass12345")
+    resp = api_client.delete(f"/api/v1/admin/customers/{customer.id}/")
+    assert resp.status_code in (401, 403)
+    assert User.objects.filter(id=customer.id).exists()
+
+
+@pytest.mark.django_db
+def test_admin_cannot_delete_staff_via_customers_endpoint(api_client, admin_user):
+    other_staff = User.objects.create_user(
+        username="other-staff", password="pass12345", is_staff=True
+    )
+    api_client.force_authenticate(user=admin_user)
+
+    resp = api_client.delete(f"/api/v1/admin/customers/{other_staff.id}/")
+    assert resp.status_code == 404
+    assert User.objects.filter(id=other_staff.id).exists()
+
+
+@pytest.mark.django_db
+def test_deleting_customer_preserves_their_orders(
+    api_client, admin_user, sample_product
+):
+    customer = User.objects.create_user(username="had-orders", password="pass12345")
+    api_client.force_authenticate(user=customer)
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "had-orders@example.com",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+        },
+        format="json",
+    )
+    number = resp.data["number"]
+
+    api_client.force_authenticate(user=admin_user)
+    api_client.delete(f"/api/v1/admin/customers/{customer.id}/")
+
+    order = Order.objects.get(number=number)
+    assert order.user_id is None
+    assert order.customer_email == "had-orders@example.com"
 
 
 @pytest.mark.django_db

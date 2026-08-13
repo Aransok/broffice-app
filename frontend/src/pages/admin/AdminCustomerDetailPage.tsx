@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   addCustomerCartItem,
+  deleteAdminCustomer,
   removeCustomerCartItem,
   updateCustomerCartItem,
   useAdminCustomer,
@@ -48,13 +49,45 @@ export function AdminCustomerDetailPage() {
   const { id } = useParams<{ id: string }>()
   const customerId = Number(id)
   const [tab, setTab] = useState<TabKey>('cart')
+  const [deleting, setDeleting] = useState(false)
   const { data: customer } = useAdminCustomer(customerId)
+  const navigate = useNavigate()
+
+  async function handleDeleteCustomer() {
+    if (!customer) return
+    const confirmed = confirm(
+      `Изтриване на акаунта на "${customer.username}" (${customer.email})?\n\n` +
+        'Профилът и данните за вход ще бъдат премахнати. Направените поръчки и фактури ' +
+        'остават в системата (вече не са свързани с този акаунт). Това действие не може ' +
+        'да бъде отменено.',
+    )
+    if (!confirmed) return
+    setDeleting(true)
+    try {
+      await deleteAdminCustomer(customerId)
+      navigate('/admin/customers')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="mb-1 text-xl font-semibold text-slate-900">
-        {customer?.username ?? `Клиент #${customerId}`}
-      </h1>
+      <div className="mb-1 flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold text-slate-900">
+          {customer?.username ?? `Клиент #${customerId}`}
+        </h1>
+        {customer && (
+          <button
+            type="button"
+            onClick={handleDeleteCustomer}
+            disabled={deleting}
+            className="rounded-ui border border-red-300 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+          >
+            {deleting ? 'Изтриване...' : 'Изтрий акаунта'}
+          </button>
+        )}
+      </div>
       {customer && (
         <p className="mb-6 text-sm text-slate-500">
           {customer.email} · регистриран на{' '}

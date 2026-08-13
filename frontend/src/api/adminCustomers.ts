@@ -60,6 +60,10 @@ export function fetchAdminCustomer(id: number) {
   return apiClient.get<AdminCustomer>(`/admin/customers/${id}/`).then((res) => res.data)
 }
 
+export function deleteAdminCustomer(id: number) {
+  return apiClient.delete(`/admin/customers/${id}/`)
+}
+
 export function fetchCustomerCart(id: number) {
   return apiClient.get<AdminCart>(`/admin/customers/${id}/cart/`).then((res) => res.data)
 }

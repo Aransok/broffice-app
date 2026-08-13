@@ -927,11 +927,18 @@ class AdminDashboardStatsView(APIView):
         )
 
 
-class AdminCustomerViewSet(viewsets.ReadOnlyModelViewSet):
+class AdminCustomerViewSet(mixins.DestroyModelMixin, viewsets.ReadOnlyModelViewSet):
     """The admin customers table (spec #3) — summary counts only; the detail
     page composes this with the already-existing admin/orders, admin/price-
     overrides and admin/promotions endpoints (each filterable by ?user=<id>)
-    plus the activity endpoint, rather than duplicating that data here."""
+    plus the activity endpoint, rather than duplicating that data here.
+
+    Deletable (not just read-only) so admin can remove a customer account
+    on request. Safe to actually delete the User row: Order.user is
+    SET_NULL (orders/invoices are already denormalized with
+    customer_name/email/phone, so real order history survives losing the
+    account), and get_queryset already excludes staff — an admin account
+    simply 404s here rather than being deletable through this endpoint."""
 
     permission_classes = [IsAdminPortalUser]
     serializer_class = AdminCustomerSerializer
