@@ -132,6 +132,28 @@ jobs:
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: Get-PSDrive C | Select-Object Used, Free
 
+      - name: Published products with client_price 0 or missing (real counts, read-only)
+        # Added 2026-08-13 - client reported seeing "a lot" of €0.00 items
+        # after the EUR-only display change. That change only touched
+        # formatting, not data, so this checks what's actually stored
+        # instead of guessing at the scope. Built as a joined array (not a
+        # PowerShell here-string) since a here-string's closing `'@` must
+        # sit at column 0, which breaks this YAML block scalar's indentation.
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          $lines = @(
+            'from products.models import Product',
+            'published = Product.objects.filter(status=Product.STATUS_PUBLISHED)',
+            'zero_or_missing = (published.filter(client_price__isnull=True) | published.filter(client_price=0)).distinct()',
+            'print("Total published products:", published.count())',
+            'print("Published with client_price 0 or missing:", zero_or_missing.count())',
+            'for p in zero_or_missing.order_by("item_number")[:100]:',
+            '    cat = p.category.name if p.category else None',
+            '    print(f"#{p.item_number} | {p.name[:70]} | external_id={p.external_id} | client_price={p.client_price} | admin_price={p.admin_price} | category={cat}")'
+          )
+          $script = $lines -join "`n"
+          $script | docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell
+
       - name: Scheduled task status (backup, restore watcher, watchdog)
         # Moved last - this step has some intermittent crash after
         # printing results (cause not fully pinned down yet), which
