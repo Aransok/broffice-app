@@ -1,3 +1,18 @@
+# The bare domain (no "www") had no site block at all, so Caddy had no
+# certificate for it - a real, 100%-reproducible bug found 2026-08-13:
+# anyone reaching https://broffice.bg directly (typed without www, an old
+# bookmark/business card, etc.) got a hard TLS handshake failure ("tlsv1
+# alert internal error"), confirmed directly with openssl. This gives it
+# its own real certificate and redirects to the canonical www version,
+# matching DJANGO_ALLOWED_HOSTS/FRONTEND_DOMAIN which already treat
+# broffice.bg as a valid host, just not the canonical one.
+broffice.bg {
+	tls {
+		key_type rsa2048
+	}
+	redir https://www.broffice.bg{uri} permanent
+}
+
 {$DOMAIN} {
 	encode gzip
 
