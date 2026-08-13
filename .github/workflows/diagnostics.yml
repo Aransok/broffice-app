@@ -169,7 +169,11 @@ jobs:
           )
           $pythonSource = $lines -join "`n"
           $b64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($pythonSource))
-          docker compose -f docker-compose.prod.yml exec -T backend python -c "import base64; exec(base64.b64decode('$b64').decode('utf-8'))"
+          # Plain `python -c` skips Django's settings bootstrap entirely
+          # (confirmed by actually running it: ImproperlyConfigured, settings
+          # not configured) - `manage.py shell -c` does that setup first,
+          # same as the interactive shell would, so use that instead.
+          docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell -c "import base64; exec(base64.b64decode('$b64').decode('utf-8'))"
 
       - name: Scheduled task status (backup, restore watcher, watchdog)
         # Moved last - this step has some intermittent crash after
