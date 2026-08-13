@@ -102,12 +102,18 @@ jobs:
           docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell -c "import base64; exec(base64.b64decode('$b64').decode('utf-8'))"
 
       - name: Send a real test email (proves SMTP actually works, not just that settings look right)
+        # Cyrillic text embedded directly in this PowerShell script body
+        # broke the runner's own script parsing (the generated .ps1 file
+        # got mangled - confirmed by an actual run: "Unexpected token" on
+        # what should have been the subject string). Plain ASCII sidesteps
+        # it entirely - fine here since this is a throwaway connectivity
+        # test, not real customer-facing content.
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
           $lines = @(
             'from django.conf import settings',
             'from django.core.mail import send_mail',
-            'send_mail("BRoffice - тестов имейл", "Ако виждате това, изходящите имейли работят.", settings.DEFAULT_FROM_EMAIL, settings.ADMIN_NOTIFICATION_EMAILS, fail_silently=False)',
+            'send_mail("BRoffice test email", "If you can read this, outgoing email works.", settings.DEFAULT_FROM_EMAIL, settings.ADMIN_NOTIFICATION_EMAILS, fail_silently=False)',
             'print("Sent OK to:", settings.ADMIN_NOTIFICATION_EMAILS)'
           )
           $pythonSource = $lines -join "`n"
