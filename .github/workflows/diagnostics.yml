@@ -95,6 +95,18 @@ jobs:
             Write-Host "No watchdog log found at $log"
           }
 
+      - name: Machine's actual current public IP (vs DNS record 212.5.157.161)
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          $ip = (Invoke-WebRequest -Uri "https://api.ipify.org" -TimeoutSec 10 -UseBasicParsing).Content
+          Write-Host "Actual current public IP: $ip"
+          Write-Host "DNS record points to:     212.5.157.161"
+          if ($ip.Trim() -eq "212.5.157.161") {
+            Write-Host "MATCH - DNS is correct."
+          } else {
+            Write-Host "MISMATCH - DNS is pointing at the wrong IP!"
+          }
+
       - name: What's listening on ports 80, 81, 443 - with process names
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
