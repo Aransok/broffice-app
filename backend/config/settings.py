@@ -318,7 +318,16 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in {"1", "true", "yes"}
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@broffice.local")
-ADMIN_ORDER_EMAIL = os.getenv("ADMIN_ORDER_EMAIL", "admin@broffice.local")
+# Comma-separated so multiple staff addresses can receive order/contact
+# notifications — kept under the same env var name for backward compat with
+# any .env already set on the production machine.
+ADMIN_NOTIFICATION_EMAILS = [
+    email.strip()
+    for email in os.getenv(
+        "ADMIN_ORDER_EMAIL", "doanchetoidriz@gmail.com,broffice.bg@gmail.com"
+    ).split(",")
+    if email.strip()
+]
 
 # Used to build links in outgoing emails (password reset, etc.) that point at
 # the React SPA rather than the Django backend itself.

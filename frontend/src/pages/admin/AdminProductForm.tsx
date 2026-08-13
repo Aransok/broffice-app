@@ -10,7 +10,7 @@ import {
 import { useCategories } from '../../api/categories'
 import { getImageUrl } from '../../api/media'
 import type { ProductDetail } from '../../api/types'
-import { BGN_PER_EUR, bgnToEur, eurToBgn } from '../../utils/currency'
+import { eurToBgn } from '../../utils/currency'
 
 const emptyForm: AdminProductPayload = {
   name: '',
@@ -258,16 +258,6 @@ function AdminProductFormFields({
         />
         <input
           type="text"
-          placeholder="Цена (лв.)"
-          value={form.price_bgn}
-          onChange={(event) => {
-            const bgn = event.target.value
-            setForm((prev) => ({ ...prev, price_bgn: bgn, price_eur: bgnToEur(bgn) }))
-          }}
-          className="rounded-ui border border-slate-300 px-3 py-2"
-        />
-        <input
-          type="text"
           placeholder="Стара цена (€) — за промоция"
           value={form.old_price_eur ?? ''}
           onChange={(event) => {
@@ -276,21 +266,7 @@ function AdminProductFormFields({
           }}
           className="rounded-ui border border-slate-300 px-3 py-2"
         />
-        <input
-          type="text"
-          placeholder="Стара цена (лв.) — за промоция"
-          value={form.old_price_bgn ?? ''}
-          onChange={(event) => {
-            const bgn = event.target.value
-            setForm((prev) => ({ ...prev, old_price_bgn: bgn, old_price_eur: bgnToEur(bgn) }))
-          }}
-          className="rounded-ui border border-slate-300 px-3 py-2"
-        />
       </div>
-      <p className="-mt-2 text-xs text-slate-500">
-        Лева и евро се преизчисляват автоматично по фиксирания курс 1 € = {BGN_PER_EUR} лв. — все
-        пак може да въведете и двете стойности ръчно, ако е нужно.
-      </p>
 
       <textarea
         placeholder="Кратко описание"

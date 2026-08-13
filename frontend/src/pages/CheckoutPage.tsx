@@ -399,8 +399,7 @@ export function CheckoutPage() {
 
           {shippingCost && (
             <p className="mt-3 text-sm text-slate-600">
-              Цена на доставка: €{bgnToEur(displayPrice(shippingCost) ?? '')} (
-              {displayPrice(shippingCost)} лв.)
+              Цена на доставка: €{bgnToEur(displayPrice(shippingCost) ?? '')}
             </p>
           )}
         </section>
@@ -471,7 +470,7 @@ export function CheckoutPage() {
                   {item.price
                     ? (() => {
                         const lineBgn = displayPrice(String(Number(item.price) * item.quantity))
-                        return `€${bgnToEur(lineBgn ?? '')} (${lineBgn} лв.)`
+                        return `€${bgnToEur(lineBgn ?? '')}`
                       })()
                     : '-'}
                 </span>
@@ -484,7 +483,7 @@ export function CheckoutPage() {
               <span>
                 {(() => {
                   const discountBgn = displayPrice(couponPreviewDiscount.toFixed(2))
-                  return `-€${bgnToEur(discountBgn ?? '')} (${discountBgn} лв.)`
+                  return `-€${bgnToEur(discountBgn ?? '')}`
                 })()}
               </span>
             </div>
@@ -496,7 +495,7 @@ export function CheckoutPage() {
                 const totalBgn = displayPrice(
                   (totalPrice - couponPreviewDiscount + Number(shippingCost ?? 0)).toFixed(2),
                 )
-                return `€${bgnToEur(totalBgn ?? '')} (${totalBgn} лв.)`
+                return `€${bgnToEur(totalBgn ?? '')}`
               })()}
             </span>
           </div>

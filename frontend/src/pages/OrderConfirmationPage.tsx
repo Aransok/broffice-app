@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import type { Order } from '../api/types'
 import { Seo } from '../components/Seo'
-import { formatBothCurrencies } from '../utils/currency'
+import { formatEur } from '../utils/currency'
 
 export function OrderConfirmationPage() {
   const location = useLocation()
@@ -34,17 +34,17 @@ export function OrderConfirmationPage() {
               <span>
                 {item.product_name} x{item.quantity}
               </span>
-              <span>{formatBothCurrencies(item.line_total)}</span>
+              <span>{formatEur(item.line_total)}</span>
             </li>
           ))}
         </ul>
         <div className="flex justify-between border-t border-slate-200 px-4 py-3 text-sm">
           <span>Доставка</span>
-          <span>{formatBothCurrencies(order.shipping_cost_bgn)}</span>
+          <span>{formatEur(order.shipping_cost_bgn)}</span>
         </div>
         <div className="flex justify-between border-t border-slate-200 px-4 py-3 font-semibold">
           <span>Общо</span>
-          <span>{formatBothCurrencies(order.total_bgn)}</span>
+          <span>{formatEur(order.total_bgn)}</span>
         </div>
       </div>
 

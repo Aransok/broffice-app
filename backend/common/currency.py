@@ -12,6 +12,5 @@ def bgn_to_eur(bgn_value) -> Decimal:
     return (Decimal(str(bgn_value)) / BGN_PER_EUR).quantize(Decimal("0.01"))
 
 
-def format_both_currencies(bgn_value) -> str:
-    bgn = Decimal(str(bgn_value))
-    return f"€{bgn_to_eur(bgn)} ({bgn} лв.)"
+def format_eur(bgn_value) -> str:
+    return f"€{bgn_to_eur(bgn_value)}"

@@ -62,19 +62,6 @@ export function AdminPriceEditor({ product }: { product: ProductDetail }) {
           />
         </label>
         <label className="text-xs text-slate-600">
-          Цена за клиент (лв.)
-          <input
-            type="text"
-            value={clientPrice ?? ''}
-            onChange={(event) => {
-              const bgn = event.target.value
-              setClientPrice(bgn)
-              setClientPriceEur(bgnToEur(bgn))
-            }}
-            className="mt-1 w-full rounded-ui border border-slate-300 px-2 py-1 text-sm"
-          />
-        </label>
-        <label className="text-xs text-slate-600">
           Цена за реселър (€)
           <input
             type="text"
@@ -83,19 +70,6 @@ export function AdminPriceEditor({ product }: { product: ProductDetail }) {
               const eur = event.target.value
               setAdminPriceEur(eur)
               setAdminPrice(eurToBgn(eur))
-            }}
-            className="mt-1 w-full rounded-ui border border-slate-300 px-2 py-1 text-sm"
-          />
-        </label>
-        <label className="text-xs text-slate-600">
-          Цена за реселър (лв.)
-          <input
-            type="text"
-            value={adminPrice ?? ''}
-            onChange={(event) => {
-              const bgn = event.target.value
-              setAdminPrice(bgn)
-              setAdminPriceEur(bgnToEur(bgn))
             }}
             className="mt-1 w-full rounded-ui border border-slate-300 px-2 py-1 text-sm"
           />

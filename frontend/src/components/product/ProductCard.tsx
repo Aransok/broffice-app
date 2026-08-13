@@ -7,7 +7,7 @@ import type { ProductListItem } from '../../api/types'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import { useVat } from '../../context/VatContext'
-import { computeProfitBgn, formatBothCurrencies } from '../../utils/currency'
+import { computeProfitBgn, formatEur } from '../../utils/currency'
 
 export function ProductCard({ product }: { product: ProductListItem }) {
   const [quantity, setQuantity] = useState(1)
@@ -21,9 +21,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
 
   const imageUrl = getImageUrl(product.primary_image ?? '')
   const raw = getDisplayPrice(product)
-  const current = displayPrice(raw.current)
   const currentEur = displayPrice(raw.currentEur)
-  const old = displayPrice(raw.old)
   const oldEur = displayPrice(raw.oldEur)
   const { onSale } = raw
 
@@ -105,19 +103,13 @@ export function ProductCard({ product }: { product: ProductListItem }) {
           <div className={onSale ? 'font-semibold text-red-600' : 'font-semibold text-slate-900'}>
             {currentEur ? `€${currentEur}` : 'Цена при запитване'}
           </div>
-          {current && (
-            <div className="text-xs text-slate-500">
-              {onSale && old && <span className="mr-1 line-through">{old} лв.</span>}
-              {current} лв.
-            </div>
-          )}
           {/* admin_price only ever comes back non-null when the viewer is an
            * admin (see ProductListSerializer.get_admin_price on the backend)
            * — no separate frontend role check needed, its mere presence is
            * the gate. */}
           {product.admin_price && (
             <div className="mt-0.5 text-xs font-medium text-amber-600">
-              Реселър: {formatBothCurrencies(product.admin_price)}
+              Реселър: {formatEur(product.admin_price)}
             </div>
           )}
           {(() => {
@@ -135,7 +127,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
                     : 'mt-0.5 text-xs font-medium text-green-600'
                 }
               >
-                Печалба: {formatBothCurrencies(profitBgn)}
+                Печалба: {formatEur(profitBgn)}
               </div>
             )
           })()}

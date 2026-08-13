@@ -158,7 +158,7 @@ def test_contact_form_sends_email(api_client, mailoutbox):
     )
     assert resp.status_code == 200
     assert len(mailoutbox) == 1
-    assert mailoutbox[0].to == ["broffice.bg@gmail.com"]
+    assert mailoutbox[0].to == ["doanchetoidriz@gmail.com", "broffice.bg@gmail.com"]
     assert "Иван Иванов" in mailoutbox[0].body
 
 

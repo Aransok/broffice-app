@@ -9,7 +9,7 @@ import {
 import { getAdminInvoiceDownloadUrl } from '../../api/adminOrders'
 import { getImageUrl } from '../../api/media'
 import { AdminQuickPromotionButton } from '../../components/admin/AdminQuickPromotionButton'
-import { formatBothCurrencies } from '../../utils/currency'
+import { formatEur } from '../../utils/currency'
 
 const SHIPPING_LABELS: Record<string, string> = {
   speedy_address: 'Доставка до адрес',
@@ -185,7 +185,7 @@ export function AdminNotificationsPage() {
                           )}
                         </div>
                       </div>
-                      <span className="shrink-0">{formatBothCurrencies(item.line_total)}</span>
+                      <span className="shrink-0">{formatEur(item.line_total)}</span>
                     </li>
                   )
                 })}
@@ -197,7 +197,7 @@ export function AdminNotificationsPage() {
                     Доставка: {SHIPPING_LABELS[order.shipping_method] ?? order.shipping_method}
                     {order.shipping_method === 'speedy_office'
                       ? ` — ${order.speedy_office_name}`
-                      : ` — ${order.delivery_address_line}, ${order.delivery_city}`}
+                      : ` — ${order.delivery_address_line}, ${order.delivery_city} ${order.delivery_post_code}`}
                   </p>
                 )}
                 <p>Телефон: {order.customer_phone || '-'}</p>
@@ -213,11 +213,11 @@ export function AdminNotificationsPage() {
                 )}
                 <p>Плащане: Наложен платеж</p>
                 <p className="font-medium text-slate-900">
-                  Общо: {formatBothCurrencies(order.total_bgn)}
+                  Общо: {formatEur(order.total_bgn)}
                 </p>
                 {order.total_profit_bgn !== null && (
                   <p className="font-medium text-green-700">
-                    Печалба: {formatBothCurrencies(order.total_profit_bgn)}
+                    Печалба: {formatEur(order.total_profit_bgn)}
                   </p>
                 )}
               </div>

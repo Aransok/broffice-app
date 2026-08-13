@@ -225,15 +225,9 @@ function CartTab({ customerId }: { customerId: number }) {
                       </button>
                     </div>
                   </td>
-                  <td className="py-2 pr-4">
-                    €{bgnToEur(item.unit_price)}
-                    <span className="text-slate-400"> ({item.unit_price} лв.)</span>
-                  </td>
+                  <td className="py-2 pr-4">€{bgnToEur(item.unit_price)}</td>
                   <td className="py-2 pr-4 text-slate-500">{item.price_source || '—'}</td>
-                  <td className="py-2 pr-4 font-medium">
-                    €{bgnToEur(item.line_total)}
-                    <span className="font-normal text-slate-400"> ({item.line_total} лв.)</span>
-                  </td>
+                  <td className="py-2 pr-4 font-medium">€{bgnToEur(item.line_total)}</td>
                   <td className="py-2">
                     <button
                       type="button"
@@ -254,8 +248,7 @@ function CartTab({ customerId }: { customerId: number }) {
       )}
       {cart && cart.items.length > 0 && (
         <p className="mt-3 text-right font-semibold text-slate-900">
-          Общо: €{bgnToEur(cart.subtotal_bgn)}{' '}
-          <span className="font-normal text-slate-400">({cart.subtotal_bgn} лв.)</span>
+          Общо: €{bgnToEur(cart.subtotal_bgn)}
         </p>
       )}
     </div>
@@ -279,7 +272,7 @@ function OrdersTab({ customerId }: { customerId: number }) {
               <span className="text-sm text-slate-500">
                 {new Date(order.created_at).toLocaleDateString('bg-BG')}
               </span>
-              <span className="font-medium text-slate-900">{order.total_bgn} лв.</span>
+              <span className="font-medium text-slate-900">€{bgnToEur(order.total_bgn)}</span>
             </div>
           </div>
         ))}
@@ -360,7 +353,7 @@ function PricingTab({ customerId }: { customerId: number }) {
         <AdminProductPicker onSelect={(product) => setSelectedProduct(product)} />
         {selectedProduct && (
           <p className="mt-2 text-sm text-primary">
-            Избран: {selectedProduct.name} (база {basePrice ?? '—'} лв.)
+            Избран: {selectedProduct.name} (база €{basePrice ? bgnToEur(String(basePrice)) : '—'})
           </p>
         )}
 
@@ -408,7 +401,7 @@ function PricingTab({ customerId }: { customerId: number }) {
         </div>
         {computedBgn && (
           <p className="mt-2 text-xs text-slate-500">
-            Крайна цена: {computedBgn} лв. (€{bgnToEur(computedBgn)})
+            Крайна цена: €{bgnToEur(computedBgn)}
           </p>
         )}
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
@@ -429,10 +422,7 @@ function PricingTab({ customerId }: { customerId: number }) {
               <tr key={override.id} className="border-b border-slate-100">
                 <td className="py-2 pr-4">{override.product_name}</td>
                 <td className="py-2 pr-4">
-                  {override.client_price ?? '—'} лв.
-                  {override.client_price && (
-                    <span className="text-slate-400"> (€{bgnToEur(override.client_price)})</span>
-                  )}
+                  {override.client_price ? `€${bgnToEur(override.client_price)}` : '—'}
                 </td>
                 <td className="py-2 pr-4 text-slate-500">{override.notes || '—'}</td>
                 <td className="py-2">
@@ -756,15 +746,11 @@ function ActivityTab({ customerId }: { customerId: number }) {
                         <>
                           {onPromo && row.price_bgn && (
                             <span className="mr-1 text-slate-400 line-through">
-                              {row.price_bgn} лв.
+                              €{bgnToEur(row.price_bgn)}
                             </span>
                           )}
                           <span className={onPromo ? 'font-medium text-red-600' : ''}>
-                            {row.effective_price_bgn} лв.
-                          </span>
-                          <span className="text-slate-400">
-                            {' '}
-                            (€{bgnToEur(row.effective_price_bgn)})
+                            €{bgnToEur(row.effective_price_bgn)}
                           </span>
                           {onPromo && (
                             <div className="text-xs text-red-600">{row.price_source}</div>

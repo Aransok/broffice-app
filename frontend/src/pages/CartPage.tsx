@@ -57,12 +57,7 @@ export function CartPage() {
                 {item.price
                   ? (() => {
                       const lineBgn = displayPrice(String(Number(item.price) * item.quantity))
-                      return (
-                        <>
-                          €{lineBgn ? bgnToEur(lineBgn) : '-'}
-                          <div className="text-xs font-normal text-slate-400">{lineBgn} лв.</div>
-                        </>
-                      )
+                      return `€${lineBgn ? bgnToEur(lineBgn) : '-'}`
                     })()
                   : '-'}
               </div>
@@ -80,10 +75,7 @@ export function CartPage() {
 
       <div className="mt-6 flex items-center justify-between">
         <span className="text-lg font-semibold text-slate-900">
-          Общо: €{bgnToEur(displayPrice(totalPrice.toFixed(2)) ?? '')}{' '}
-          <span className="text-base font-normal text-slate-400">
-            ({displayPrice(totalPrice.toFixed(2))} лв.)
-          </span>
+          Общо: €{bgnToEur(displayPrice(totalPrice.toFixed(2)) ?? '')}
         </span>
         <Link
           to="/checkout"

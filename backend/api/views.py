@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.models import User
 from django.core.files.storage import default_storage
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMultiAlternatives
 from django.db.models import Count, F, Max, Q, Sum
 from django.http import HttpResponse
 from django.middleware.csrf import get_token
@@ -42,6 +42,7 @@ from carts.services import (
     set_item_quantity as cart_set_item_quantity,
 )
 from categories.models import Category
+from common.emails import BORDER, BRAND_BLUE, MUTED, logo_header_html
 from common.pagination import LargePageNumberPagination
 from coupons.emails import send_coupon_email
 from coupons.models import Coupon
@@ -304,19 +305,49 @@ class ContactView(APIView):
         ser.is_valid(raise_exception=True)
         data = ser.validated_data
         subject = f"Запитване от сайта: {data.get('subject') or 'без тема'}"
-        body = (
+        text_body = (
             f"Име: {data['name']}\n"
             f"Имейл: {data['email']}\n"
             f"Телефон: {data.get('phone') or '-'}\n\n"
             f"{data['message']}"
         )
-        message = EmailMessage(
+        logo_html, logo_image = logo_header_html(settings.COMPANY_NAME)
+        message_html = data["message"].replace("\n", "<br>")
+        html_body = f"""
+        <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;background:#ffffff;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+            <tr>
+              <td style="background:#ffffff;padding:20px 24px;border:1px solid {BORDER};
+                border-bottom:3px solid {BRAND_BLUE};border-radius:8px 8px 0 0;">
+                {logo_html}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;border:1px solid {BORDER};border-top:none;border-radius:0 0 8px 8px;">
+                <h1 style="margin:0 0 16px;font-size:18px;color:#0f172a;">Ново запитване от сайта</h1>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;margin-bottom:16px;">
+                  <tr><td style="padding:4px 0;color:{MUTED};width:90px;">Име</td><td style="padding:4px 0;color:#0f172a;">{data['name']}</td></tr>
+                  <tr><td style="padding:4px 0;color:{MUTED};">Имейл</td><td style="padding:4px 0;color:#0f172a;">{data['email']}</td></tr>
+                  <tr><td style="padding:4px 0;color:{MUTED};">Телефон</td><td style="padding:4px 0;color:#0f172a;">{data.get('phone') or '-'}</td></tr>
+                  {f'<tr><td style="padding:4px 0;color:{MUTED};">Тема</td><td style="padding:4px 0;color:#0f172a;">{data["subject"]}</td></tr>' if data.get('subject') else ''}
+                </table>
+                <p style="margin:0;padding:12px 16px;background:#f8fafc;border-radius:8px;color:#0f172a;white-space:pre-line;">{message_html}</p>
+              </td>
+            </tr>
+          </table>
+        </div>
+        """
+        message = EmailMultiAlternatives(
             subject,
-            body,
+            text_body,
             settings.DEFAULT_FROM_EMAIL,
-            [settings.COMPANY_EMAIL],
+            settings.ADMIN_NOTIFICATION_EMAILS,
             headers={"Reply-To": data["email"]},
         )
+        message.attach_alternative(html_body, "text/html")
+        if logo_image is not None:
+            message.mixed_subtype = "related"
+            message.attach(logo_image)
         message.send(fail_silently=False)
         return Response({"detail": "Съобщението е изпратено успешно."})
 

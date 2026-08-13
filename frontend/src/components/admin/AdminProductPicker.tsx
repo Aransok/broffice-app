@@ -3,6 +3,7 @@ import { useCategories } from '../../api/categories'
 import { getImageUrl } from '../../api/media'
 import { useProducts } from '../../api/products'
 import type { ProductListItem } from '../../api/types'
+import { bgnToEur } from '../../utils/currency'
 
 /** Shared "find a product" widget for every admin place that needs to pick
  * one out of ~90+ products by more than just its name: customer cart
@@ -88,7 +89,9 @@ export function AdminProductPicker({
                 </div>
                 <div className="shrink-0 text-right text-xs text-slate-600">
                   <span className="block text-[10px] text-slate-400">База</span>
-                  <span className="font-medium text-slate-700">{price ? `${price} лв.` : '—'}</span>
+                  <span className="font-medium text-slate-700">
+                    {price ? `€${bgnToEur(price)}` : '—'}
+                  </span>
                 </div>
               </button>
             )

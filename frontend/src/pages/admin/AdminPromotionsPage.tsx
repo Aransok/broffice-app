@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from 'react'
 import { useCategories } from '../../api/categories'
+import type { Category } from '../../api/types'
 import { AdminProductPicker } from '../../components/admin/AdminProductPicker'
 import {
   type AdminUserResult,
@@ -13,6 +14,31 @@ import {
   usePromotions,
 } from '../../api/promotions'
 import { bgnToEur, eurToBgn } from '../../utils/currency'
+
+/** Flattens the category list (already a mix of top-level categories and
+ * subcategories — the plain list endpoint returns both, unrestricted) into
+ * parent-then-children order so a promotion can target a subcategory
+ * specifically (e.g. "Принтерна хартия" under a much bigger parent) without
+ * having to hunt for it in an unsorted, unindented dropdown. */
+function orderedCategoryOptions(
+  categories: Category[],
+): { category: Category; depth: number }[] {
+  const byParent = new Map<string | null, Category[]>()
+  for (const category of categories) {
+    const key = category.parent
+    if (!byParent.has(key)) byParent.set(key, [])
+    byParent.get(key)!.push(category)
+  }
+  const result: { category: Category; depth: number }[] = []
+  function walk(parentId: string | null, depth: number) {
+    for (const category of byParent.get(parentId) ?? []) {
+      result.push({ category, depth })
+      walk(category.id, depth + 1)
+    }
+  }
+  walk(null, 0)
+  return result
+}
 
 const SCOPE_LABELS: Record<PromotionScope, string> = {
   global: 'Цялата страница',
@@ -168,8 +194,7 @@ export function AdminPromotionsPage() {
         </div>
         {form.discount_type === 'flat' && (
           <p className="-mt-2 text-xs text-slate-500">
-            Продуктът ще струва точно тази цена за клиента (не отстъпка от текущата цена), въведена
-            в евро и запазена в лева по фиксирания курс 1 € = 1.95583 лв.
+            Продуктът ще струва точно тази цена за клиента (не отстъпка от текущата цена).
           </p>
         )}
 
@@ -206,9 +231,11 @@ export function AdminPromotionsPage() {
             onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))}
             className="rounded-ui border border-slate-300 px-3 py-2"
           >
-            <option value="">Избери категория</option>
-            {categories?.results.map((category) => (
+            <option value="">Избери категория (вкл. подкатегории)</option>
+            {orderedCategoryOptions(categories?.results ?? []).map(({ category, depth }) => (
               <option key={category.id} value={category.id}>
+                {'  '.repeat(depth)}
+                {depth > 0 ? '— ' : ''}
                 {category.name}
               </option>
             ))}

@@ -137,12 +137,6 @@ export function AdminCouponsPage() {
           onChange={(event) => setValue(event.target.value)}
           className="rounded-ui border border-slate-300 px-3 py-2"
         />
-        {discountType === 'flat' && value && (
-          <p className="-mt-1 text-xs text-slate-500">
-            = {eurToBgn(value)} лв. при прилагане (фиксиран курс 1 € = 1.95583 лв.)
-          </p>
-        )}
-
         <input
           type="text"
           placeholder="Минимална сума на поръчката (€, по избор)"

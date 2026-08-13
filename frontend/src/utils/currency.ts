@@ -20,14 +20,13 @@ export function eurToBgn(eur: string): string {
   return (value * BGN_PER_EUR).toFixed(2)
 }
 
-/** EUR is the primary/displayed currency sitewide, BGN the smaller secondary
- * one — mirrors backend/common/currency.py's format_both_currencies(). */
-export function formatBothCurrencies(bgn: string | number | null | undefined): string {
+/** EUR is the only displayed currency sitewide (BGN was officially retired)
+ * — storage stays BGN internally, this only formats it for display. Mirrors
+ * backend/common/currency.py's format_eur(). */
+export function formatEur(bgn: string | number | null | undefined): string {
   if (bgn === null || bgn === undefined) return '-'
-  const bgnStr = String(bgn)
-  const eur = bgnToEur(bgnStr)
-  if (!eur) return '-'
-  return `€${eur} (${bgnStr} лв.)`
+  const eur = bgnToEur(String(bgn))
+  return eur ? `€${eur}` : '-'
 }
 
 /** Client price minus reseller/cost price (both BGN) — the per-unit profit

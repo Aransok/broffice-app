@@ -51,9 +51,7 @@ export function ProductPage() {
   }
 
   const raw = getDisplayPrice(product)
-  const current = displayPrice(raw.current)
   const currentEur = displayPrice(raw.currentEur)
-  const old = displayPrice(raw.old)
   const oldEur = displayPrice(raw.oldEur)
   const { onSale } = raw
   const images = product.images
@@ -141,12 +139,6 @@ export function ProductPage() {
               {currentEur ? `€${currentEur}` : 'Цена при запитване'}
             </span>
           </div>
-          {current && (
-            <div className="text-sm text-slate-500">
-              {onSale && old && <span className="mr-1 line-through">{old} лв.</span>}
-              {current} лв.
-            </div>
-          )}
           {product.pack_quantity && product.pack_quantity > 1 && (
             <p className="mt-1 text-sm text-slate-500">Опаковка: {product.pack_quantity} бр.</p>
           )}

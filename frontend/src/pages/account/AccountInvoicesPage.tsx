@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { getInvoiceDownloadUrl, useMyOrders } from '../../api/myOrders'
-import { formatBothCurrencies } from '../../utils/currency'
+import { formatEur } from '../../utils/currency'
 
 export function AccountInvoicesPage() {
   const { data, isLoading } = useMyOrders(true)
@@ -27,7 +27,7 @@ export function AccountInvoicesPage() {
               </p>
             </div>
             <span className="font-medium text-slate-900">
-              {formatBothCurrencies(order.total_bgn)}
+              {formatEur(order.total_bgn)}
             </span>
             <a
               href={getInvoiceDownloadUrl(order.number)}

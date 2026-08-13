@@ -5,11 +5,13 @@ import { useProducts } from '../api/products'
 import { PriceRangeSlider } from '../components/PriceRangeSlider'
 import { ProductCard } from '../components/product/ProductCard'
 import { Seo } from '../components/Seo'
+import { BGN_PER_EUR, eurToBgn } from '../utils/currency'
 
 const PAGE_SIZE = 24
-// Static bounds for the slider track — a convenience on top of the manual
-// inputs (which accept any value, including outside this range).
-const PRICE_BOUNDS: [number, number] = [0, 5000]
+// Static bounds for the slider track, in EUR (what the inputs collect) — a
+// convenience on top of the manual inputs (which accept any value,
+// including outside this range).
+const PRICE_BOUNDS: [number, number] = [0, Math.round(5000 / BGN_PER_EUR)]
 
 const SORT_OPTIONS: { value: string; label: string; ordering: string }[] = [
   { value: 'default', label: 'По подразбиране', ordering: '' },
@@ -38,8 +40,8 @@ export function CategoryPage() {
     category__slug: slug,
     page,
     ordering: ordering || undefined,
-    price_bgn__gte: minParam || undefined,
-    price_bgn__lte: maxParam || undefined,
+    price_bgn__gte: minParam ? eurToBgn(minParam) : undefined,
+    price_bgn__lte: maxParam ? eurToBgn(maxParam) : undefined,
   })
 
   function updateFilters(next: Record<string, string>) {
@@ -141,7 +143,7 @@ export function CategoryPage() {
             <form onSubmit={handlePriceFilterSubmit} className="flex flex-col gap-3">
               <div className="flex items-end gap-2">
                 <label className="text-sm text-slate-700">
-                  От (лв.)
+                  От (€)
                   <input
                     type="number"
                     min={0}
@@ -151,7 +153,7 @@ export function CategoryPage() {
                   />
                 </label>
                 <label className="text-sm text-slate-700">
-                  До (лв.)
+                  До (€)
                   <input
                     type="number"
                     min={0}

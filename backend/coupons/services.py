@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django.utils import timezone
 
-from common.currency import format_both_currencies
+from common.currency import format_eur
 
 from .models import Coupon
 
@@ -36,7 +36,7 @@ def check_min_order_amount(coupon: Coupon, subtotal: Decimal) -> None:
     subtotal is known."""
     if coupon.min_order_amount is not None and subtotal < coupon.min_order_amount:
         raise CouponError(
-            f"Купонът важи за поръчки над {format_both_currencies(coupon.min_order_amount)}."
+            f"Купонът важи за поръчки над {format_eur(coupon.min_order_amount)}."
         )
 
 

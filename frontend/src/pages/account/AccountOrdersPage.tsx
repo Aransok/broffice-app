@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useMyOrders } from '../../api/myOrders'
-import { formatBothCurrencies } from '../../utils/currency'
+import { formatEur } from '../../utils/currency'
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Чакаща',
@@ -30,7 +30,7 @@ export function AccountOrdersPage() {
               {STATUS_LABELS[order.status] ?? order.status}
             </span>
             <span className="font-medium text-slate-900">
-              {formatBothCurrencies(order.total_bgn)}
+              {formatEur(order.total_bgn)}
             </span>
           </Link>
         ))}

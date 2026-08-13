@@ -100,7 +100,7 @@ function couponConfirmState(state: WizardState): WizardResult {
   const codeLabel = d.code ? `код ${d.code}` : 'автоматично генериран код'
   const valueLabel = d.discount_type === 'percent' ? `${d.value}%` : `€${d.value}`
   const userLabel = d.userLabel ? `само за ${d.userLabel}` : 'отворен за всеки'
-  const minLabel = d.min_order_amount ? `, минимална поръчка ${d.min_order_amount} лв.` : ''
+  const minLabel = d.min_order_amount ? `, минимална поръчка €${d.min_order_amount}` : ''
   const message =
     `Купон — ${codeLabel}\nОтстъпка: ${valueLabel}${minLabel}\n${userLabel}\n\n` +
     'Потвърждавате ли създаването? (да/не)'

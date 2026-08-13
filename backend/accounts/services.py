@@ -3,9 +3,11 @@ import logging
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+
+from common.emails import BORDER, BRAND_BLUE, MUTED, logo_header_html
 
 logger = logging.getLogger(__name__)
 
@@ -25,16 +27,56 @@ def request_password_reset(email: str) -> None:
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
     link = f"{settings.FRONTEND_BASE_URL}/reset-password/{uid}/{token}/"
+
+    text_body = (
+        f"За да зададете нова парола, отворете следния линк (валиден за ограничено "
+        f"време, само за еднократна употреба):\n\n{link}\n\n"
+        f"Ако не сте заявили това, просто игнорирайте това съобщение."
+    )
+    logo_html, logo_image = logo_header_html(settings.COMPANY_NAME)
+    html_body = f"""
+    <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;background:#ffffff;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+        <tr>
+          <td style="background:#ffffff;padding:20px 24px;border:1px solid {BORDER};
+            border-bottom:3px solid {BRAND_BLUE};border-radius:8px 8px 0 0;">
+            {logo_html}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px;border:1px solid {BORDER};border-top:none;border-radius:0 0 8px 8px;">
+            <h1 style="margin:0 0 12px;font-size:18px;color:#0f172a;">Възстановяване на парола</h1>
+            <p style="margin:0 0 20px;color:{MUTED};">
+              За да зададете нова парола, натиснете бутона по-долу. Линкът е валиден за
+              ограничено време и само за еднократна употреба.
+            </p>
+            <p style="text-align:center;margin:0 0 20px;">
+              <a href="{link}" style="background:{BRAND_BLUE};color:#ffffff;text-decoration:none;
+                padding:12px 28px;border-radius:8px;font-weight:600;display:inline-block;">
+                Задайте нова парола
+              </a>
+            </p>
+            <p style="margin:0;font-size:12px;color:{MUTED};">
+              Ако не сте заявили това, просто игнорирайте това съобщение.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </div>
+    """
+
     try:
-        send_mail(
+        message = EmailMultiAlternatives(
             "Възстановяване на парола",
-            f"За да зададете нова парола, отворете следния линк (валиден за ограничено "
-            f"време, само за еднократна употреба):\n\n{link}\n\n"
-            f"Ако не сте заявили това, просто игнорирайте това съобщение.",
+            text_body,
             settings.DEFAULT_FROM_EMAIL,
             [user.email],
-            fail_silently=False,
         )
+        message.attach_alternative(html_body, "text/html")
+        if logo_image is not None:
+            message.mixed_subtype = "related"
+            message.attach(logo_image)
+        message.send(fail_silently=False)
     except Exception:
         logger.exception("Password reset email failed to send to %s", user.email)
 

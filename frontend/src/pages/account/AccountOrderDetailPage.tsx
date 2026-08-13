@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import { getInvoiceDownloadUrl, useMyOrder } from '../../api/myOrders'
 import { getImageUrl } from '../../api/media'
-import { formatBothCurrencies } from '../../utils/currency'
+import { formatEur } from '../../utils/currency'
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Чакаща',
@@ -50,22 +50,22 @@ export function AccountOrderDetailPage() {
                   <span className="ml-2 text-xs text-primary">({item.discount_label})</span>
                 )}
               </span>
-              <span>{formatBothCurrencies(item.line_total)}</span>
+              <span>{formatEur(item.line_total)}</span>
             </li>
           )
         })}
       </ul>
 
       <div className="mb-4 space-y-1 text-sm text-slate-600">
-        <p>Междинна сума: {formatBothCurrencies(order.subtotal_bgn)}</p>
+        <p>Междинна сума: {formatEur(order.subtotal_bgn)}</p>
         {Number(order.shipping_cost_bgn) > 0 && (
-          <p>Доставка: {formatBothCurrencies(order.shipping_cost_bgn)}</p>
+          <p>Доставка: {formatEur(order.shipping_cost_bgn)}</p>
         )}
         <p>
-          ДДС ({order.vat_rate_percent}%): {formatBothCurrencies(order.vat_amount_bgn)}
+          ДДС ({order.vat_rate_percent}%): {formatEur(order.vat_amount_bgn)}
         </p>
         <p className="font-semibold text-slate-900">
-          Общо: {formatBothCurrencies(order.total_bgn)}
+          Общо: {formatEur(order.total_bgn)}
         </p>
       </div>
 

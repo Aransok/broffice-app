@@ -7,7 +7,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from accounts.models import Address
-from common.currency import format_both_currencies
+from common.currency import format_eur
 from coupons.services import (
     calculate_coupon_discount,
     check_min_order_amount,
@@ -43,20 +43,18 @@ def _order_lines_text(order: Order) -> str:
         discount_part = f" ({item.discount_label})" if item.discount_label else ""
         lines.append(
             f"- {item.product_name}{sku_part} x{item.quantity} @ "
-            f"{format_both_currencies(item.unit_price)}{discount_part} = "
-            f"{format_both_currencies(item.line_total)}"
+            f"{format_eur(item.unit_price)}{discount_part} = "
+            f"{format_eur(item.line_total)}"
         )
-    lines.append(f"Междинна сума: {format_both_currencies(order.subtotal_bgn)}")
+    lines.append(f"Междинна сума: {format_eur(order.subtotal_bgn)}")
     if order.shipping_cost_bgn:
-        lines.append(f"Доставка: {format_both_currencies(order.shipping_cost_bgn)}")
+        lines.append(f"Доставка: {format_eur(order.shipping_cost_bgn)}")
     if order.coupon_discount_bgn:
         lines.append(
-            f"Купон ({order.coupon_code}): -{format_both_currencies(order.coupon_discount_bgn)}"
+            f"Купон ({order.coupon_code}): -{format_eur(order.coupon_discount_bgn)}"
         )
-    lines.append(
-        f"ДДС ({order.vat_rate_percent}%): {format_both_currencies(order.vat_amount_bgn)}"
-    )
-    lines.append(f"Общо: {format_both_currencies(order.total_bgn)}")
+    lines.append(f"ДДС ({order.vat_rate_percent}%): {format_eur(order.vat_amount_bgn)}")
+    lines.append(f"Общо: {format_eur(order.total_bgn)}")
     if order.shipping_method:
         lines.append(
             f"Доставка чрез: {SHIPPING_METHOD_LABELS.get(order.shipping_method, order.shipping_method)}"
@@ -77,7 +75,7 @@ def send_admin_order_email(order: Order) -> EmailLog:
     subject = f"Нова поръчка {order.number}"
     link = f"{settings.FRONTEND_BASE_URL}/admin/orders?order={order.number}"
     profit_line = (
-        f"Обща печалба: {format_both_currencies(order.total_profit_bgn)}\n"
+        f"Обща печалба: {format_eur(order.total_profit_bgn)}\n"
         if order.total_profit_bgn is not None
         else ""
     )
@@ -91,7 +89,7 @@ def send_admin_order_email(order: Order) -> EmailLog:
     log = EmailLog.objects.create(
         order=order,
         email_type=EmailLog.TYPE_ADMIN_ORDER,
-        to_address=settings.ADMIN_ORDER_EMAIL,
+        to_address=", ".join(settings.ADMIN_NOTIFICATION_EMAILS),
         subject=subject,
         body_preview=body[:2000],
         status=EmailLog.STATUS_PENDING,
@@ -107,7 +105,10 @@ def send_admin_order_email(order: Order) -> EmailLog:
             show_profit=True,
         )
         message = EmailMultiAlternatives(
-            subject, body, settings.DEFAULT_FROM_EMAIL, [settings.ADMIN_ORDER_EMAIL]
+            subject,
+            body,
+            settings.DEFAULT_FROM_EMAIL,
+            settings.ADMIN_NOTIFICATION_EMAILS,
         )
         message.attach_alternative(html, "text/html")
         message.mixed_subtype = "related"
@@ -208,7 +209,7 @@ def _send_order_confirmation_email(
     order: Order,
     *,
     email_type: str,
-    to_address: str,
+    to_address: str | list[str],
     subject: str,
     greeting: str,
     promo_note: str | None = None,
@@ -221,6 +222,7 @@ def _send_order_confirmation_email(
     re-confirming an already-confirmed order 400s before either ever runs
     again — that's what keeps this idempotent, not logic in here.
     """
+    to_list = [to_address] if isinstance(to_address, str) else list(to_address)
     company_block = (
         f"{settings.COMPANY_NAME}\n"
         f"{settings.COMPANY_ADDRESS}\n"
@@ -237,7 +239,7 @@ def _send_order_confirmation_email(
     log = EmailLog.objects.create(
         order=order,
         email_type=email_type,
-        to_address=to_address,
+        to_address=", ".join(to_list),
         subject=subject,
         body_preview=body[:2000],
         status=EmailLog.STATUS_PENDING,
@@ -251,7 +253,7 @@ def _send_order_confirmation_email(
             show_profit=show_profit,
         )
         message = EmailMultiAlternatives(
-            subject, body, settings.DEFAULT_FROM_EMAIL, [to_address]
+            subject, body, settings.DEFAULT_FROM_EMAIL, to_list
         )
         message.attach_alternative(html, "text/html")
         message.mixed_subtype = "related"
@@ -292,7 +294,7 @@ def send_admin_confirmation_email(order: Order) -> EmailLog:
     return _send_order_confirmation_email(
         order,
         email_type=EmailLog.TYPE_ADMIN_CONFIRMATION,
-        to_address=settings.ADMIN_ORDER_EMAIL,
+        to_address=settings.ADMIN_NOTIFICATION_EMAILS,
         subject=f"Поръчка {order.number} потвърдена",
         greeting="Здравейте,",
         show_profit=True,

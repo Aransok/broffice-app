@@ -28,7 +28,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from common.currency import format_both_currencies
+from common.currency import format_eur
 from common.emails import LOGO_PATH
 from common.fonts import FONT_PATH_CANDIDATES_BOLD, FONT_PATH_CANDIDATES_REGULAR
 from common.fonts import find_font_path as _find_font_path
@@ -177,17 +177,17 @@ def generate_invoice_pdf(invoice, *, include_profit: bool = False) -> bytes:
             Paragraph(item.product_name, cell_style),
             item.product_sku or "-",
             str(item.quantity),
-            Paragraph(format_both_currencies(item.unit_price), price_cell_style),
+            Paragraph(format_eur(item.unit_price), price_cell_style),
             (
                 Paragraph(item.discount_label, cell_style)
                 if item.discount_label
                 else "-"
             ),
-            Paragraph(format_both_currencies(item.line_total), price_cell_style),
+            Paragraph(format_eur(item.line_total), price_cell_style),
         ]
         if include_profit:
             row.append(
-                Paragraph(format_both_currencies(item.profit_bgn), price_cell_style)
+                Paragraph(format_eur(item.profit_bgn), price_cell_style)
                 if item.profit_bgn is not None
                 else "-"
             )
@@ -215,16 +215,14 @@ def generate_invoice_pdf(invoice, *, include_profit: bool = False) -> bytes:
     totals_data = [
         [
             "Междинна сума:",
-            Paragraph(format_both_currencies(order.subtotal_bgn), totals_value_style),
+            Paragraph(format_eur(order.subtotal_bgn), totals_value_style),
         ],
     ]
     if order.shipping_cost_bgn:
         totals_data.append(
             [
                 "Доставка:",
-                Paragraph(
-                    format_both_currencies(order.shipping_cost_bgn), totals_value_style
-                ),
+                Paragraph(format_eur(order.shipping_cost_bgn), totals_value_style),
             ]
         )
     if order.coupon_discount_bgn:
@@ -232,7 +230,7 @@ def generate_invoice_pdf(invoice, *, include_profit: bool = False) -> bytes:
             [
                 f"Купон ({order.coupon_code}):",
                 Paragraph(
-                    f"-{format_both_currencies(order.coupon_discount_bgn)}",
+                    f"-{format_eur(order.coupon_discount_bgn)}",
                     totals_value_style,
                 ),
             ]
@@ -240,13 +238,13 @@ def generate_invoice_pdf(invoice, *, include_profit: bool = False) -> bytes:
     totals_data.append(
         [
             f"ДДС ({order.vat_rate_percent}%):",
-            Paragraph(format_both_currencies(order.vat_amount_bgn), totals_value_style),
+            Paragraph(format_eur(order.vat_amount_bgn), totals_value_style),
         ]
     )
     totals_data.append(
         [
             "Общо за плащане:",
-            Paragraph(format_both_currencies(order.total_bgn), totals_value_style),
+            Paragraph(format_eur(order.total_bgn), totals_value_style),
         ]
     )
     totals_table = Table(totals_data, colWidths=[110 * mm, 64 * mm])
@@ -276,7 +274,7 @@ def generate_invoice_pdf(invoice, *, include_profit: bool = False) -> bytes:
         )
         elements.append(
             Paragraph(
-                f"Обща печалба: {format_both_currencies(order.total_profit_bgn)}",
+                f"Обща печалба: {format_eur(order.total_profit_bgn)}",
                 profit_style,
             )
         )

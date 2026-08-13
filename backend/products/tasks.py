@@ -38,7 +38,7 @@ def sync_supplier_catalog_task() -> None:
                 "Може да се пусне ръчно от админ панела (Продукти -> Синхронизирай)."
             ),
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[settings.ADMIN_ORDER_EMAIL],
+            recipient_list=settings.ADMIN_NOTIFICATION_EMAILS,
             fail_silently=True,
         )
         return

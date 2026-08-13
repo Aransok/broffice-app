@@ -18,7 +18,7 @@ from email.mime.image import MIMEImage
 
 from django.conf import settings
 
-from common.currency import format_both_currencies as _both_currencies
+from common.currency import format_eur as _eur
 from common.emails import BORDER, BRAND_BLUE, BRAND_ORANGE, MUTED, logo_header_html
 from common.media import resolve_media_path
 
@@ -99,11 +99,22 @@ def render_order_email_html(
                 f'<div style="width:48px;height:48px;border:1px solid {BORDER};border-radius:6px;'
                 f'background:#f8fafc;"></div>'
             )
-        sku_html = (
-            f'<div style="color:{MUTED};font-size:12px;">SKU: {item.product_sku}</div>'
-            if item.product_sku
-            else ""
-        )
+        # Admin-facing emails show the storefront's own "№..." product
+        # number (the same one staff already see on every product card) so
+        # they can look the item up directly — customers still see SKU.
+        if show_profit:
+            item_number = item.product.supplier_id if item.product_id else ""
+            sku_html = (
+                f'<div style="color:{MUTED};font-size:12px;">№ {item_number}</div>'
+                if item_number
+                else ""
+            )
+        else:
+            sku_html = (
+                f'<div style="color:{MUTED};font-size:12px;">SKU: {item.product_sku}</div>'
+                if item.product_sku
+                else ""
+            )
         discount_html = (
             f'<div style="color:{BRAND_ORANGE};font-size:12px;">{item.discount_label}</div>'
             if item.discount_label
@@ -111,7 +122,7 @@ def render_order_email_html(
         )
         profit_cell_html = (
             f'<td style="padding:8px;border-bottom:1px solid {BORDER};text-align:right;color:#15803d;">'
-            f'{_both_currencies(item.profit_bgn) if item.profit_bgn is not None else "-"}</td>'
+            f'{_eur(item.profit_bgn) if item.profit_bgn is not None else "-"}</td>'
             if show_profit
             else ""
         )
@@ -123,8 +134,8 @@ def render_order_email_html(
                 {sku_html}{discount_html}
               </td>
               <td style="padding:8px;border-bottom:1px solid {BORDER};text-align:center;color:#0f172a;">{item.quantity}</td>
-              <td style="padding:8px;border-bottom:1px solid {BORDER};text-align:right;color:#0f172a;">{_both_currencies(item.unit_price)}</td>
-              <td style="padding:8px;border-bottom:1px solid {BORDER};text-align:right;font-weight:600;color:#0f172a;">{_both_currencies(item.line_total)}</td>
+              <td style="padding:8px;border-bottom:1px solid {BORDER};text-align:right;color:#0f172a;">{_eur(item.unit_price)}</td>
+              <td style="padding:8px;border-bottom:1px solid {BORDER};text-align:right;font-weight:600;color:#0f172a;">{_eur(item.line_total)}</td>
               {profit_cell_html}
             </tr>
             """)
@@ -136,7 +147,7 @@ def render_order_email_html(
     total_profit_row_html = (
         f'<tr><td style="padding:8px 0;font-weight:700;color:#15803d;">Обща печалба</td>'
         f'<td style="padding:8px 0;text-align:right;font-weight:700;color:#15803d;">'
-        f"{_both_currencies(order.total_profit_bgn)}</td></tr>"
+        f"{_eur(order.total_profit_bgn)}</td></tr>"
         if show_profit and order.total_profit_bgn is not None
         else ""
     )
@@ -149,14 +160,14 @@ def render_order_email_html(
     )
     shipping_row = (
         f'<tr><td style="padding:4px 0;color:{MUTED};">Доставка</td>'
-        f'<td style="padding:4px 0;text-align:right;">{_both_currencies(order.shipping_cost_bgn)}</td></tr>'
+        f'<td style="padding:4px 0;text-align:right;">{_eur(order.shipping_cost_bgn)}</td></tr>'
         if order.shipping_cost_bgn
         else ""
     )
     coupon_row = (
         f'<tr><td style="padding:4px 0;color:{BRAND_ORANGE};">Купон ({order.coupon_code})</td>'
         f'<td style="padding:4px 0;text-align:right;color:{BRAND_ORANGE};">'
-        f"-{_both_currencies(order.coupon_discount_bgn)}</td></tr>"
+        f"-{_eur(order.coupon_discount_bgn)}</td></tr>"
         if order.coupon_discount_bgn
         else ""
     )
@@ -212,13 +223,13 @@ def render_order_email_html(
 
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
                   <tr><td style="padding:4px 0;color:{MUTED};">Междинна сума</td>
-                    <td style="padding:4px 0;text-align:right;">{_both_currencies(order.subtotal_bgn)}</td></tr>
+                    <td style="padding:4px 0;text-align:right;">{_eur(order.subtotal_bgn)}</td></tr>
                   {shipping_row}
                   {coupon_row}
                   <tr><td style="padding:4px 0;color:{MUTED};">ДДС ({order.vat_rate_percent}%)</td>
-                    <td style="padding:4px 0;text-align:right;">{_both_currencies(order.vat_amount_bgn)}</td></tr>
+                    <td style="padding:4px 0;text-align:right;">{_eur(order.vat_amount_bgn)}</td></tr>
                   <tr><td style="padding:8px 0;font-weight:700;color:#0f172a;border-top:1px solid {BORDER};">Общо</td>
-                    <td style="padding:8px 0;text-align:right;font-weight:700;color:{BRAND_ORANGE};border-top:1px solid {BORDER};">{_both_currencies(order.total_bgn)}</td></tr>
+                    <td style="padding:8px 0;text-align:right;font-weight:700;color:{BRAND_ORANGE};border-top:1px solid {BORDER};">{_eur(order.total_bgn)}</td></tr>
                   {total_profit_row_html}
                 </table>
 

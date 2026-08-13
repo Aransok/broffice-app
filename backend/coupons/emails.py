@@ -5,7 +5,7 @@ brand look via common/emails.py."""
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 
-from common.currency import format_both_currencies
+from common.currency import format_eur
 from common.emails import BORDER, BRAND_BLUE, BRAND_ORANGE, MUTED, logo_header_html
 
 from .models import Coupon
@@ -14,7 +14,7 @@ from .models import Coupon
 def _discount_text(coupon: Coupon) -> str:
     if coupon.discount_type == Coupon.TYPE_PERCENT:
         return f"{coupon.value}%"
-    return format_both_currencies(coupon.value)
+    return format_eur(coupon.value)
 
 
 def send_coupon_email(coupon: Coupon) -> bool:

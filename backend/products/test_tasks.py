@@ -24,7 +24,7 @@ def test_success_sends_no_email(settings):
 
 def test_failure_emails_admin_and_does_not_raise(settings):
     settings.SUPPLIER_CATALOG_API_KEY = "test-key"
-    settings.ADMIN_ORDER_EMAIL = "admin@example.com"
+    settings.ADMIN_NOTIFICATION_EMAILS = ["admin@example.com"]
     mock_instance = MagicMock()
     mock_instance.handle.side_effect = RuntimeError("supplier API is down")
     with patch("products.tasks.SyncSupplierCatalogCommand", return_value=mock_instance):

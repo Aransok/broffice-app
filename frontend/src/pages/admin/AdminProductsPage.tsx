@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { deleteAdminProduct, useAdminProducts } from '../../api/adminProducts'
 import { useCategories } from '../../api/categories'
 import { getImageUrl } from '../../api/media'
-import { computeProfitBgn, formatBothCurrencies } from '../../utils/currency'
+import { computeProfitBgn, formatEur } from '../../utils/currency'
 import { AdminProductForm } from './AdminProductForm'
 
 const PAGE_SIZE = 24
@@ -238,12 +238,12 @@ export function AdminProductsPage() {
                       <td className="py-2 pr-3 text-slate-500">{product.sku || '—'}</td>
                       <td className="py-2 pr-3 text-slate-500">{product.category_name ?? '—'}</td>
                       <td className="py-2 pr-3">
-                        {formatBothCurrencies(
+                        {formatEur(
                           product.promo_price_bgn ?? product.client_price ?? product.price_bgn,
                         )}
                       </td>
                       <td className="py-2 pr-3 text-slate-500">
-                        {product.admin_price ? formatBothCurrencies(product.admin_price) : '—'}
+                        {product.admin_price ? formatEur(product.admin_price) : '—'}
                       </td>
                       <td className="py-2 pr-3">
                         {(() => {
@@ -263,7 +263,7 @@ export function AdminProductsPage() {
                                   : 'font-medium text-green-600'
                               }
                             >
-                              {formatBothCurrencies(profitBgn)}
+                              {formatEur(profitBgn)}
                             </span>
                           )
                         })()}
@@ -312,13 +312,13 @@ export function AdminProductsPage() {
                       SKU: {product.sku || '—'} · {product.category_name ?? 'Без категория'}
                     </p>
                     <p className="mt-1 text-sm font-medium text-slate-900">
-                      {formatBothCurrencies(
+                      {formatEur(
                         product.promo_price_bgn ?? product.client_price ?? product.price_bgn,
                       )}
                     </p>
                     {product.admin_price && (
                       <p className="text-xs text-slate-500">
-                        Реселър: {formatBothCurrencies(product.admin_price)}
+                        Реселър: {formatEur(product.admin_price)}
                       </p>
                     )}
                     {(() => {
@@ -338,7 +338,7 @@ export function AdminProductsPage() {
                               : 'text-xs font-medium text-green-600'
                           }
                         >
-                          Печалба: {formatBothCurrencies(profitBgn)}
+                          Печалба: {formatEur(profitBgn)}
                         </p>
                       )
                     })()}
