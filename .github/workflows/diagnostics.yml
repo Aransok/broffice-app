@@ -95,17 +95,6 @@ jobs:
             Write-Host "No watchdog log found at $log"
           }
 
-      - name: Scheduled task status (backup, restore watcher, watchdog)
-        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
-        run: |
-          $ErrorActionPreference = "Continue"
-          Write-Host "--- Nightly Backup ---"
-          cmd /c "schtasks /query /tn `"BRoffice Nightly Backup`" /fo list 2>&1"
-          Write-Host "--- Restore Watcher ---"
-          cmd /c "schtasks /query /tn `"BRoffice Restore Watcher`" /fo list 2>&1"
-          Write-Host "--- Docker Watchdog ---"
-          Get-ScheduledTask -TaskName "BRoffice Docker Watchdog" -ErrorAction SilentlyContinue | Select-Object TaskName, State
-
       - name: What's listening on ports 80, 81, 443 - with process names
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
@@ -117,3 +106,17 @@ jobs:
       - name: Disk space
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: Get-PSDrive C | Select-Object Used, Free
+
+      - name: Scheduled task status (backup, restore watcher, watchdog)
+        # Moved last - this step has some intermittent crash after
+        # printing results (cause not fully pinned down yet), which
+        # stops all later steps. Doesn't affect the data it does print.
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          $ErrorActionPreference = "Continue"
+          Write-Host "--- Nightly Backup ---"
+          cmd /c "schtasks /query /tn `"BRoffice Nightly Backup`" /fo list 2>&1"
+          Write-Host "--- Restore Watcher ---"
+          cmd /c "schtasks /query /tn `"BRoffice Restore Watcher`" /fo list 2>&1"
+          Write-Host "--- Docker Watchdog ---"
+          Get-ScheduledTask -TaskName "BRoffice Docker Watchdog" -ErrorAction SilentlyContinue | Select-Object TaskName, State
