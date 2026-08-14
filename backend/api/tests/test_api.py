@@ -281,6 +281,36 @@ def test_category_promotion_applies_to_descendant_category_only(api_client):
 
 
 @pytest.mark.django_db
+def test_admin_promotions_list_shows_category_and_product_names(
+    api_client, admin_user, sample_product
+):
+    from promotions.models import Promotion
+
+    cat = Category.objects.filter(external_id="1").first()
+    Promotion.objects.create(
+        name="Category promo",
+        discount_type="percent",
+        value="10.00",
+        scope="category",
+        category=cat,
+    )
+    Promotion.objects.create(
+        name="Product promo",
+        discount_type="percent",
+        value="10.00",
+        scope="product",
+        product=sample_product,
+    )
+
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.get("/api/v1/admin/promotions/")
+    assert resp.status_code == 200
+    by_name = {p["name"]: p for p in resp.data["results"]}
+    assert by_name["Category promo"]["category_name"] == cat.name
+    assert by_name["Product promo"]["product_name"] == sample_product.name
+
+
+@pytest.mark.django_db
 def test_admin_price_hidden_from_public(api_client, admin_user, sample_product):
     anon = api_client.get("/api/v1/products/")
     listed = next(p for p in anon.data["results"] if p["external_id"] == "272")

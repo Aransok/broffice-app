@@ -700,10 +700,17 @@ class OrderNotificationSerializer(serializers.ModelSerializer):
 
 
 class PromotionSerializer(serializers.ModelSerializer):
-    # Display-only convenience for the admin list (which client, if any) —
-    # `user` above stays the writable id field.
+    # Display-only convenience for the admin list (which client, product, or
+    # category, if any) — the plain `user`/`product`/`category` fields above
+    # stay the writable ids.
     username = serializers.CharField(
         source="user.username", read_only=True, default=None
+    )
+    product_name = serializers.CharField(
+        source="product.name", read_only=True, default=None
+    )
+    category_name = serializers.CharField(
+        source="category.name", read_only=True, default=None
     )
 
     class Meta:
@@ -717,7 +724,9 @@ class PromotionSerializer(serializers.ModelSerializer):
             "user",
             "username",
             "product",
+            "product_name",
             "category",
+            "category_name",
             "active",
             "starts_at",
             "ends_at",

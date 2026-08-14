@@ -351,6 +351,12 @@ export function AdminPromotionsPage() {
               <td className="py-2 pr-4">{promo.name}</td>
               <td className="py-2 pr-4 text-slate-500">
                 {SCOPE_LABELS[promo.scope]}
+                {promo.scope === 'category' && promo.category_name && (
+                  <span className="block text-xs text-slate-700">{promo.category_name}</span>
+                )}
+                {promo.scope === 'product' && promo.product_name && (
+                  <span className="block text-xs text-slate-700">{promo.product_name}</span>
+                )}
                 {promo.username && (
                   <span className="block text-xs text-primary">клиент: {promo.username}</span>
                 )}

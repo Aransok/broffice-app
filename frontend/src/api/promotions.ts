@@ -20,7 +20,11 @@ export interface Promotion {
   /** Read-only, populated alongside `user` for display (admin list). */
   username?: string | null
   product: string | null
+  /** Read-only, populated alongside `product` for display (admin list). */
+  product_name?: string | null
   category: string | null
+  /** Read-only, populated alongside `category` for display (admin list). */
+  category_name?: string | null
   active: boolean
   starts_at: string | null
   ends_at: string | null

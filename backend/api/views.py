@@ -835,7 +835,7 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
 
 class AdminPromotionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminPortalUser]
-    queryset = Promotion.objects.all()
+    queryset = Promotion.objects.select_related("user", "product", "category")
     serializer_class = PromotionSerializer
     filterset_fields = ("scope", "active", "discount_type", "user", "product")
     search_fields = ("name",)
