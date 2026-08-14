@@ -210,12 +210,19 @@ jobs:
         # Moved last - this step has some intermittent crash after
         # printing results (cause not fully pinned down yet), which
         # stops all later steps. Doesn't affect the data it does print.
+        #
+        # Switched from `schtasks /query` to Get-ScheduledTask for all
+        # three - confirmed 2026-08-14 that schtasks /query itself returns
+        # "Access is denied" for the two SYSTEM-run tasks under this
+        # runner's own (non-admin) account, even though they were
+        # successfully created moments earlier from a real Administrator
+        # session - a query-permission gap, not evidence the tasks are
+        # missing. Get-ScheduledTask goes through the Task Scheduler
+        # COM/WMI API instead of the legacy schtasks.exe query path, which
+        # already worked fine for the Watchdog task under this same
+        # account - using it for all three avoids the false negative.
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
           $ErrorActionPreference = "Continue"
-          Write-Host "--- Nightly Backup ---"
-          cmd /c "schtasks /query /tn `"BRoffice Nightly Backup`" /fo list 2>&1"
-          Write-Host "--- Restore Watcher ---"
-          cmd /c "schtasks /query /tn `"BRoffice Restore Watcher`" /fo list 2>&1"
-          Write-Host "--- Docker Watchdog ---"
-          Get-ScheduledTask -TaskName "BRoffice Docker Watchdog" -ErrorAction SilentlyContinue | Select-Object TaskName, State
+          Get-ScheduledTask -TaskName "BRoffice Nightly Backup", "BRoffice Restore Watcher", "BRoffice Docker Watchdog" -ErrorAction SilentlyContinue |
+            Select-Object TaskName, State | Format-Table -AutoSize
