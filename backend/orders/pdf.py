@@ -73,7 +73,7 @@ def generate_invoice_pdf(invoice, *, include_profit: bool = False) -> bytes:
         bottomMargin=18 * mm,
         leftMargin=18 * mm,
         rightMargin=18 * mm,
-        title=f"Фактура {invoice.number}",
+        title=f"Заявка за поръчка {invoice.number}",
     )
 
     styles = getSampleStyleSheet()
@@ -121,7 +121,7 @@ def generate_invoice_pdf(invoice, *, include_profit: bool = False) -> bytes:
     header_table = Table(
         [
             [
-                Paragraph(f"<b>Фактура №</b> {invoice.number}", normal),
+                Paragraph(f"<b>Заявка №</b> {invoice.number}", normal),
                 Paragraph(
                     f"<b>Дата на издаване</b> {invoice.issued_at.strftime('%d.%m.%Y')}",
                     normal,
@@ -165,24 +165,45 @@ def generate_invoice_pdf(invoice, *, include_profit: bool = False) -> bytes:
             elements.append(Paragraph(line, normal))
     elements.append(Spacer(1, 6 * mm))
 
-    table_header = ["№", "Продукт", "Код", "Кол-во", "Ед. цена", "Отстъпка", "Общо"]
-    col_widths = [8 * mm, 50 * mm, 20 * mm, 14 * mm, 28 * mm, 26 * mm, 28 * mm]
+    # Product number → name → price, per the client's requested column order
+    # (no SKU column - that field is being retired sitewide in favor of the
+    # supplier's own catalog number, already shown as "№..." everywhere
+    # else products are listed).
+    table_header = ["№", "Продукт", "Кол-во", "Цена", "Общо"]
+    col_widths = [16 * mm, 62 * mm, 14 * mm, 40 * mm, 28 * mm]
     if include_profit:
         table_header.append("Печалба")
         col_widths.append(24 * mm)
     table_data = [table_header]
-    for idx, item in enumerate(order.items.all(), start=1):
+    for item in order.items.all():
+        if item.product_id:
+            product_number = item.product.supplier_id or str(
+                item.product.item_number or "-"
+            )
+        else:
+            product_number = "-"
+        name_html = item.product_name
+        if item.discount_label:
+            name_html += (
+                f'<br/><font size="7" color="#c0392b">{item.discount_label}</font>'
+            )
+        # Original (strikethrough) + discounted price + % off, when a
+        # discount actually applied — previously the PDF only ever showed
+        # the already-discounted price with no indication a promotion was
+        # involved at all.
+        if item.original_unit_price and item.original_unit_price > item.unit_price:
+            pct = round((1 - item.unit_price / item.original_unit_price) * 100)
+            price_html = (
+                f'<font color="grey"><strike>{format_eur(item.original_unit_price)}</strike></font><br/>'
+                f'{format_eur(item.unit_price)} <font color="#c0392b">(-{pct}%)</font>'
+            )
+        else:
+            price_html = format_eur(item.unit_price)
         row = [
-            str(idx),
-            Paragraph(item.product_name, cell_style),
-            item.product_sku or "-",
+            product_number,
+            Paragraph(name_html, cell_style),
             str(item.quantity),
-            Paragraph(format_eur(item.unit_price), price_cell_style),
-            (
-                Paragraph(item.discount_label, cell_style)
-                if item.discount_label
-                else "-"
-            ),
+            Paragraph(price_html, price_cell_style),
             Paragraph(format_eur(item.line_total), price_cell_style),
         ]
         if include_profit:
@@ -202,7 +223,7 @@ def generate_invoice_pdf(invoice, *, include_profit: bool = False) -> bytes:
                 ("FONTSIZE", (0, 0), (-1, -1), 8),
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("ALIGN", (3, 0), (-1, -1), "RIGHT"),
+                ("ALIGN", (2, 0), (-1, -1), "RIGHT"),
             ]
         )
     )
@@ -218,13 +239,9 @@ def generate_invoice_pdf(invoice, *, include_profit: bool = False) -> bytes:
             Paragraph(format_eur(order.subtotal_bgn), totals_value_style),
         ],
     ]
-    if order.shipping_cost_bgn:
-        totals_data.append(
-            [
-                "Доставка:",
-                Paragraph(format_eur(order.shipping_cost_bgn), totals_value_style),
-            ]
-        )
+    # Speedy shipping isn't charged for right now (not wired up yet) - no
+    # shipping row here on purpose, matching the checkout confirmation
+    # screen (see CheckoutPage.tsx/OrderConfirmationPage.tsx).
     if order.coupon_discount_bgn:
         totals_data.append(
             [

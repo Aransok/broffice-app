@@ -154,3 +154,38 @@ def test_company_order_invoice_pdf_includes_company_details(
     assert pdf_resp.status_code == 200
     assert pdf_resp["Content-Type"] == "application/pdf"
     assert len(pdf_resp.content) > 0
+
+
+@pytest.mark.django_db
+def test_invoice_pdf_generates_with_a_discounted_item(
+    api_client, admin_user, sample_product
+):
+    """Same non-parsing approach as the test above — this exercises the
+    original-price/discount-%/product-number branch added to the items
+    table, which a plain undiscounted order never touches."""
+    from promotions.models import Promotion
+
+    Promotion.objects.create(
+        name="PDF discount test",
+        discount_type="percent",
+        value="20.00",
+        scope="product",
+        product=sample_product,
+    )
+    create_resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+        },
+        format="json",
+    )
+    number = create_resp.data["number"]
+
+    api_client.force_authenticate(user=admin_user)
+    confirm_resp = api_client.post(f"/api/v1/admin/orders/{number}/confirm/")
+    assert confirm_resp.data["items"][0]["discount_label"]
+
+    pdf_resp = api_client.get(f"/api/v1/admin/orders/{number}/invoice/")
+    assert pdf_resp.status_code == 200
+    assert len(pdf_resp.content) > 0
