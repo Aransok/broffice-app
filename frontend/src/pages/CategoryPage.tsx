@@ -1,6 +1,6 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { useCategory } from '../api/categories'
+import { type CategoryTreeNode, useCategory, useCategoryTree } from '../api/categories'
 import { useProducts } from '../api/products'
 import { PriceRangeSlider } from '../components/PriceRangeSlider'
 import { ProductCard } from '../components/product/ProductCard'
@@ -31,6 +31,34 @@ export function CategoryPage() {
   const [maxInput, setMaxInput] = useState(maxParam)
 
   const { data: category, isLoading: categoryLoading, isError: categoryError } = useCategory(slug)
+  const { data: categoryTree } = useCategoryTree()
+
+  // The sidebar list used to be just `category.children` — the current
+  // category's own subcategories. That's empty for a leaf category, so the
+  // whole filter list vanished the moment you clicked into one, forcing a
+  // click on "all categories" (or the back button) to get it back. Falling
+  // back to the parent's children (i.e. this category's siblings, incl.
+  // itself) keeps the same list visible while navigating between leaf
+  // categories — a persistent group rather than one that disappears.
+  const sidebarCategories = useMemo(() => {
+    if (!categoryTree || !category) return []
+    const categoryId = category.id
+    function findWithParent(
+      nodes: CategoryTreeNode[],
+      parent: CategoryTreeNode | null,
+    ): { node: CategoryTreeNode; parent: CategoryTreeNode | null } | null {
+      for (const node of nodes) {
+        if (node.id === categoryId) return { node, parent }
+        const found = findWithParent(node.children, node)
+        if (found) return found
+      }
+      return null
+    }
+    const found = findWithParent(categoryTree, null)
+    if (!found) return []
+    return found.node.children.length > 0 ? found.node.children : (found.parent?.children ?? [])
+  }, [categoryTree, category])
+
   const ordering = SORT_OPTIONS.find((option) => option.value === sort)?.ordering
   const {
     data: products,
@@ -116,17 +144,22 @@ export function CategoryPage() {
               before each one — a plain text link list (the first version
               of this sidebar) reads as noticeably flatter/plainer than
               the real site's filter-checkbox look. */}
-          {category?.children && category.children.length > 0 && (
+          {sidebarCategories.length > 0 && (
             <div className="mb-6">
               <h2 className="mb-5 border-b-2 border-slate-200 pb-2.5 text-lg font-medium text-slate-900">
                 Категории
               </h2>
               <ul className="flex flex-col">
-                {category.children.map((child) => (
+                {sidebarCategories.map((child) => (
                   <li key={child.id}>
                     <Link
                       to={`/category/${child.slug}`}
-                      className="relative block py-1.5 pl-7 text-sm font-medium text-slate-500 transition-colors duration-200 before:absolute before:left-0 before:top-0.75 before:h-4 before:w-4 before:rounded-full before:border before:border-slate-400 before:transition-colors before:duration-200 hover:text-primary hover:before:border-primary"
+                      className={
+                        'relative block py-1.5 pl-7 text-sm font-medium transition-colors duration-200 before:absolute before:left-0 before:top-0.75 before:h-4 before:w-4 before:rounded-full before:border before:transition-colors before:duration-200 hover:text-primary hover:before:border-primary ' +
+                        (child.slug === slug
+                          ? 'text-primary before:border-primary before:bg-primary/20'
+                          : 'text-slate-500 before:border-slate-400')
+                      }
                     >
                       {child.name}
                     </Link>
