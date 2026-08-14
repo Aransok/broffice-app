@@ -188,6 +188,99 @@ def test_category_tree(api_client):
 
 
 @pytest.mark.django_db
+def test_category_page_shows_products_from_descendant_categories(api_client):
+    """A mid-level category (only grandchildren have products assigned
+    directly) must still show all of them - previously an exact category_id
+    match meant it showed nothing until you clicked into the exact leaf."""
+    root = Category.objects.create(
+        external_id="paper-root", slug="paper-root", name="Хартия"
+    )
+    mid = Category.objects.create(
+        external_id="paper-mid",
+        slug="paper-mid",
+        name="Хартиени кубчета и индекси",
+        parent=root,
+    )
+    leaf = Category.objects.create(
+        external_id="paper-leaf", slug="paper-leaf", name="Хартиени кубчета", parent=mid
+    )
+    Product.objects.create(
+        external_id="leaf-product",
+        slug="leaf-product",
+        name="Leaf Product",
+        category=leaf,
+        client_price="1.00",
+    )
+    other_root = Category.objects.create(
+        external_id="other-root", slug="other-root", name="Other"
+    )
+    Product.objects.create(
+        external_id="unrelated-product",
+        slug="unrelated-product",
+        name="Unrelated Product",
+        category=other_root,
+        client_price="1.00",
+    )
+
+    resp = api_client.get("/api/v1/products/", {"category__slug": "paper-mid"})
+    assert resp.status_code == 200
+    ids = {p["external_id"] for p in resp.data["results"]}
+    assert "leaf-product" in ids
+    assert "unrelated-product" not in ids
+
+    resp_root = api_client.get("/api/v1/products/", {"category__slug": "paper-root"})
+    assert "leaf-product" in {p["external_id"] for p in resp_root.data["results"]}
+
+
+@pytest.mark.django_db
+def test_category_promotion_applies_to_descendant_category_only(api_client):
+    """A category-scoped promotion must cover products in that category's
+    subtree (children/grandchildren), but never a sibling category - the
+    fix for "paper cubes promo doesn't show" must not become "promo leaks
+    into unrelated categories" instead."""
+    from promotions.models import Promotion
+
+    chemicals = Category.objects.create(
+        external_id="chemicals", slug="chemicals", name="Химия"
+    )
+    chemicals_sub = Category.objects.create(
+        external_id="chemicals-sub",
+        slug="chemicals-sub",
+        name="Препарати",
+        parent=chemicals,
+    )
+    glues = Category.objects.create(external_id="glues", slug="glues", name="Лепила")
+
+    Product.objects.create(
+        external_id="chemical-product",
+        slug="chemical-product",
+        name="Chemical Product",
+        category=chemicals_sub,
+        client_price="10.00",
+    )
+    Product.objects.create(
+        external_id="glue-product",
+        slug="glue-product",
+        name="Glue Product",
+        category=glues,
+        client_price="10.00",
+    )
+
+    Promotion.objects.create(
+        name="Chemicals -10%",
+        discount_type="percent",
+        value="10.00",
+        scope="category",
+        category=chemicals,
+    )
+
+    resp = api_client.get("/api/v1/products/")
+    by_id = {p["external_id"]: p for p in resp.data["results"]}
+    assert by_id["chemical-product"]["promo_price_bgn"] == "9.00"
+    assert by_id["glue-product"]["promo_price_bgn"] is None
+
+
+@pytest.mark.django_db
 def test_admin_price_hidden_from_public(api_client, admin_user, sample_product):
     anon = api_client.get("/api/v1/products/")
     listed = next(p for p in anon.data["results"] if p["external_id"] == "272")

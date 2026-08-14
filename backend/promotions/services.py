@@ -11,6 +11,8 @@ product/user" question.
 from django.db.models import Q
 from django.utils import timezone
 
+from categories.services import get_descendant_category_ids
+
 from .models import Promotion
 
 
@@ -20,6 +22,7 @@ def get_active_promotions():
         Promotion.objects.filter(active=True, status=Promotion.STATUS_PUBLISHED)
         .filter(Q(starts_at__isnull=True) | Q(starts_at__lte=now))
         .filter(Q(ends_at__isnull=True) | Q(ends_at__gte=now))
+        .select_related("category", "product")
     )
 
 
@@ -42,9 +45,10 @@ def promoted_products_q(promotions):
     product_ids = {
         p.product_id for p in public_promotions if p.scope == Promotion.SCOPE_PRODUCT
     }
-    category_ids = {
-        p.category_id for p in public_promotions if p.scope == Promotion.SCOPE_CATEGORY
-    }
+    category_ids: set = set()
+    for p in public_promotions:
+        if p.scope == Promotion.SCOPE_CATEGORY and p.category_id:
+            category_ids |= get_descendant_category_ids(p.category)
     has_global_promo = any(p.scope == Promotion.SCOPE_GLOBAL for p in public_promotions)
     if product_ids or category_ids:
         return Q(id__in=product_ids) | Q(category_id__in=category_ids)
@@ -66,7 +70,8 @@ def find_matching_promotions(product, user, promotions):
             or (
                 promo.scope == Promotion.SCOPE_CATEGORY
                 and product.category_id
-                and promo.category_id == product.category_id
+                and promo.category_id
+                and product.category_id in get_descendant_category_ids(promo.category)
             )
             or (
                 promo.scope == Promotion.SCOPE_PRODUCT

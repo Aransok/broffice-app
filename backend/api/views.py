@@ -42,6 +42,7 @@ from carts.services import (
     set_item_quantity as cart_set_item_quantity,
 )
 from categories.models import Category
+from categories.services import get_descendant_category_ids
 from common.emails import BORDER, BRAND_BLUE, MUTED, logo_header_html
 from common.pagination import LargePageNumberPagination
 from coupons.emails import send_coupon_email
@@ -179,7 +180,6 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = "slug"
     search_fields = ("name", "slug", "external_id", "sku", "supplier_id")
     filterset_fields = {
-        "category__slug": ["exact"],
         "brand__slug": ["exact"],
         "category__external_id": ["exact"],
         "price_bgn": ["gte", "lte"],
@@ -188,6 +188,18 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        # Handled manually rather than via filterset_fields: a category page
+        # must show every product in that category's subtree (children,
+        # grandchildren, ...), not just products assigned directly to it -
+        # a plain filterset_fields exact match left mid-level categories
+        # (anything with only grandchildren-level products) showing nothing
+        # until a visitor drilled into one exact leaf.
+        category_slug = self.request.query_params.get("category__slug")
+        if category_slug:
+            category = Category.objects.filter(slug=category_slug).first()
+            if category is None:
+                return qs.none()
+            qs = qs.filter(category_id__in=get_descendant_category_ids(category))
         if self.request.query_params.get("on_promotion"):
             promo_q = promoted_products_q(get_active_promotions())
             qs = qs.filter(promo_q).distinct() if promo_q is not None else qs.none()
