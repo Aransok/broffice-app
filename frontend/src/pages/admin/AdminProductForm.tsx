@@ -10,7 +10,7 @@ import {
 import { useCategories } from '../../api/categories'
 import { getImageUrl } from '../../api/media'
 import type { ProductDetail } from '../../api/types'
-import { eurToBgn } from '../../utils/currency'
+import { bgnToEur, eurToBgn } from '../../utils/currency'
 
 const emptyForm: AdminProductPayload = {
   name: '',
@@ -18,6 +18,7 @@ const emptyForm: AdminProductPayload = {
   price_eur: '',
   old_price_bgn: '',
   old_price_eur: '',
+  admin_price: '',
   category: '',
   description: '',
   short_description: '',
@@ -32,6 +33,7 @@ function formFromProduct(product: ProductDetail): AdminProductPayload {
     price_eur: product.price_eur ?? '',
     old_price_bgn: product.old_price_bgn ?? '',
     old_price_eur: product.old_price_eur ?? '',
+    admin_price: product.admin_price ?? '',
     category: product.category ?? '',
     description: product.description,
     short_description: product.short_description,
@@ -262,6 +264,14 @@ function AdminProductFormFields({
             const eur = event.target.value
             setForm((prev) => ({ ...prev, old_price_eur: eur, old_price_bgn: eurToBgn(eur) }))
           }}
+          className="rounded-ui border border-slate-300 px-3 py-2"
+        />
+        <input
+          type="text"
+          placeholder="Цена за реселър (€)"
+          title="Себестойност/реселърска цена — видима само за админи, използва се за изчисляване на печалбата"
+          value={bgnToEur(form.admin_price ?? '')}
+          onChange={(event) => update('admin_price', eurToBgn(event.target.value))}
           className="rounded-ui border border-slate-300 px-3 py-2"
         />
       </div>

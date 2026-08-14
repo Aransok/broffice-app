@@ -723,18 +723,21 @@ def test_admin_product_crud(api_client, admin_user):
 
     create = api_client.post(
         "/api/v1/admin/products/",
-        {"name": "Admin Created Product", "price_bgn": "12.50"},
+        {"name": "Admin Created Product", "price_bgn": "12.50", "admin_price": "8.00"},
     )
     assert create.status_code == 201, create.data
     assert create.data["slug"] == "admin-created-product"
     assert create.data["external_id"].startswith("manual-")
+    assert create.data["admin_price"] == "8.00"
     product_id = create.data["id"]
 
     update = api_client.patch(
-        f"/api/v1/admin/products/{product_id}/", {"price_bgn": "15.00"}
+        f"/api/v1/admin/products/{product_id}/",
+        {"price_bgn": "15.00", "admin_price": "9.50"},
     )
     assert update.status_code == 200
     assert update.data["price_bgn"] == "15.00"
+    assert update.data["admin_price"] == "9.50"
     assert update.data["slug"] == "admin-created-product"
 
     delete = api_client.delete(f"/api/v1/admin/products/{product_id}/")
