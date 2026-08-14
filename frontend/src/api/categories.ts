@@ -10,8 +10,8 @@ export interface CategoryTreeNode {
   children: CategoryTreeNode[]
 }
 
-export function fetchCategories() {
-  return apiClient.get<Paginated<Category>>('/categories/').then((res) => res.data)
+export function fetchCategories(params: { search?: string } = {}) {
+  return apiClient.get<Paginated<Category>>('/categories/', { params }).then((res) => res.data)
 }
 
 export function fetchCategory(slug: string) {
@@ -25,7 +25,7 @@ export function fetchCategoryTree() {
 export function useCategories() {
   return useQuery({
     queryKey: ['categories'],
-    queryFn: fetchCategories,
+    queryFn: () => fetchCategories(),
   })
 }
 

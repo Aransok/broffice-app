@@ -211,7 +211,13 @@ export async function advanceWizard(
           data: { ...state.data, category: picked.id, categoryLabel: picked.label },
         })
       }
-      const categories = await fetchCategories()
+      // Search by the admin's typed text, same as promo_product below -
+      // previously this ignored `reply` entirely and always showed an
+      // arbitrary unfiltered top-8 category list, making it easy to pick
+      // the wrong one while believing it had been filtered (confirmed real
+      // cause of a "Chemicals -10%" promotion actually saved against the
+      // "Glues" category).
+      const categories = await fetchCategories({ search: reply })
       return ambiguous(
         state,
         categories.results.map((c) => ({ id: c.id, label: c.name })),

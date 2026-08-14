@@ -123,6 +123,10 @@ describe('promotion flow', () => {
     const result = await advanceWizard(stateAt('promo_category', { scope: 'category' }), 'харт')
     expect(result.state?.step).toBe('promo_audience')
     expect(result.state?.data.category).toBe('cat-1')
+    // Regression guard: this must actually search by what the admin typed,
+    // not show an arbitrary unfiltered list (the real cause of a
+    // "Chemicals -10%" promotion once landing on the "Glues" category).
+    expect(mockedFetchCategories).toHaveBeenCalledWith({ search: 'харт' })
   })
 
   it('promo_category lists numbered candidates on multiple matches', async () => {
