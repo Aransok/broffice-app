@@ -210,37 +210,29 @@ def _build_customer_promo_note(order: Order) -> str | None:
     )
 
 
-def _send_order_confirmation_email(
+def _send_order_status_email(
     order: Order,
     *,
     email_type: str,
     to_address: str | list[str],
     subject: str,
-    greeting: str,
+    heading: str,
+    intro: str,
+    body: str,
     promo_note: str | None = None,
     show_profit: bool = False,
+    attach_invoice: bool = False,
 ) -> EmailLog:
-    """Shared by the customer and admin confirmation emails — same body shape
-    (company info + line items + PDF invoice attached), only the recipient/
-    greeting/EmailLog type differ. Both calls happen inside the same
-    status-guarded `confirm` action (see AdminOrderViewSet.confirm), so
-    re-confirming an already-confirmed order 400s before either ever runs
-    again — that's what keeps this idempotent, not logic in here.
+    """Shared by every order-status email (customer confirmation, admin
+    confirmation, customer rejection) — same shell (company info + line
+    items, HTML + plaintext, EmailLog tracking), only the recipient/copy/
+    EmailLog type/invoice-attachment differ. Both confirm-flow calls happen
+    inside the same status-guarded `confirm` action (see
+    AdminOrderViewSet.confirm), so re-confirming an already-confirmed order
+    400s before either ever runs again — that's what keeps this idempotent,
+    not logic in here.
     """
     to_list = [to_address] if isinstance(to_address, str) else list(to_address)
-    company_block = (
-        f"{settings.COMPANY_NAME}\n"
-        f"{settings.COMPANY_ADDRESS}\n"
-        f"ЕИК: {settings.COMPANY_EIK}\n"
-        f"{settings.COMPANY_EMAIL} · {settings.COMPANY_PHONE}\n"
-    )
-    body = (
-        f"{greeting}\n\n"
-        f"Поръчка {order.number} е потвърдена.\n\n"
-        f"Като фактура:\n{_order_lines_text(order)}\n\n"
-        f"{company_block}\n"
-        f"Благодарим ви!\n"
-    )
     log = EmailLog.objects.create(
         order=order,
         email_type=email_type,
@@ -252,8 +244,8 @@ def _send_order_confirmation_email(
     try:
         html, inline_images = render_order_email_html(
             order,
-            heading="Поръчката е потвърдена",
-            intro=f"{greeting} приложена е фактурата за поръчка {order.number}.",
+            heading=heading,
+            intro=intro,
             promo_note=promo_note,
             show_profit=show_profit,
         )
@@ -265,7 +257,7 @@ def _send_order_confirmation_email(
         for image in inline_images:
             message.attach(image)
         invoice = getattr(order, "invoice", None)
-        if invoice is not None:
+        if attach_invoice and invoice is not None:
             pdf_bytes = (
                 get_admin_invoice_pdf_bytes(invoice)
                 if show_profit
@@ -285,24 +277,83 @@ def _send_order_confirmation_email(
 
 def send_customer_invoice_email(order: Order) -> EmailLog:
     greeting = f"Здравейте{(' ' + order.customer_name) if order.customer_name else ''},"
-    return _send_order_confirmation_email(
+    company_block = (
+        f"{settings.COMPANY_NAME}\n"
+        f"{settings.COMPANY_ADDRESS}\n"
+        f"ЕИК: {settings.COMPANY_EIK}\n"
+        f"{settings.COMPANY_EMAIL} · {settings.COMPANY_PHONE}\n"
+    )
+    body = (
+        f"{greeting}\n\n"
+        f"Поръчка {order.number} е потвърдена.\n\n"
+        f"Като фактура:\n{_order_lines_text(order)}\n\n"
+        f"{company_block}\n"
+        f"Благодарим ви!\n"
+    )
+    return _send_order_status_email(
         order,
         email_type=EmailLog.TYPE_CUSTOMER_INVOICE,
         to_address=order.customer_email,
         subject=f"Фактура / потвърждение на поръчка {order.number}",
-        greeting=greeting,
+        heading="Поръчката е потвърдена",
+        intro=f"{greeting} приложена е фактурата за поръчка {order.number}.",
+        body=body,
         promo_note=_build_customer_promo_note(order),
+        attach_invoice=True,
     )
 
 
 def send_admin_confirmation_email(order: Order) -> EmailLog:
-    return _send_order_confirmation_email(
+    greeting = "Здравейте,"
+    company_block = (
+        f"{settings.COMPANY_NAME}\n"
+        f"{settings.COMPANY_ADDRESS}\n"
+        f"ЕИК: {settings.COMPANY_EIK}\n"
+        f"{settings.COMPANY_EMAIL} · {settings.COMPANY_PHONE}\n"
+    )
+    body = (
+        f"{greeting}\n\n"
+        f"Поръчка {order.number} е потвърдена.\n\n"
+        f"Като фактура:\n{_order_lines_text(order)}\n\n"
+        f"{company_block}\n"
+        f"Благодарим ви!\n"
+    )
+    return _send_order_status_email(
         order,
         email_type=EmailLog.TYPE_ADMIN_CONFIRMATION,
         to_address=settings.ADMIN_NOTIFICATION_EMAILS,
         subject=f"Поръчка {order.number} потвърдена",
-        greeting="Здравейте,",
+        heading="Поръчката е потвърдена",
+        intro=f"{greeting} приложена е фактурата за поръчка {order.number}.",
+        body=body,
         show_profit=True,
+        attach_invoice=True,
+    )
+
+
+def send_customer_rejection_email(order: Order) -> EmailLog:
+    """Previously the customer got no email at all when their order was
+    rejected - left them wondering why nothing arrived. Reuses the same
+    visual shell as the confirmation emails, but with rejection copy and
+    the admin's stated reason, and no invoice (none exists yet at this
+    point - only `confirm` issues one)."""
+    greeting = f"Здравейте{(' ' + order.customer_name) if order.customer_name else ''},"
+    reason = order.reject_reason or "не е посочена причина"
+    body = (
+        f"{greeting}\n\n"
+        f"За съжаление поръчка {order.number} беше отказана.\n\n"
+        f"Причина: {reason}\n\n"
+        f"{_order_lines_text(order)}\n\n"
+        f"При въпроси, моля свържете се с нас.\n"
+    )
+    return _send_order_status_email(
+        order,
+        email_type=EmailLog.TYPE_CUSTOMER_REJECTION,
+        to_address=order.customer_email,
+        subject=f"Поръчка {order.number} е отказана",
+        heading="Поръчката е отказана",
+        intro=f"За съжаление поръчка {order.number} беше отказана. Причина: {reason}",
+        body=body,
     )
 
 

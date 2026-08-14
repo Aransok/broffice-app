@@ -267,10 +267,12 @@ class EmailLog(TimeStampedModel):
     TYPE_ADMIN_ORDER = "admin_order"
     TYPE_CUSTOMER_INVOICE = "customer_invoice"
     TYPE_ADMIN_CONFIRMATION = "admin_confirmation"
+    TYPE_CUSTOMER_REJECTION = "customer_rejection"
     TYPE_CHOICES = [
         (TYPE_ADMIN_ORDER, "Admin order"),
         (TYPE_CUSTOMER_INVOICE, "Customer invoice"),
         (TYPE_ADMIN_CONFIRMATION, "Admin confirmation"),
+        (TYPE_CUSTOMER_REJECTION, "Customer rejection"),
     ]
 
     STATUS_SENT = "sent"

@@ -61,6 +61,7 @@ from orders.services import (
     reprice_pending_order,
     send_admin_confirmation_email,
     send_customer_invoice_email,
+    send_customer_rejection_email,
 )
 from pages.models import Page as PageModel
 from pricing.models import AdminPriceOverride
@@ -845,6 +846,7 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
         order.status = Order.STATUS_REJECTED
         order.reject_reason = reason
         order.save(update_fields=["status", "reject_reason", "updated_at"])
+        send_customer_rejection_email(order)
         return Response(OrderSerializer(order, context={"request": request}).data)
 
 

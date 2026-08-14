@@ -415,6 +415,44 @@ def test_admin_reprice_rejects_a_non_pending_order(
 
 
 @pytest.mark.django_db
+def test_admin_reject_sends_customer_email(api_client, admin_user, sample_product):
+    """Previously reject() sent no email at all - the customer had no idea
+    their order was declined."""
+    from django.core import mail
+
+    from orders.models import EmailLog
+
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+        },
+        format="json",
+    )
+    number = resp.data["number"]
+
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.post(
+        f"/api/v1/admin/orders/{number}/reject/", {"reason": "Продуктът е изчерпан"}
+    )
+    assert resp.status_code == 200
+    assert resp.data["status"] == "rejected"
+    assert resp.data["reject_reason"] == "Продуктът е изчерпан"
+
+    # Placing the order already sent one admin-notification email - the
+    # rejection email is the customer-addressed one on top of that.
+    customer_emails = [m for m in mail.outbox if m.to == ["buyer@example.com"]]
+    assert len(customer_emails) == 1
+
+    log = EmailLog.objects.get(
+        order__number=number, email_type=EmailLog.TYPE_CUSTOMER_REJECTION
+    )
+    assert log.status == EmailLog.STATUS_SENT
+    assert "Продуктът е изчерпан" in log.body_preview
+
+
+@pytest.mark.django_db
 def test_admin_price_hidden_from_public(api_client, admin_user, sample_product):
     anon = api_client.get("/api/v1/products/")
     listed = next(p for p in anon.data["results"] if p["external_id"] == "272")
