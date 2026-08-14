@@ -7,6 +7,33 @@ from django.db import models
 from common.models import TimeStampedModel
 
 
+class OrderNumberSequence(TimeStampedModel):
+    """Singleton row (exactly one, created by this model's own migration)
+    backing Order.generate_number()'s plain incrementing numbers (Order
+    #1, #2, #3...). A dedicated counter incremented inside an atomic
+    transaction with select_for_update() is safe under concurrent
+    checkouts — unlike a naive Order.objects.count() + 1, where two
+    simultaneous orders could both read the same count before either
+    saves, minting the same number twice. Orders created before this
+    existed keep their old ORD-xxxxxxxxxx numbers untouched; numbering
+    starts fresh from 1 going forward, by design (confirmed with the
+    client rather than migrating real historical order/invoice numbers).
+
+    Looked up via .first() rather than a fixed pk - TimeStampedModel's id
+    is a random UUID, not an integer, so there's no fixed pk value to
+    target; being a genuine singleton (only ever one row) makes .first()
+    under select_for_update() just as safe."""
+
+    last_value = models.PositiveIntegerField(default=0)
+
+    @classmethod
+    def next_value(cls) -> int:
+        seq = cls.objects.select_for_update().first()
+        seq.last_value += 1
+        seq.save(update_fields=["last_value"])
+        return seq.last_value
+
+
 class Order(TimeStampedModel):
     STATUS_PENDING = "pending"
     STATUS_CONFIRMED = "confirmed"
@@ -106,7 +133,7 @@ class Order(TimeStampedModel):
 
     @staticmethod
     def generate_number() -> str:
-        return f"ORD-{uuid.uuid4().hex[:10].upper()}"
+        return str(OrderNumberSequence.next_value())
 
     @property
     def total_profit_bgn(self) -> Decimal | None:

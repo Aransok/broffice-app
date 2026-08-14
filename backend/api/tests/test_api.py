@@ -313,6 +313,27 @@ def test_admin_promotions_list_shows_category_and_product_names(
 
 
 @pytest.mark.django_db
+def test_order_numbers_are_sequential_plain_integers(api_client, sample_product):
+    numbers = []
+    for _ in range(3):
+        resp = api_client.post(
+            "/api/v1/orders/",
+            {
+                "customer_email": "buyer@example.com",
+                "items": [{"product_external_id": "272", "quantity": 1}],
+            },
+            format="json",
+        )
+        assert resp.status_code == 201
+        numbers.append(resp.data["number"])
+
+    assert all(n.isdigit() for n in numbers)
+    ints = [int(n) for n in numbers]
+    assert ints == sorted(ints)
+    assert len(set(ints)) == 3  # no duplicates
+
+
+@pytest.mark.django_db
 def test_order_item_records_cost_price_for_profit_tracking(api_client, sample_product):
     """Regression guard: cost_price_bgn (and therefore profit_bgn) must
     actually get saved on the order item, not just computed and discarded."""
