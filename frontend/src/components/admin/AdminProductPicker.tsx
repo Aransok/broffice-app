@@ -69,7 +69,11 @@ export function AdminProductPicker({
               <button
                 key={product.id}
                 type="button"
-                onClick={() => onSelect(product)}
+                onClick={() => {
+                  onSelect(product)
+                  setSearch('')
+                  setCategorySlug('')
+                }}
                 className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-primary/10"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-ui border border-slate-200 bg-slate-100">

@@ -15,12 +15,14 @@ import {
   deletePriceOverride,
   usePriceOverrides,
 } from '../../api/adminPriceOverrides'
+import { orderedCategoryOptions, useCategories } from '../../api/categories'
 import { getImageUrl } from '../../api/media'
 import {
   createPromotion,
   deletePromotion,
   type Promotion,
   type PromotionDiscountType,
+  type PromotionScope,
   updatePromotion,
   usePromotions,
 } from '../../api/promotions'
@@ -481,11 +483,15 @@ function PricingTab({ customerId }: { customerId: number }) {
 
 function PromotionsTab({ customerId }: { customerId: number }) {
   const { data, refetch } = usePromotions({ user: customerId })
+  const { data: categories } = useCategories()
   const [editingId, setEditingId] = useState<string | null>(null)
-  // Product id carried over from the promotion being edited, kept as-is
-  // unless the admin explicitly re-picks one — otherwise saving an edit
-  // without touching the picker would wrongly clear it to "whole account".
+  // Product/category id carried over from the promotion being edited, kept
+  // as-is unless the admin explicitly re-picks one — otherwise saving an
+  // edit without touching the picker would wrongly clear it to "whole
+  // account".
   const [editingProductId, setEditingProductId] = useState<string | null>(null)
+  const [target, setTarget] = useState<PromotionScope>('global')
+  const [categoryId, setCategoryId] = useState('')
   const [name, setName] = useState('')
   const [discountType, setDiscountType] = useState<PromotionDiscountType>('percent')
   const [value, setValue] = useState('')
@@ -498,6 +504,8 @@ function PromotionsTab({ customerId }: { customerId: number }) {
   function resetForm() {
     setEditingId(null)
     setEditingProductId(null)
+    setTarget('global')
+    setCategoryId('')
     setName('')
     setValue('')
     setMaxQuantity('')
@@ -508,6 +516,8 @@ function PromotionsTab({ customerId }: { customerId: number }) {
   function startEdit(promo: Promotion) {
     setEditingId(promo.id)
     setEditingProductId(promo.product)
+    setTarget(promo.scope)
+    setCategoryId(promo.category ?? '')
     setName(promo.name)
     setDiscountType(promo.discount_type)
     setValue(promo.discount_type === 'flat' ? bgnToEur(promo.value) : promo.value)
@@ -526,20 +536,22 @@ function PromotionsTab({ customerId }: { customerId: number }) {
     try {
       const productId = selectedProduct ? selectedProduct.id : editingProductId
       const payload = {
-        name: name || `Индивидуална отстъпка${selectedProduct ? ` — ${selectedProduct.name}` : ''}`,
+        name:
+          name ||
+          `Индивидуална отстъпка${selectedProduct ? ` — ${selectedProduct.name}` : ''}`,
         discount_type: discountType,
         value: discountType === 'flat' ? eurToBgn(value) : value,
         max_quantity: maxQuantity ? Number(maxQuantity) : null,
         // user=customerId (independent of scope, see the target/audience
-        // decoupling) narrows this to just that one client. A product
-        // narrows the target further to just that one item; leaving it
-        // empty targets everything the customer buys — same Promotion
-        // model the general /admin/promotions page uses, just pre-scoped
-        // to this customer so the admin doesn't have to re-search there.
-        scope: productId ? ('product' as const) : ('global' as const),
+        // decoupling) narrows this to just that one client. Product/category
+        // narrow the target further; leaving it "global" targets everything
+        // the customer buys — same Promotion model the general
+        // /admin/promotions page uses, just pre-scoped to this customer so
+        // the admin doesn't have to re-search there.
+        scope: target,
         user: customerId,
-        product: productId,
-        category: null,
+        product: target === 'product' ? productId : null,
+        category: target === 'category' ? categoryId || null : null,
         active,
       }
       if (editingId) {
@@ -575,7 +587,7 @@ function PromotionsTab({ customerId }: { customerId: number }) {
           <Link to="/admin/promotions" className="text-primary hover:underline">
             Пълното управление на промоции
           </Link>{' '}
-          е тук, ако трябва промоция по категория или за целия сайт.
+          е тук, ако трябва промоция за целия сайт (за всички клиенти).
         </p>
 
         <input
@@ -586,22 +598,55 @@ function PromotionsTab({ customerId }: { customerId: number }) {
           className="mb-2 w-full rounded-ui border border-slate-300 px-3 py-2"
         />
 
-        <p className="mb-1 text-xs text-slate-500">
-          Продукт (по избор — оставете празно за отстъпка върху всичко, което клиентът купува)
-          {editingId && !selectedProduct && editingProductId && ' — продуктът остава непроменен'}
-        </p>
-        <AdminProductPicker onSelect={(product) => setSelectedProduct(product)} />
-        {selectedProduct && (
-          <p className="mt-1 text-sm text-primary">
-            Избран: {selectedProduct.name}{' '}
-            <button
-              type="button"
-              onClick={() => setSelectedProduct(null)}
-              className="ml-1 text-xs text-slate-500 underline"
-            >
-              премахни
-            </button>
-          </p>
+        <select
+          value={target}
+          onChange={(event) => setTarget(event.target.value as PromotionScope)}
+          className="mb-2 w-full rounded-ui border border-slate-300 px-3 py-2"
+        >
+          <option value="global">Целия акаунт (всичко, което клиентът купува)</option>
+          <option value="category">Категория (вкл. подкатегории)</option>
+          <option value="product">Конкретен продукт</option>
+        </select>
+
+        {target === 'category' && (
+          <select
+            value={categoryId}
+            onChange={(event) => setCategoryId(event.target.value)}
+            className="mb-2 w-full rounded-ui border border-slate-300 px-3 py-2"
+          >
+            <option value="">Избери категория</option>
+            {orderedCategoryOptions(categories?.results ?? []).map(({ category, depth }) => (
+              <option key={category.id} value={category.id}>
+                {'  '.repeat(depth)}
+                {depth > 0 ? '— ' : ''}
+                {category.name}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {target === 'product' && (
+          <div>
+            <p className="mb-1 text-xs text-slate-500">
+              {editingId &&
+                !selectedProduct &&
+                editingProductId &&
+                'Продуктът остава непроменен, освен ако не изберете нов.'}
+            </p>
+            <AdminProductPicker onSelect={(product) => setSelectedProduct(product)} />
+            {selectedProduct && (
+              <p className="mt-1 text-sm text-primary">
+                Избран: {selectedProduct.name}{' '}
+                <button
+                  type="button"
+                  onClick={() => setSelectedProduct(null)}
+                  className="ml-1 text-xs text-slate-500 underline"
+                >
+                  премахни
+                </button>
+              </p>
+            )}
+          </div>
         )}
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -671,7 +716,15 @@ function PromotionsTab({ customerId }: { customerId: number }) {
           <tbody>
             {data?.results.map((promo) => (
               <tr key={promo.id} className="border-b border-slate-100">
-                <td className="py-2 pr-4">{promo.name}</td>
+                <td className="py-2 pr-4">
+                  {promo.name}
+                  {promo.scope === 'category' && promo.category_name && (
+                    <span className="block text-xs text-slate-500">{promo.category_name}</span>
+                  )}
+                  {promo.scope === 'product' && promo.product_name && (
+                    <span className="block text-xs text-slate-500">{promo.product_name}</span>
+                  )}
+                </td>
                 <td className="py-2 pr-4">
                   {promo.discount_type === 'percent'
                     ? `${promo.value}%`

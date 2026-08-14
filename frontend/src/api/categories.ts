@@ -44,3 +44,30 @@ export function useCategoryTree() {
     staleTime: 10 * 60 * 1000,
   })
 }
+
+/** Flattens the category list (already a mix of top-level categories and
+ * subcategories — the plain list endpoint returns both, unrestricted) into
+ * parent-then-children order so a category picker can target a subcategory
+ * specifically (e.g. "Принтерна хартия" under a much bigger parent) without
+ * having to hunt for it in an unsorted, unindented dropdown. Shared by every
+ * admin category-scoped picker (promotions page, per-client promotions) so
+ * they all list/order categories identically. */
+export function orderedCategoryOptions(
+  categories: Category[],
+): { category: Category; depth: number }[] {
+  const byParent = new Map<string | null, Category[]>()
+  for (const category of categories) {
+    const key = category.parent
+    if (!byParent.has(key)) byParent.set(key, [])
+    byParent.get(key)!.push(category)
+  }
+  const result: { category: Category; depth: number }[] = []
+  function walk(parentId: string | null, depth: number) {
+    for (const category of byParent.get(parentId) ?? []) {
+      result.push({ category, depth })
+      walk(category.id, depth + 1)
+    }
+  }
+  walk(null, 0)
+  return result
+}
