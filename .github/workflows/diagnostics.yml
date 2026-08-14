@@ -175,6 +175,37 @@ jobs:
           # same as the interactive shell would, so use that instead.
           docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell -c "import base64; exec(base64.b64decode('$b64').decode('utf-8'))"
 
+      - name: Rejected orders with a still-active matching client promo (read-only)
+        # Added 2026-08-14 - deactivate_used_item_promotions previously only
+        # ran on confirm, not reject, so a one-time "+ Промоция" client
+        # discount tied to a rejected order's items stayed active and could
+        # leak into a later, unrelated order for the same client (real
+        # client report). The fix (running it on reject too) only covers
+        # rejections from here on - this checks whether any REJECTED order
+        # still has a matching active promo left over from before that fix
+        # shipped, so the leftover state can be confirmed before cleaning
+        # it up by hand rather than guessed at.
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          $lines = @(
+            'from orders.models import Order',
+            'from promotions.models import Promotion',
+            'rejected = Order.objects.filter(status=Order.STATUS_REJECTED, user__isnull=False)',
+            'hits = 0',
+            'for order in rejected:',
+            '    product_ids = set(order.items.values_list("product_id", flat=True)) - {None}',
+            '    if not product_ids:',
+            '        continue',
+            '    promos = Promotion.objects.filter(user_id=order.user_id, product_id__in=product_ids, active=True)',
+            '    for promo in promos:',
+            '        hits += 1',
+            '        print(f"order={order.number} user={order.user.username} promo_id={promo.id} promo={promo.name!r} product_id={promo.product_id}")',
+            'print(f"Total stale active promotions found: {hits}")'
+          )
+          $pythonSource = $lines -join "`n"
+          $b64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($pythonSource))
+          docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell -c "import base64; exec(base64.b64decode('$b64').decode('utf-8'))"
+
       - name: Scheduled task status (backup, restore watcher, watchdog)
         # Moved last - this step has some intermittent crash after
         # printing results (cause not fully pinned down yet), which
