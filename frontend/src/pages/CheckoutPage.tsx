@@ -396,12 +396,6 @@ export function CheckoutPage() {
           {shippingMethod === 'speedy_office' && (
             <SpeedyOfficePicker selected={selectedOffice} onSelect={setSelectedOffice} />
           )}
-
-          {shippingCost && (
-            <p className="mt-3 text-sm text-slate-600">
-              Цена на доставка: €{bgnToEur(displayPrice(shippingCost) ?? '')}
-            </p>
-          )}
         </section>
 
         <section>

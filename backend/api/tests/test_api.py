@@ -1408,7 +1408,10 @@ def test_order_checkout_speedy_address(api_client, sample_product):
     )
     assert resp.status_code == 201
     assert resp.data["shipping_method"] == "speedy_address"
-    assert float(resp.data["shipping_cost_bgn"]) > 0
+    # Speedy isn't actually charged for right now (confirmed with the
+    # client) - the mock quote still runs (see calculate_price being
+    # called in create_order) but the result is discarded, not charged.
+    assert float(resp.data["shipping_cost_bgn"]) == 0
     # total = (items + shipping) * (1 + VAT_RATE_PERCENT/100), snapshotted on the order.
     taxable = float(resp.data["shipping_cost_bgn"]) + 1.35 * 1
     expected_total = round(

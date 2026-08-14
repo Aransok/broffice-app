@@ -503,6 +503,13 @@ def create_order(
     if coupon_code:
         coupon = get_valid_coupon(coupon_code, user)
 
+    # Speedy isn't actually wired up for real yet, so shipping isn't charged
+    # right now (confirmed with the client - "we havent still added speedy
+    # and there is no reason to charge"). shipping_cost stays 0 regardless
+    # of method; office/city lookup still runs below since that's needed
+    # for delivery logistics either way, and calculate_price is still
+    # called (result discarded) so the integration point stays exercised
+    # for when real pricing is turned back on.
     speedy_office_name = ""
     shipping_cost = Decimal(0)
     if shipping_method == Order.SHIPPING_SPEEDY_OFFICE:
@@ -510,11 +517,9 @@ def create_order(
         office = client.get_office(speedy_office_id)
         office_city = office.city if office else delivery_city
         speedy_office_name = office.name if office else ""
-        shipping_cost = client.calculate_price(
-            shipping_method=shipping_method, city=office_city
-        )
+        client.calculate_price(shipping_method=shipping_method, city=office_city)
     elif shipping_method == Order.SHIPPING_SPEEDY_ADDRESS:
-        shipping_cost = get_speedy_client().calculate_price(
+        get_speedy_client().calculate_price(
             shipping_method=shipping_method, city=delivery_city
         )
 

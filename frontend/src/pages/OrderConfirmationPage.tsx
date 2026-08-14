@@ -38,10 +38,6 @@ export function OrderConfirmationPage() {
             </li>
           ))}
         </ul>
-        <div className="flex justify-between border-t border-slate-200 px-4 py-3 text-sm">
-          <span>Доставка</span>
-          <span>{formatEur(order.shipping_cost_bgn)}</span>
-        </div>
         <div className="flex justify-between border-t border-slate-200 px-4 py-3 font-semibold">
           <span>Общо</span>
           <span>{formatEur(order.total_bgn)}</span>

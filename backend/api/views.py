@@ -1325,10 +1325,14 @@ class SpeedyQuoteView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         city = request.data.get("city") or ""
-        price = get_speedy_client().calculate_price(
-            shipping_method=shipping_method, city=city
-        )
-        return Response({"shipping_cost_bgn": str(price)})
+        # Not actually charged right now (Speedy isn't wired up for real
+        # yet - confirmed with the client) - calculate_price is still
+        # called so the integration point stays exercised, but the
+        # quoted amount is discarded rather than returned, so this can
+        # never show a different number than what create_order actually
+        # charges (0).
+        get_speedy_client().calculate_price(shipping_method=shipping_method, city=city)
+        return Response({"shipping_cost_bgn": "0.00"})
 
 
 class BackupListView(APIView):
