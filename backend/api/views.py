@@ -846,6 +846,7 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
         order.status = Order.STATUS_REJECTED
         order.reject_reason = reason
         order.save(update_fields=["status", "reject_reason", "updated_at"])
+        deactivate_used_item_promotions(order)
         send_customer_rejection_email(order)
         return Response(OrderSerializer(order, context={"request": request}).data)
 

@@ -156,19 +156,35 @@ def get_admin_invoice_pdf_bytes(invoice: Invoice) -> bytes:
 def deactivate_used_item_promotions(order: Order) -> None:
     """Single-item "+ Промоция" quick-adds targeted at one client (product
     set AND user set — see AdminQuickPromotionButton) are meant as a
-    one-time deal, not a standing discount: once the order that used one is
-    confirmed, it retires so the item is back to its normal price for any
-    future order. Whole-account client promotions (no product set — a
-    blanket discount for one client) are left untouched, those are a
-    deliberate ongoing benefit, not a single-item one-off. Matched via
-    `OrderItem.applied_promotion`, captured at order-creation time, rather
-    than re-deriving "which promo was used" from now-possibly-different
-    pricing state."""
-    promo_ids = {
+    one-time deal for that order, not a standing discount, so it retires
+    once the order is decided either way — confirmed (the deal was used) or
+    rejected (the deal fell through) — so the item is back to its normal
+    price for any future order/email. Called from both AdminOrderViewSet.
+    confirm and .reject.
+
+    Matches two ways: promos actually applied to an item's recorded price
+    (`OrderItem.applied_promotion`, set at order-creation time) - AND any
+    still-active client+product promo for one of this order's products,
+    covering a promo the admin added *after* the order was already placed
+    (e.g. from the order card, to sweeten a still-pending order) which
+    never got baked into a price snapshot. Whole-account client promotions
+    (no product set — a blanket discount for one client) are left
+    untouched, those are a deliberate ongoing benefit, not a single-item
+    one-off."""
+    applied_promo_ids = {
         item.applied_promotion_id
         for item in order.items.all()
         if item.applied_promotion_id
     }
+    product_ids = {item.product_id for item in order.items.all() if item.product_id}
+    matching_promo_ids = set()
+    if order.user_id and product_ids:
+        matching_promo_ids = set(
+            Promotion.objects.filter(
+                user_id=order.user_id, product_id__in=product_ids, active=True
+            ).values_list("id", flat=True)
+        )
+    promo_ids = applied_promo_ids | matching_promo_ids
     if not promo_ids:
         return
     Promotion.objects.filter(
@@ -286,7 +302,7 @@ def send_customer_invoice_email(order: Order) -> EmailLog:
     body = (
         f"{greeting}\n\n"
         f"Поръчка {order.number} е потвърдена.\n\n"
-        f"Като фактура:\n{_order_lines_text(order)}\n\n"
+        f"Заявка за поръчка:\n{_order_lines_text(order)}\n\n"
         f"{company_block}\n"
         f"Благодарим ви!\n"
     )
@@ -294,9 +310,9 @@ def send_customer_invoice_email(order: Order) -> EmailLog:
         order,
         email_type=EmailLog.TYPE_CUSTOMER_INVOICE,
         to_address=order.customer_email,
-        subject=f"Фактура / потвърждение на поръчка {order.number}",
+        subject=f"Заявка за поръчка {order.number} - потвърждение",
         heading="Поръчката е потвърдена",
-        intro=f"{greeting} приложена е фактурата за поръчка {order.number}.",
+        intro=f"{greeting} приложена е заявката за поръчка {order.number}.",
         body=body,
         promo_note=_build_customer_promo_note(order),
         attach_invoice=True,
@@ -314,7 +330,7 @@ def send_admin_confirmation_email(order: Order) -> EmailLog:
     body = (
         f"{greeting}\n\n"
         f"Поръчка {order.number} е потвърдена.\n\n"
-        f"Като фактура:\n{_order_lines_text(order)}\n\n"
+        f"Заявка за поръчка:\n{_order_lines_text(order)}\n\n"
         f"{company_block}\n"
         f"Благодарим ви!\n"
     )
@@ -324,7 +340,7 @@ def send_admin_confirmation_email(order: Order) -> EmailLog:
         to_address=settings.ADMIN_NOTIFICATION_EMAILS,
         subject=f"Поръчка {order.number} потвърдена",
         heading="Поръчката е потвърдена",
-        intro=f"{greeting} приложена е фактурата за поръчка {order.number}.",
+        intro=f"{greeting} приложена е заявката за поръчка {order.number}.",
         body=body,
         show_profit=True,
         attach_invoice=True,

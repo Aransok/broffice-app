@@ -453,6 +453,89 @@ def test_admin_reject_sends_customer_email(api_client, admin_user, sample_produc
 
 
 @pytest.mark.django_db
+def test_admin_reject_retires_the_client_promo_used_on_that_order(
+    api_client, admin_user, sample_product
+):
+    """A single-item "+ Промоция" quick-add for one client is meant as a
+    one-time deal for that order - previously it only retired on confirm,
+    so rejecting the order left it active and it leaked into a *different*,
+    later order's confirmation email/pricing for the same client."""
+    from promotions.models import Promotion
+
+    client = User.objects.create_user(username="promo-client", password="pass12345")
+    promo = Promotion.objects.create(
+        name="One-time deal",
+        discount_type="percent",
+        value="20.00",
+        scope="product",
+        product=sample_product,
+        user=client,
+        active=True,
+    )
+
+    api_client.force_authenticate(user=client)
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "promo-client@example.com",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+        },
+        format="json",
+    )
+    number = resp.data["number"]
+    assert resp.data["items"][0]["discount_label"]  # promo actually applied at checkout
+
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.post(f"/api/v1/admin/orders/{number}/reject/")
+    assert resp.status_code == 200
+
+    promo.refresh_from_db()
+    assert promo.active is False
+
+
+@pytest.mark.django_db
+def test_admin_reject_retires_a_promo_added_after_the_order_was_placed(
+    api_client, admin_user, sample_product
+):
+    """Same as above, but for a promo the admin added *after* the order was
+    already placed (e.g. from the order card, to sweeten a still-pending
+    order) - it never got baked into OrderItem.applied_promotion since
+    pricing was locked at checkout, so it can only be found by matching
+    client+product directly, not via the applied-promotion snapshot."""
+    from promotions.models import Promotion
+
+    client = User.objects.create_user(username="promo-client2", password="pass12345")
+    api_client.force_authenticate(user=client)
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "promo-client2@example.com",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+        },
+        format="json",
+    )
+    number = resp.data["number"]
+    assert not resp.data["items"][0]["discount_label"]  # no promo existed yet
+
+    promo = Promotion.objects.create(
+        name="Added after the fact",
+        discount_type="percent",
+        value="20.00",
+        scope="product",
+        product=sample_product,
+        user=client,
+        active=True,
+    )
+
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.post(f"/api/v1/admin/orders/{number}/reject/")
+    assert resp.status_code == 200
+
+    promo.refresh_from_db()
+    assert promo.active is False
+
+
+@pytest.mark.django_db
 def test_admin_price_hidden_from_public(api_client, admin_user, sample_product):
     anon = api_client.get("/api/v1/products/")
     listed = next(p for p in anon.data["results"] if p["external_id"] == "272")
