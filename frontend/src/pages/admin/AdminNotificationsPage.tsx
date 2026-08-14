@@ -4,6 +4,7 @@ import {
   confirmOrder,
   markNotificationRead,
   rejectOrder,
+  repriceOrder,
   useNotifications,
 } from '../../api/adminNotifications'
 import { getAdminInvoiceDownloadUrl } from '../../api/adminOrders'
@@ -72,6 +73,16 @@ export function AdminNotificationsPage() {
     try {
       await rejectOrder(number, reason)
       await markNotificationRead(notificationId)
+      await refetch()
+    } finally {
+      setBusyOrder(null)
+    }
+  }
+
+  async function handleReprice(number: string) {
+    setBusyOrder(number)
+    try {
+      await repriceOrder(number)
       await refetch()
     } finally {
       setBusyOrder(null)
@@ -240,6 +251,15 @@ export function AdminNotificationsPage() {
                     className="rounded-ui bg-primary px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
                   >
                     Потвърди
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busyOrder === order.number}
+                    onClick={() => handleReprice(order.number)}
+                    title="Провери за активни промоции и преизчисли цените, преди да потвърдиш"
+                    className="rounded-ui border border-primary/40 px-3 py-1.5 text-sm font-medium text-primary disabled:opacity-50"
+                  >
+                    Приложи промоция
                   </button>
                   <button
                     type="button"

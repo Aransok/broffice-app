@@ -58,6 +58,7 @@ from orders.services import (
     get_admin_invoice_pdf_bytes,
     get_invoice_pdf_bytes,
     issue_invoice_for_order,
+    reprice_pending_order,
     send_admin_confirmation_email,
     send_customer_invoice_email,
 )
@@ -817,6 +818,20 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
         deactivate_used_item_promotions(order)
         send_customer_invoice_email(order)
         send_admin_confirmation_email(order)
+        return Response(OrderSerializer(order, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"])
+    def reprice(self, request, number=None):
+        # Re-checks current promotions against a still-pending order before
+        # it's confirmed — lets admin apply a promotion the customer missed,
+        # or pick up one that started after the order came in, so the
+        # invoice that goes out on confirm reflects the real, current price
+        # rather than being permanently stuck at checkout-time pricing.
+        order = self.get_object()
+        try:
+            reprice_pending_order(order)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(OrderSerializer(order, context={"request": request}).data)
 
     @action(detail=True, methods=["post"])

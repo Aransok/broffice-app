@@ -334,6 +334,134 @@ def recalc_order_total(order: Order) -> Decimal:
     return total
 
 
+def _price_order_item_lines(
+    product, qty, pricing_user, active_promotions, user_overrides
+) -> list[dict]:
+    """Computes the OrderItem line(s) for `qty` units of `product` under the
+    current pricing rules — shared by create_order and reprice_pending_order
+    so "how a line gets priced" only ever lives in one place."""
+    base = get_base_price(product) or Decimal(0)
+    result = get_effective_price(
+        product, pricing_user, active_promotions, user_overrides
+    )
+
+    # Default: one line for the whole quantity, either discounted or not.
+    lines = [
+        {
+            "quantity": qty,
+            "unit_price": (
+                result.price if result and result.source != "base" else base
+            ),
+            "original_unit_price": (
+                base if result and result.source != "base" else None
+            ),
+            "discount_label": (
+                result.label if result and result.source != "base" else ""
+            ),
+            "applied_promotion": result.promotion if result else None,
+            "cost_price_bgn": product.admin_price,
+        }
+    ]
+    # A promotion capped to N units (max_quantity) only discounts the first
+    # N — the rest of the quantity ordered is billed as a second,
+    # undiscounted line for the same product, so "order 100, promo covers
+    # 20" doesn't silently discount all 100.
+    cap = result.promotion.max_quantity if result and result.promotion else None
+    if result and result.source == "promotion" and cap is not None and qty > cap:
+        lines = [
+            {
+                "quantity": cap,
+                "unit_price": result.price,
+                "original_unit_price": base,
+                "discount_label": result.label,
+                "applied_promotion": result.promotion,
+                "cost_price_bgn": product.admin_price,
+            },
+            {
+                "quantity": qty - cap,
+                "unit_price": base,
+                "original_unit_price": None,
+                "discount_label": "",
+                "applied_promotion": None,
+                "cost_price_bgn": product.admin_price,
+            },
+        ]
+    return lines
+
+
+def _create_order_item(order: Order, product, line: dict) -> OrderItem:
+    return OrderItem.objects.create(
+        order=order,
+        product=product,
+        product_name=product.name,
+        product_external_id=product.external_id,
+        product_sku=product.sku,
+        quantity=line["quantity"],
+        original_unit_price=line["original_unit_price"],
+        unit_price=line["unit_price"],
+        line_total=line["unit_price"] * line["quantity"],
+        discount_label=line["discount_label"],
+        applied_promotion=line["applied_promotion"],
+        # Fixes a real bug found while extracting this: this value was
+        # already computed above but never actually passed through to
+        # OrderItem.objects.create() before, so cost_price_bgn (and
+        # therefore profit_bgn/total_profit_bgn) silently stayed None for
+        # every order item ever created.
+        cost_price_bgn=line["cost_price_bgn"],
+    )
+
+
+@transaction.atomic
+def reprice_pending_order(order: Order) -> Order:
+    """Re-runs the exact same pricing logic used at checkout against a
+    PENDING order's existing items, using whatever promotions are active
+    right now — lets admin apply a promotion (or pick up one that started
+    after the order was placed) before confirming, instead of the order
+    being frozen forever at its original checkout-time price. Raises
+    ValueError if the order isn't pending — callers translate that into a
+    400, matching confirm/reject's own status guard."""
+    if order.status != Order.STATUS_PENDING:
+        raise ValueError("Only a pending order can be repriced.")
+
+    is_authenticated = order.user_id is not None
+    pricing_user = order.user if is_authenticated else None
+    active_promotions = get_active_promotions()
+    user_overrides = get_user_overrides(pricing_user)
+
+    # Group by product first — the order's existing lines may already be
+    # split (e.g. a max_quantity cap applied at checkout), so repricing must
+    # start from the real total quantity per product, not from whatever
+    # split happened to exist before.
+    quantities: dict = {}
+    products: dict = {}
+    for item in order.items.select_related("product").all():
+        if item.product_id is None:
+            continue  # product was deleted since order creation — nothing to reprice against
+        quantities[item.product_id] = quantities.get(item.product_id, 0) + item.quantity
+        products[item.product_id] = item.product
+
+    order.items.filter(product__isnull=False).delete()
+
+    for product_id, qty in quantities.items():
+        product = products[product_id]
+        lines = _price_order_item_lines(
+            product, qty, pricing_user, active_promotions, user_overrides
+        )
+        for line in lines:
+            _create_order_item(order, product, line)
+
+    # `order` here comes from AdminOrderViewSet's prefetch_related("items"...)
+    # queryset - a plain, unchained order.items.all() (as recalc_order_total
+    # uses) would silently reuse that stale prefetch cache from before the
+    # delete/recreate above, computing totals off the *old* items (caught by
+    # an actual test: total_bgn didn't change at all after a reprice that
+    # did change unit_price). refresh_from_db() clears the cache so the
+    # totals reflect what's actually in the database now.
+    order.refresh_from_db()
+    recalc_order_total(order)
+    return order
+
+
 @transaction.atomic
 def create_order(
     *,
@@ -434,65 +562,11 @@ def create_order(
 
         # The frontend never gets to name a price — it's always recomputed
         # here from the product + the customer's own pricing rules.
-        base = get_base_price(product) or Decimal(0)
-        result = get_effective_price(
-            product, pricing_user, active_promotions, user_overrides
+        lines = _price_order_item_lines(
+            product, qty, pricing_user, active_promotions, user_overrides
         )
-
-        # Default: one line for the whole quantity, either discounted or not.
-        lines = [
-            {
-                "quantity": qty,
-                "unit_price": (
-                    result.price if result and result.source != "base" else base
-                ),
-                "original_unit_price": (
-                    base if result and result.source != "base" else None
-                ),
-                "discount_label": (
-                    result.label if result and result.source != "base" else ""
-                ),
-                "applied_promotion": result.promotion if result else None,
-                "cost_price_bgn": product.admin_price,
-            }
-        ]
-        # A promotion capped to N units (max_quantity) only discounts the
-        # first N — the rest of the quantity ordered is billed as a second,
-        # undiscounted line for the same product, so "order 100, promo
-        # covers 20" doesn't silently discount all 100.
-        cap = result.promotion.max_quantity if result and result.promotion else None
-        if result and result.source == "promotion" and cap is not None and qty > cap:
-            lines = [
-                {
-                    "quantity": cap,
-                    "unit_price": result.price,
-                    "original_unit_price": base,
-                    "discount_label": result.label,
-                    "applied_promotion": result.promotion,
-                },
-                {
-                    "quantity": qty - cap,
-                    "unit_price": base,
-                    "original_unit_price": None,
-                    "discount_label": "",
-                    "applied_promotion": None,
-                },
-            ]
-
         for line in lines:
-            OrderItem.objects.create(
-                order=order,
-                product=product,
-                product_name=product.name,
-                product_external_id=product.external_id,
-                product_sku=product.sku,
-                quantity=line["quantity"],
-                original_unit_price=line["original_unit_price"],
-                unit_price=line["unit_price"],
-                line_total=line["unit_price"] * line["quantity"],
-                discount_label=line["discount_label"],
-                applied_promotion=line["applied_promotion"],
-            )
+            _create_order_item(order, product, line)
     if coupon is not None:
         subtotal_for_coupon = sum(
             (item.line_total for item in order.items.all()), Decimal(0)

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
@@ -308,6 +310,87 @@ def test_admin_promotions_list_shows_category_and_product_names(
     by_name = {p["name"]: p for p in resp.data["results"]}
     assert by_name["Category promo"]["category_name"] == cat.name
     assert by_name["Product promo"]["product_name"] == sample_product.name
+
+
+@pytest.mark.django_db
+def test_order_item_records_cost_price_for_profit_tracking(api_client, sample_product):
+    """Regression guard: cost_price_bgn (and therefore profit_bgn) must
+    actually get saved on the order item, not just computed and discarded."""
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "items": [{"product_external_id": "272", "quantity": 2}],
+        },
+        format="json",
+    )
+    assert resp.status_code == 201
+    order = Order.objects.get(number=resp.data["number"])
+    item = order.items.get()
+    assert item.cost_price_bgn == Decimal("1.00")
+    assert item.profit_bgn == (Decimal("1.35") - Decimal("1.00")) * 2
+    assert order.total_profit_bgn == item.profit_bgn
+
+
+@pytest.mark.django_db
+def test_admin_reprice_applies_a_promotion_created_after_checkout(
+    api_client, admin_user, sample_product
+):
+    from promotions.models import Promotion
+
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+        },
+        format="json",
+    )
+    number = resp.data["number"]
+    order = Order.objects.get(number=number)
+    original_total = order.total_bgn
+    assert order.items.get().discount_label == ""
+
+    # A promotion created only after the order was already placed.
+    Promotion.objects.create(
+        name="Late promo",
+        discount_type="percent",
+        value="50.00",
+        scope="product",
+        product=sample_product,
+    )
+
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.post(f"/api/v1/admin/orders/{number}/reprice/")
+    assert resp.status_code == 200
+
+    order.refresh_from_db()
+    item = order.items.get()
+    assert item.discount_label != ""
+    assert item.unit_price == Decimal(
+        "0.68"
+    )  # 1.35 * 0.5 -> 0.675 -> round-half-even 0.68
+    assert order.total_bgn < original_total
+
+
+@pytest.mark.django_db
+def test_admin_reprice_rejects_a_non_pending_order(
+    api_client, admin_user, sample_product
+):
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+        },
+        format="json",
+    )
+    number = resp.data["number"]
+    api_client.force_authenticate(user=admin_user)
+    api_client.post(f"/api/v1/admin/orders/{number}/confirm/")
+
+    resp = api_client.post(f"/api/v1/admin/orders/{number}/reprice/")
+    assert resp.status_code == 400
 
 
 @pytest.mark.django_db
