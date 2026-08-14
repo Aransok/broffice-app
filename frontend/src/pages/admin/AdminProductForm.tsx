@@ -14,7 +14,6 @@ import { eurToBgn } from '../../utils/currency'
 
 const emptyForm: AdminProductPayload = {
   name: '',
-  sku: '',
   price_bgn: '',
   price_eur: '',
   old_price_bgn: '',
@@ -29,7 +28,6 @@ const emptyForm: AdminProductPayload = {
 function formFromProduct(product: ProductDetail): AdminProductPayload {
   return {
     name: product.name,
-    sku: '',
     price_bgn: product.price_bgn ?? '',
     price_eur: product.price_eur ?? '',
     old_price_bgn: product.old_price_bgn ?? '',

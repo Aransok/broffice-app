@@ -20,7 +20,7 @@ export interface AdminCartLine {
   product_id: string
   product_slug: string
   product_name: string
-  product_sku: string
+  product_number: string
   product_image: string | null
   quantity: number
   base_price: string
@@ -38,7 +38,6 @@ export interface AdminActivityRow {
   id: string
   product: string
   product_name: string
-  product_sku: string
   product_slug: string
   product_image: string | null
   category: string | null

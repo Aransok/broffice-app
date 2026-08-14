@@ -67,7 +67,7 @@ def price_cart(cart: Cart) -> dict:
                 "product_id": product.id,
                 "product_slug": product.slug,
                 "product_name": product.name,
-                "product_sku": product.sku,
+                "product_number": product.supplier_id or str(product.item_number or ""),
                 "product_image": images[0].path if images else None,
                 "quantity": item.quantity,
                 "base_price": str(base),

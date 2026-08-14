@@ -44,6 +44,9 @@ export function CartPage() {
                 to={`/product/${item.slug}`}
                 className="flex-1 text-slate-800 hover:text-primary"
               >
+                {item.productNumber && (
+                  <span className="text-slate-400">№{item.productNumber} </span>
+                )}
                 {item.name}
               </Link>
               <input

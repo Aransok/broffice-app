@@ -93,7 +93,9 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         {product.brand_name && <span className="text-xs text-slate-500">{product.brand_name}</span>}
         <Link to={`/product/${product.slug}`}>
           <h3 className="line-clamp-2 flex-1 text-sm text-slate-800 hover:text-primary">
-            {product.supplier_id && <span className="text-slate-400">№{product.supplier_id} </span>}
+            {(product.supplier_id || product.item_number) && (
+              <span className="text-slate-400">№{product.supplier_id || product.item_number} </span>
+            )}
             {product.name}
           </h3>
         </Link>

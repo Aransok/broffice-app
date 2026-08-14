@@ -55,7 +55,6 @@ export interface ProductListItem {
    * products never synced from the supplier catalog). */
   supplier_id: string
   slug: string
-  sku: string
   name: string
   category: string | null
   category_name: string | null

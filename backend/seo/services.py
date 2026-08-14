@@ -79,7 +79,7 @@ def build_product_seo(product) -> dict:
         "@type": "Product",
         "name": product.name,
         "description": description,
-        "sku": product.sku,
+        "sku": product.supplier_id or str(product.item_number or ""),
         "url": canonical,
     }
     if image_urls:

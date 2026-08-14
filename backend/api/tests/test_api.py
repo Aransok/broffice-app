@@ -1389,7 +1389,6 @@ def test_order_uses_individual_price_not_frontend_price(api_client, sample_produ
     assert item["original_unit_price"] == "1.35"
     assert item["line_total"] == "1.50"
     assert item["discount_label"] == "Индивидуална цена"
-    assert item["product_sku"] == sample_product.sku
     assert float(resp.data["subtotal_bgn"]) == 1.50
 
 
@@ -1590,7 +1589,7 @@ def test_admin_customer_activity_visible_to_admin(
     resp = api_client.get(f"/api/v1/admin/customers/{user.id}/activity/")
     assert resp.status_code == 200
     assert len(resp.data) == 1
-    assert resp.data[0]["product_sku"] == sample_product.sku
+    assert resp.data[0]["product_name"] == sample_product.name
 
 
 @pytest.mark.django_db

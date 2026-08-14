@@ -226,7 +226,6 @@ class ProductListSerializer(serializers.ModelSerializer):
             "item_number",
             "supplier_id",
             "slug",
-            "sku",
             "name",
             "category",
             "category_name",
@@ -337,7 +336,6 @@ class AdminCustomerSerializer(serializers.Serializer):
 
 class ProductViewSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="product.name", read_only=True)
-    product_sku = serializers.CharField(source="product.sku", read_only=True)
     product_slug = serializers.CharField(source="product.slug", read_only=True)
     product_image = serializers.SerializerMethodField()
     category_name = serializers.CharField(
@@ -377,7 +375,6 @@ class ProductViewSerializer(serializers.ModelSerializer):
             "id",
             "product",
             "product_name",
-            "product_sku",
             "product_slug",
             "product_image",
             "category",
@@ -432,7 +429,6 @@ class AdminProductWriteSerializer(serializers.ModelSerializer):
 
     external_id = serializers.CharField(required=False)
     slug = serializers.SlugField(required=False)
-    sku = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = Product
@@ -441,7 +437,6 @@ class AdminProductWriteSerializer(serializers.ModelSerializer):
             "external_id",
             "item_number",
             "slug",
-            "sku",
             "name",
             "description",
             "short_description",
@@ -473,28 +468,11 @@ class AdminProductWriteSerializer(serializers.ModelSerializer):
             )
         if not attrs.get("external_id") and self.instance is None:
             attrs["external_id"] = f"manual-{uuid.uuid4().hex[:12]}"
-        # The admin form always sends the `sku` key, blank or not (it has no
-        # SKU input at all) — treat a blank value the same as omitting the
-        # key entirely (model-level default generation on create, "leave
-        # unchanged" on edit) instead of writing an empty string over a real
-        # SKU and risking a later unique-constraint clash between two blanks.
-        if not attrs.get("sku"):
-            attrs.pop("sku", None)
-        elif self._sku_taken(attrs["sku"]):
-            raise serializers.ValidationError(
-                {"sku": "Вече съществува продукт с този код."}
-            )
         return attrs
 
     def create(self, validated_data):
         validated_data["item_number"] = next_item_number()
         return super().create(validated_data)
-
-    def _sku_taken(self, sku: str) -> bool:
-        qs = Product.objects.filter(sku=sku)
-        if self.instance:
-            qs = qs.exclude(pk=self.instance.pk)
-        return qs.exists()
 
     def _unique_slug(self, base: str) -> str:
         slug = base

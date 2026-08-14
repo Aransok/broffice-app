@@ -5,7 +5,7 @@ export interface CartLine {
   product_id: string
   product_slug: string
   product_name: string
-  product_sku: string
+  product_number: string
   product_image: string | null
   quantity: number
   base_price: string

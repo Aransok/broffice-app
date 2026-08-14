@@ -39,10 +39,15 @@ def _order_lines_text(order: Order) -> str:
         if order.company_mol:
             lines.append(f"МОЛ: {order.company_mol}")
     for item in order.items.all():
-        sku_part = f" [{item.product_sku}]" if item.product_sku else ""
+        number = (
+            (item.product.supplier_id or item.product.item_number)
+            if item.product_id
+            else None
+        )
+        number_part = f" [№{number}]" if number else ""
         discount_part = f" ({item.discount_label})" if item.discount_label else ""
         lines.append(
-            f"- {item.product_name}{sku_part} x{item.quantity} @ "
+            f"- {item.product_name}{number_part} x{item.quantity} @ "
             f"{format_eur(item.unit_price)}{discount_part} = "
             f"{format_eur(item.line_total)}"
         )
@@ -395,7 +400,6 @@ def _create_order_item(order: Order, product, line: dict) -> OrderItem:
         product=product,
         product_name=product.name,
         product_external_id=product.external_id,
-        product_sku=product.sku,
         quantity=line["quantity"],
         original_unit_price=line["original_unit_price"],
         unit_price=line["unit_price"],

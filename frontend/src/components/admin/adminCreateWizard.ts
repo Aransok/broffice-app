@@ -197,7 +197,7 @@ export async function advanceWizard(
       if (normalized.includes('продукт')) {
         return {
           state: { ...state, step: 'promo_product', data: { ...state.data, scope: 'product' } },
-          message: 'Търсете продукт — напишете (част от) името или SKU.',
+          message: 'Търсете продукт — напишете (част от) името или номера.',
         }
       }
       return { state, message: 'Изберете едно от: "всички", "категория", "продукт".' }
@@ -252,14 +252,17 @@ export async function advanceWizard(
       const products = await fetchProducts({ search: reply })
       return ambiguous(
         state,
-        products.results.map((p) => ({ id: p.id, label: `${p.name} (SKU: ${p.sku || '—'})` })),
+        products.results.map((p) => ({
+          id: p.id,
+          label: `${p.name} (№${p.supplier_id || p.item_number || '—'})`,
+        })),
         (option) =>
           promoAudienceState({
             ...state,
             data: { ...state.data, product: option.id, productLabel: option.label },
           }),
         'promo_product',
-        'Не намерих продукт с това име/SKU. Опитайте пак, или напишете "отказ".',
+        'Не намерих продукт с това име/номер. Опитайте пак, или напишете "отказ".',
       )
     }
 

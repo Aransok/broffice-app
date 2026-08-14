@@ -4,7 +4,6 @@ import type { Paginated, ProductDetail, ProductImage, ProductListItem } from './
 
 export interface AdminProductPayload {
   name?: string
-  sku?: string
   description?: string
   short_description?: string
   brand?: string | null

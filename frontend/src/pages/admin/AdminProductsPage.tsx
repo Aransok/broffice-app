@@ -147,7 +147,7 @@ export function AdminProductsPage() {
         <div className="relative min-w-55 flex-1">
           <input
             type="text"
-            placeholder="Търси по име или SKU..."
+            placeholder="Търси по име или номер..."
             value={search}
             onChange={(event) => updateSearch(event.target.value)}
             onFocus={() => setSearchFocused(true)}
@@ -174,8 +174,7 @@ export function AdminProductsPage() {
                       </div>
                       <span className="min-w-0 flex-1 truncate">{product.name}</span>
                       <span className="shrink-0 text-xs text-slate-400">
-                        {product.sku || '—'}
-                        {product.supplier_id && ` · №${product.supplier_id}`}
+                        №{product.supplier_id || product.item_number || '—'}
                       </span>
                     </button>
                   </li>
@@ -207,7 +206,6 @@ export function AdminProductsPage() {
                   <th className="py-2 pr-3">№</th>
                   <th className="py-2 pr-3">Снимка</th>
                   <th className="py-2 pr-3">Продукт</th>
-                  <th className="py-2 pr-3">SKU</th>
                   <th className="py-2 pr-3">Категория</th>
                   <th className="py-2 pr-3">Клиентска цена</th>
                   <th className="py-2 pr-3">Цена за реселър</th>
@@ -238,7 +236,6 @@ export function AdminProductsPage() {
                         )}
                         {product.name}
                       </td>
-                      <td className="py-2 pr-3 text-slate-500">{product.sku || '—'}</td>
                       <td className="py-2 pr-3 text-slate-500">{product.category_name ?? '—'}</td>
                       <td className="py-2 pr-3">
                         {formatEur(
@@ -308,11 +305,10 @@ export function AdminProductsPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-slate-900">
-                      №{product.item_number ?? '—'}
-                      {product.supplier_id && ` · Д${product.supplier_id}`} · {product.name}
+                      №{product.supplier_id || product.item_number || '—'} · {product.name}
                     </p>
                     <p className="text-xs text-slate-500">
-                      SKU: {product.sku || '—'} · {product.category_name ?? 'Без категория'}
+                      {product.category_name ?? 'Без категория'}
                     </p>
                     <p className="mt-1 text-sm font-medium text-slate-900">
                       {formatEur(

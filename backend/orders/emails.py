@@ -99,22 +99,19 @@ def render_order_email_html(
                 f'<div style="width:48px;height:48px;border:1px solid {BORDER};border-radius:6px;'
                 f'background:#f8fafc;"></div>'
             )
-        # Admin-facing emails show the storefront's own "№..." product
-        # number (the same one staff already see on every product card) so
-        # they can look the item up directly — customers still see SKU.
-        if show_profit:
-            item_number = item.product.supplier_id if item.product_id else ""
-            sku_html = (
-                f'<div style="color:{MUTED};font-size:12px;">№ {item_number}</div>'
-                if item_number
-                else ""
-            )
-        else:
-            sku_html = (
-                f'<div style="color:{MUTED};font-size:12px;">SKU: {item.product_sku}</div>'
-                if item.product_sku
-                else ""
-            )
+        # Shows the storefront's own "№..." product number — the same one
+        # shown on every product card — everywhere SKU used to appear
+        # (SKU has been retired sitewide in favor of this number).
+        item_number = (
+            (item.product.supplier_id or item.product.item_number)
+            if item.product_id
+            else ""
+        )
+        sku_html = (
+            f'<div style="color:{MUTED};font-size:12px;">№ {item_number}</div>'
+            if item_number
+            else ""
+        )
         discount_html = (
             f'<div style="color:{BRAND_ORANGE};font-size:12px;">{item.discount_label}</div>'
             if item.discount_label

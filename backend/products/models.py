@@ -1,15 +1,6 @@
-import uuid
-
 from django.db import models
 
 from common.models import SoftStatusModel, TimeStampedModel
-
-
-def _generate_sku() -> str:
-    # Called fresh per-instance by Django whenever no sku is supplied — unlike
-    # a static default="", this can't collide across rows created without one
-    # (raw fixtures/tests, management commands, etc.).
-    return f"BR-{uuid.uuid4().hex[:8].upper()}"
 
 
 def next_item_number() -> int:
@@ -28,9 +19,6 @@ class Product(TimeStampedModel, SoftStatusModel):
         unique=True, null=True, blank=True, db_index=True
     )
     slug = models.SlugField(max_length=255, unique=True)
-    sku = models.CharField(
-        max_length=128, unique=True, db_index=True, default=_generate_sku
-    )
     name = models.CharField(max_length=512)
     short_description = models.TextField(blank=True, default="")
     description = models.TextField(blank=True, default="")

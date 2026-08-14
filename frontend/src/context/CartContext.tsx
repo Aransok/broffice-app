@@ -16,6 +16,10 @@ export interface CartItem {
   productId: string
   slug: string
   name: string
+  /** The supplier/catalog number shown as "№..." everywhere else a product
+   * is listed (replaces SKU, which no longer exists) — null for a
+   * manually-added product with no supplier number and no item_number yet. */
+  productNumber: string | null
   price: string | null
   image: string | null
   quantity: number
@@ -63,6 +67,9 @@ function guestReducer(state: GuestState, action: GuestAction): GuestState {
             productId: action.product.id,
             slug: action.product.slug,
             name: action.product.name,
+            productNumber:
+              action.product.supplier_id ||
+              (action.product.item_number ? String(action.product.item_number) : null),
             price: action.product.client_price ?? action.product.price_bgn,
             image: action.product.primary_image,
             quantity: action.quantity,
@@ -171,6 +178,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       productId: line.product_id,
       slug: line.product_slug,
       name: line.product_name,
+      productNumber: line.product_number || null,
       price: line.unit_price,
       image: line.product_image,
       quantity: line.quantity,

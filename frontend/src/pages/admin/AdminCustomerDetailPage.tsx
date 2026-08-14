@@ -189,7 +189,7 @@ function CartTab({ customerId }: { customerId: number }) {
           <thead>
             <tr className="border-b border-slate-200 text-left text-slate-500">
               <th className="py-2 pr-4">Продукт</th>
-              <th className="py-2 pr-4">Код</th>
+              <th className="py-2 pr-4">№</th>
               <th className="py-2 pr-4">Кол-во</th>
               <th className="py-2 pr-4">Ед. цена</th>
               <th className="py-2 pr-4">Източник</th>
@@ -226,7 +226,7 @@ function CartTab({ customerId }: { customerId: number }) {
                       </div>
                     </div>
                   </td>
-                  <td className="py-2 pr-4 text-slate-500">{item.product_sku}</td>
+                  <td className="py-2 pr-4 text-slate-500">{item.product_number}</td>
                   <td className="py-2 pr-4">
                     <div className="flex items-center rounded-ui border border-slate-300">
                       <button

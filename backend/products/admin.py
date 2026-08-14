@@ -25,7 +25,7 @@ class ProductAdmin(admin.ModelAdmin):
         "admin_price",
         "status",
     )
-    search_fields = ("name", "slug", "external_id", "sku")
+    search_fields = ("name", "slug", "external_id")
     list_filter = ("status", "brand", "category")
     inlines = [ProductImageInline, ProductSpecInline]
 

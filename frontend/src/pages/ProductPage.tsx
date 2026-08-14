@@ -122,10 +122,13 @@ export function ProductPage() {
             <span className="text-sm text-slate-500">{product.brand_name}</span>
           )}
           <h1 className="mt-1 text-2xl font-semibold text-slate-900">
-            {product.supplier_id && <span className="text-slate-400">№{product.supplier_id} </span>}
+            {(product.supplier_id || product.item_number) && (
+              <span className="text-slate-400">
+                №{product.supplier_id || product.item_number}{' '}
+              </span>
+            )}
             {product.name}
           </h1>
-          {product.sku && <p className="mt-1 text-xs text-slate-400">Код: {product.sku}</p>}
 
           <div className="mt-4 flex items-baseline gap-3">
             {onSale && oldEur && (

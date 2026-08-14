@@ -8,12 +8,12 @@ import { bgnToEur } from '../../utils/currency'
 /** Shared "find a product" widget for every admin place that needs to pick
  * one out of ~90+ products by more than just its name: customer cart
  * management, individual pricing, and promotion product-scope selection.
- * Category filter + name/SKU search both go through the exact same public
- * product-listing endpoint/category data the storefront uses — no
+ * Category filter + name/number search both go through the exact same
+ * public product-listing endpoint/category data the storefront uses — no
  * duplicated product or category source. */
 export function AdminProductPicker({
   onSelect,
-  placeholder = 'Търси продукт по име или SKU...',
+  placeholder = 'Търси продукт по име или номер...',
 }: {
   onSelect: (product: ProductListItem) => void
   placeholder?: string
@@ -51,7 +51,7 @@ export function AdminProductPicker({
           placeholder={placeholder}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          aria-label="Търсене по име или SKU"
+          aria-label="Търсене по име или номер"
           className="min-w-55 flex-1 rounded-ui border border-slate-300 px-3 py-2 text-sm"
         />
       </div>
@@ -84,7 +84,8 @@ export function AdminProductPicker({
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-slate-900">{product.name}</p>
                   <p className="truncate text-xs text-slate-500">
-                    SKU: {product.sku || '—'} · {product.category_name ?? 'Без категория'}
+                    №{product.supplier_id || product.item_number || '—'} ·{' '}
+                    {product.category_name ?? 'Без категория'}
                   </p>
                 </div>
                 <div className="shrink-0 text-right text-xs text-slate-600">

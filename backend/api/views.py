@@ -179,7 +179,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         .filter(status=Product.STATUS_PUBLISHED)
     )
     lookup_field = "slug"
-    search_fields = ("name", "slug", "external_id", "sku", "supplier_id")
+    search_fields = ("name", "slug", "external_id", "supplier_id")
     filterset_fields = {
         "brand__slug": ["exact"],
         "category__external_id": ["exact"],
@@ -386,7 +386,7 @@ class SearchView(APIView):
                 Q(name__icontains=word)
                 | Q(description__icontains=word)
                 | Q(short_description__icontains=word)
-                | Q(sku__icontains=word)
+                | Q(supplier_id__icontains=word)
                 | Q(external_id__icontains=word)
                 | Q(brand__name__icontains=word)
                 | Q(category__name__icontains=word)
@@ -638,7 +638,7 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         .annotate(profit=F("client_price") - F("admin_price"))
         .all()
     )
-    search_fields = ("name", "slug", "external_id", "sku", "supplier_id")
+    search_fields = ("name", "slug", "external_id", "supplier_id")
     filterset_fields = ("category__external_id", "brand__external_id", "status")
     ordering_fields = (
         "external_id",
