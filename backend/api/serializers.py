@@ -144,6 +144,12 @@ class AddressSerializer(serializers.ModelSerializer):
             "post_code",
             "address_line",
             "is_default",
+            "is_company",
+            "company_name",
+            "company_eik",
+            "company_vat_number",
+            "company_address",
+            "company_mol",
         )
 
 

@@ -15,6 +15,12 @@ const emptyForm = {
   post_code: '',
   address_line: '',
   is_default: false,
+  is_company: false,
+  company_name: '',
+  company_eik: '',
+  company_vat_number: '',
+  company_address: '',
+  company_mol: '',
 }
 
 export function AccountAddressesPage() {
@@ -38,6 +44,12 @@ export function AccountAddressesPage() {
       post_code: address.post_code,
       address_line: address.address_line,
       is_default: address.is_default,
+      is_company: address.is_company,
+      company_name: address.company_name,
+      company_eik: address.company_eik,
+      company_vat_number: address.company_vat_number,
+      company_address: address.company_address,
+      company_mol: address.company_mol,
     })
   }
 
@@ -137,6 +149,67 @@ export function AccountAddressesPage() {
           />
           Използвай като адрес по подразбиране
         </label>
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={form.is_company}
+            onChange={(event) =>
+              setForm((prev) => ({ ...prev, is_company: event.target.checked }))
+            }
+          />
+          Фирмени данни за поръчки към този адрес
+        </label>
+        {form.is_company && (
+          <div className="flex flex-col gap-3 rounded-ui border border-slate-100 bg-slate-50 p-3">
+            <input
+              type="text"
+              placeholder="Име на фирма"
+              value={form.company_name}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, company_name: event.target.value }))
+              }
+              className="rounded-ui border border-slate-300 px-3 py-2"
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                type="text"
+                placeholder="ЕИК"
+                value={form.company_eik}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, company_eik: event.target.value }))
+                }
+                className="rounded-ui border border-slate-300 px-3 py-2"
+              />
+              <input
+                type="text"
+                placeholder="ДДС №"
+                value={form.company_vat_number}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, company_vat_number: event.target.value }))
+                }
+                className="rounded-ui border border-slate-300 px-3 py-2"
+              />
+            </div>
+            <input
+              type="text"
+              placeholder="Адрес по регистрация"
+              value={form.company_address}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, company_address: event.target.value }))
+              }
+              className="rounded-ui border border-slate-300 px-3 py-2"
+            />
+            <input
+              type="text"
+              placeholder="МОЛ"
+              value={form.company_mol}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, company_mol: event.target.value }))
+              }
+              className="rounded-ui border border-slate-300 px-3 py-2"
+            />
+          </div>
+        )}
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex gap-2">
           <button type="submit" className="rounded-ui bg-primary px-4 py-2 font-medium text-white">
@@ -174,6 +247,11 @@ export function AccountAddressesPage() {
                 <p className="text-sm text-slate-500">
                   {address.address_line}, {address.city} {address.post_code}
                 </p>
+                {address.is_company && (
+                  <p className="text-sm text-slate-500">
+                    {address.company_name} · ЕИК {address.company_eik}
+                  </p>
+                )}
               </div>
               <div className="flex gap-3 text-sm">
                 {!address.is_default && (

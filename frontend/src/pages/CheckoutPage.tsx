@@ -141,6 +141,15 @@ export function CheckoutPage() {
       setDeliveryCity(address.city)
       setDeliveryPostCode(address.post_code)
       setPhone((prev) => prev || address.phone)
+      setName((prev) => prev || address.full_name)
+      if (address.is_company) {
+        setIsCompanyOrder(true)
+        setCompanyName(address.company_name)
+        setCompanyEik(address.company_eik)
+        setCompanyVatNumber(address.company_vat_number)
+        setCompanyAddress(address.company_address)
+        setCompanyMol(address.company_mol)
+      }
     }
   }
 

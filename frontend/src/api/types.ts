@@ -113,6 +113,12 @@ export interface Address {
   post_code: string
   address_line: string
   is_default: boolean
+  is_company: boolean
+  company_name: string
+  company_eik: string
+  company_vat_number: string
+  company_address: string
+  company_mol: string
 }
 
 export interface SpeedyOffice {

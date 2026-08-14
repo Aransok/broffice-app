@@ -1546,6 +1546,62 @@ def test_order_checkout_speedy_address_autosaves_address_for_logged_in_customer(
 
 
 @pytest.mark.django_db
+def test_order_checkout_speedy_address_autosaves_company_info(
+    api_client, sample_product
+):
+    from accounts.models import Address
+
+    user = User.objects.create_user(username="company-buyer", password="pass12345")
+    api_client.force_authenticate(user=user)
+
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "customer_name": "Иван Иванов",
+            "customer_phone": "0888123456",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+            "shipping_method": "speedy_address",
+            "delivery_address_line": "ul. Test 1",
+            "delivery_city": "Пловдив",
+            "is_company_order": True,
+            "company_name": "Тест ЕООД",
+            "company_eik": "123456789",
+            "company_vat_number": "BG123456789",
+            "company_address": "ул. Регистрация 1",
+            "company_mol": "Петър Петров",
+        },
+        format="json",
+    )
+    assert resp.status_code == 201
+    address = Address.objects.get(user=user)
+    assert address.is_company is True
+    assert address.company_name == "Тест ЕООД"
+    assert address.company_eik == "123456789"
+    assert address.company_mol == "Петър Петров"
+
+    # A later non-company order re-using the same address must not wipe the
+    # saved company info - only a company order overwrites it.
+    resp2 = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "customer_name": "Иван Иванов",
+            "customer_phone": "0888123456",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+            "shipping_method": "speedy_address",
+            "delivery_address_line": "ul. Test 1",
+            "delivery_city": "Пловдив",
+        },
+        format="json",
+    )
+    assert resp2.status_code == 201
+    address.refresh_from_db()
+    assert address.is_company is True
+    assert address.company_name == "Тест ЕООД"
+
+
+@pytest.mark.django_db
 def test_order_checkout_speedy_office(api_client, sample_product):
     from shipping.models import SpeedyOffice
 

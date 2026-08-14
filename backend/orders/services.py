@@ -518,15 +518,47 @@ def reprice_pending_order(order: Order) -> Order:
 
 
 def _get_or_save_address(
-    user, address_id, address_line, city, post_code, full_name, phone
+    user,
+    address_id,
+    address_line,
+    city,
+    post_code,
+    full_name,
+    phone,
+    *,
+    is_company_order=False,
+    company_name="",
+    company_eik="",
+    company_vat_number="",
+    company_address="",
+    company_mol="",
 ):
     """Resolve the delivery address for a speedy_address order, auto-saving
     a new one to the customer's address book (deduplicated) so it's there
     to pick again next time, without requiring an explicit "save address"
-    step on checkout."""
+    step on checkout. For a company order, also snapshots the company
+    details (EIK/VAT/MOL/registered address) onto that same Address record
+    so a returning B2B customer doesn't retype them next time either."""
+    company_fields = (
+        {
+            "is_company": True,
+            "company_name": company_name or "",
+            "company_eik": company_eik or "",
+            "company_vat_number": company_vat_number or "",
+            "company_address": company_address or "",
+            "company_mol": company_mol or "",
+        }
+        if is_company_order
+        else {}
+    )
+
     if address_id:
         existing = Address.objects.filter(id=address_id, user=user).first()
         if existing:
+            if company_fields:
+                for field, val in company_fields.items():
+                    setattr(existing, field, val)
+                existing.save(update_fields=list(company_fields))
             return existing
 
     if not address_line or not city:
@@ -536,6 +568,10 @@ def _get_or_save_address(
         user=user, address_line=address_line, city=city, post_code=post_code or ""
     ).first()
     if match:
+        if company_fields:
+            for field, val in company_fields.items():
+                setattr(match, field, val)
+            match.save(update_fields=list(company_fields))
         return match
 
     existing_count = Address.objects.filter(user=user).count()
@@ -548,6 +584,7 @@ def _get_or_save_address(
         post_code=post_code or "",
         address_line=address_line,
         is_default=existing_count == 0,
+        **company_fields,
     )
 
 
@@ -587,6 +624,12 @@ def create_order(
             delivery_post_code,
             customer_name,
             customer_phone,
+            is_company_order=bool(is_company_order),
+            company_name=company_name,
+            company_eik=company_eik,
+            company_vat_number=company_vat_number,
+            company_address=company_address,
+            company_mol=company_mol,
         )
 
     # Validated up front (before touching the DB further) so a bad/used code

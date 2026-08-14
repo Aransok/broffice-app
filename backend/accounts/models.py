@@ -33,6 +33,16 @@ class Address(TimeStampedModel):
     post_code = models.CharField(max_length=16, blank=True, default="")
     address_line = models.CharField(max_length=512)
     is_default = models.BooleanField(default=False)
+    # Snapshot of the company details used on a company order placed against
+    # this address, so a returning B2B customer doesn't retype EIK/VAT/MOL
+    # every time - populated only when the order that saved/matched this
+    # address was a company order.
+    is_company = models.BooleanField(default=False)
+    company_name = models.CharField(max_length=255, blank=True, default="")
+    company_eik = models.CharField(max_length=32, blank=True, default="")
+    company_vat_number = models.CharField(max_length=32, blank=True, default="")
+    company_address = models.CharField(max_length=512, blank=True, default="")
+    company_mol = models.CharField(max_length=255, blank=True, default="")
 
     class Meta:
         ordering = ["-is_default", "-created_at"]
