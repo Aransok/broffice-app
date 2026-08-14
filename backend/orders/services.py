@@ -466,6 +466,40 @@ def reprice_pending_order(order: Order) -> Order:
     return order
 
 
+def _get_or_save_address(
+    user, address_id, address_line, city, post_code, full_name, phone
+):
+    """Resolve the delivery address for a speedy_address order, auto-saving
+    a new one to the customer's address book (deduplicated) so it's there
+    to pick again next time, without requiring an explicit "save address"
+    step on checkout."""
+    if address_id:
+        existing = Address.objects.filter(id=address_id, user=user).first()
+        if existing:
+            return existing
+
+    if not address_line or not city:
+        return None
+
+    match = Address.objects.filter(
+        user=user, address_line=address_line, city=city, post_code=post_code or ""
+    ).first()
+    if match:
+        return match
+
+    existing_count = Address.objects.filter(user=user).count()
+    return Address.objects.create(
+        user=user,
+        label=f"Адрес {existing_count + 1}",
+        full_name=full_name or "",
+        phone=phone or "",
+        city=city,
+        post_code=post_code or "",
+        address_line=address_line,
+        is_default=existing_count == 0,
+    )
+
+
 @transaction.atomic
 def create_order(
     *,
@@ -493,8 +527,16 @@ def create_order(
     is_authenticated = user is not None and user.is_authenticated
 
     address = None
-    if address_id and is_authenticated:
-        address = Address.objects.filter(id=address_id, user=user).first()
+    if is_authenticated and shipping_method == Order.SHIPPING_SPEEDY_ADDRESS:
+        address = _get_or_save_address(
+            user,
+            address_id,
+            delivery_address_line,
+            delivery_city,
+            delivery_post_code,
+            customer_name,
+            customer_phone,
+        )
 
     # Validated up front (before touching the DB further) so a bad/used code
     # fails the whole request with a clear message rather than silently

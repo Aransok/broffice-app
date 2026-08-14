@@ -1438,6 +1438,76 @@ def test_order_checkout_speedy_address_missing_fields(api_client, sample_product
 
 
 @pytest.mark.django_db
+def test_order_checkout_speedy_address_autosaves_address_for_logged_in_customer(
+    api_client, sample_product
+):
+    from accounts.models import Address
+
+    user = User.objects.create_user(username="addr-buyer", password="pass12345")
+    api_client.force_authenticate(user=user)
+
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "customer_name": "Иван Иванов",
+            "customer_phone": "0888123456",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+            "shipping_method": "speedy_address",
+            "delivery_address_line": "ul. Test 1",
+            "delivery_city": "Пловдив",
+            "delivery_post_code": "4000",
+        },
+        format="json",
+    )
+    assert resp.status_code == 201
+    addresses = Address.objects.filter(user=user)
+    assert addresses.count() == 1
+    address = addresses.first()
+    assert address.label == "Адрес 1"
+    assert address.is_default is True
+    assert address.address_line == "ul. Test 1"
+
+    # A second order with a genuinely different address adds a second one.
+    resp2 = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "customer_name": "Иван Иванов",
+            "customer_phone": "0888123456",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+            "shipping_method": "speedy_address",
+            "delivery_address_line": "ul. Different 2",
+            "delivery_city": "Варна",
+        },
+        format="json",
+    )
+    assert resp2.status_code == 201
+    assert Address.objects.filter(user=user).count() == 2
+    new_address = Address.objects.get(user=user, address_line="ul. Different 2")
+    assert new_address.label == "Адрес 2"
+    assert new_address.is_default is False
+
+    # Re-using the exact same first address again doesn't create a duplicate.
+    resp3 = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "customer_name": "Иван Иванов",
+            "customer_phone": "0888123456",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+            "shipping_method": "speedy_address",
+            "delivery_address_line": "ul. Test 1",
+            "delivery_city": "Пловдив",
+            "delivery_post_code": "4000",
+        },
+        format="json",
+    )
+    assert resp3.status_code == 201
+    assert Address.objects.filter(user=user).count() == 2
+
+
+@pytest.mark.django_db
 def test_order_checkout_speedy_office(api_client, sample_product):
     from shipping.models import SpeedyOffice
 
