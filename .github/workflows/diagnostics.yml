@@ -152,15 +152,31 @@ jobs:
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
           $lines = @(
+            'from django.contrib.auth.models import User',
+            'from promotions.models import Promotion',
             'from promotions.services import get_active_promotions',
             'promos = get_active_promotions()',
-            'print(f"Total active promotions: {len(promos)}")',
-            'print()',
+            'print(f"Total ACTIVE promotions: {len(promos)}")',
             'for p in promos:',
             '    cat = p.category.name if p.category_id else None',
             '    prod = p.product.name if p.product_id else None',
             '    user = p.user.username if p.user_id else "(none - PUBLIC/GLOBAL AUDIENCE)"',
-            '    print(f"id={p.id} name={p.name!r} scope={p.scope} user={user} product={prod} category={cat} type={p.discount_type} value={p.value} active={p.active} status={p.status} starts={p.starts_at} ends={p.ends_at} created={p.created_at}")'
+            '    print(f"id={p.id} name={p.name!r} scope={p.scope} user={user} product={prod} category={cat} type={p.discount_type} value={p.value} created={p.created_at}")',
+            'print()',
+            'print("--- ALL promotions incl. inactive/expired (last 20 by created_at) ---")',
+            'for p in Promotion.objects.order_by("-created_at")[:20]:',
+            '    cat = p.category.name if p.category_id else None',
+            '    user = p.user.username if p.user_id else "(none)"',
+            '    print(f"id={p.id} name={p.name!r} scope={p.scope} user={user} category={cat} active={p.active} status={p.status} created={p.created_at}")',
+            'print()',
+            'print("--- who is braya2020@abv.bg ---")',
+            'u = User.objects.filter(username__icontains="braya2020").first() or User.objects.filter(email__icontains="braya2020").first()',
+            'if u:',
+            '    profile = getattr(u, "profile", None)',
+            '    is_portal = profile.is_admin_portal if profile else None',
+            '    print(f"id={u.id} username={u.username!r} email={u.email!r} is_staff={u.is_staff} is_superuser={u.is_superuser} is_admin_portal={is_portal}")',
+            'else:',
+            '    print("not found by that username/email fragment")'
           )
           $pythonSource = $lines -join "`n"
           $b64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($pythonSource))
