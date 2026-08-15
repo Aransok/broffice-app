@@ -141,6 +141,20 @@ jobs:
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: Get-PSDrive C | Select-Object Used, Free
 
+      - name: Nightly backup folder contents (did last night's 01:00 run actually happen)
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          $root = "C:\broffice-backups"
+          if (Test-Path $root) {
+            Get-ChildItem $root -Directory | Sort-Object Name -Descending | ForEach-Object {
+              $dbFile = Join-Path $_.FullName "database.sql"
+              $size = if (Test-Path $dbFile) { "{0} KB" -f [math]::Round((Get-Item $dbFile).Length / 1KB) } else { "MISSING" }
+              Write-Host "$($_.Name)  database.sql=$size"
+            }
+          } else {
+            Write-Host "No $root folder found at all yet."
+          }
+
       - name: Published products with client_price 0 or missing (real counts, read-only)
         # Added 2026-08-13 - client reported seeing "a lot" of €0.00 items
         # after the EUR-only display change. That change only touched
