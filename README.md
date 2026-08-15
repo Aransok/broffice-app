@@ -1,6 +1,18 @@
 # Broffice
 
-A full-stack e-commerce platform for a Bulgarian office-supplies retailer — a modern Django + React rebuild of an existing storefront, plus a full admin back office for managing the catalog, orders, promotions, and customers.
+A full-stack e-commerce platform for a Bulgarian office-supplies retailer — a ground-up Django + React rebuild of an existing storefront, plus a complete admin back office for managing the catalog, orders, promotions, and customers. In production, serving real customers.
+
+**Live site:** [www.broffice.bg](https://www.broffice.bg)
+
+## Highlights
+
+- **Full-stack, production system** — not a demo. Real customers, real orders, real supplier catalog sync, running live.
+- **Self-hosted CI/CD pipeline** — GitHub Actions with a self-hosted runner builds, tests, and deploys on every push; separate on-demand workflows for remote diagnostics and disaster recovery, so the production machine can be inspected and fixed without physical access.
+- **Automated backups & recovery** — nightly database + media dumps via Windows Task Scheduler, a restore mechanism triggerable from the admin panel, and a watchdog that detects and recovers from a crashed Docker host automatically.
+- **AI-assisted asset pipeline** — homepage promo banners are generated automatically (Pillow-composited, with ML-based background removal on product photos) the moment a promotion goes active, no manual design work required.
+- **Dual pricing engine** — every product carries a client price and a reseller cost simultaneously, with live profit-margin visibility for admins and a promotion/override system that resolves correctly regardless of which one applies.
+- **Real B2B support** — company orders with EIK/VAT capture, PDF order documents with proper Cyrillic rendering, and an invoice/credit-note numbering scheme independent of the public order number.
+- **Conversational admin tooling** — a built-in help chat that not only answers "how do I..." questions but can create promotions and coupons directly from a natural-language reply.
 
 ## Features
 
@@ -18,18 +30,24 @@ A full-stack e-commerce platform for a Bulgarian office-supplies retailer — a 
 **Admin panel**
 - Dual pricing (client price vs. reseller cost) with live profit-margin display, admin-only
 - Product CRUD with multi-image upload and structured specifications
-- Order confirm/reject workflow with automatic customer + admin email notifications and PDF invoices (admin copies additionally show profit)
+- Order confirm/reject workflow with automatic customer + admin email notifications and PDF order documents (admin copies additionally show profit)
 - Promotion and coupon management, independently targetable by scope (product/category/site) and audience (a specific client or everyone)
 - Per-customer activity view and cart management tool
 - A built-in help chat, including a conversational wizard that creates promotions/coupons from natural-language replies
 - Live catalog sync from the supplier's API (safe to re-run, never overwrites manually-set prices)
+
+**Operations**
+- Self-hosted GitHub Actions CI/CD: lint, test, and deploy on every push
+- Nightly automated database + media backups with retention pruning
+- Admin-triggered restore, and a watchdog that recovers a crashed Docker host without manual intervention
+- On-demand remote diagnostics workflow for production troubleshooting
 
 ## Tech stack
 
 - **Backend:** Django 5, Django REST Framework, PostgreSQL, Redis, Celery, Pillow, `rembg` (background removal), ReportLab (PDF generation)
 - **Frontend:** React 19, TypeScript, Vite, React Router, TanStack Query, Tailwind CSS
 - **Testing:** pytest / pytest-django, Vitest, ESLint, Ruff, Black
-- **Infra:** Docker Compose (Postgres, Redis, Django, Celery worker + beat, Vite dev server)
+- **Infra:** Docker Compose (Postgres, Redis, Django, Celery worker + beat, Caddy), GitHub Actions (self-hosted runner)
 
 ## Getting started
 
