@@ -26,30 +26,43 @@ def get_active_promotions():
     )
 
 
-def promoted_products_q(promotions):
+def promoted_products_q(promotions, user=None):
     """Q object matching products covered by an active product/category/
     global promotion — the single place this "which products count as on
     promotion" question is answered, reused by both the homepage's
     Promotions section and the public /promotions listing so they can
     never drift apart. Promotions targeted at one specific client (`user`
-    set — independent of scope now, see promotions/models.py) are
-    deliberately excluded: this function has no notion of "which visitor is
-    looking," so a private per-client discount must never show up as a
-    public "on sale" badge for everyone.
+    set — independent of scope now, see promotions/models.py) are excluded
+    from what an anonymous or *different* visitor sees — a private
+    per-client discount must never show up as a public "on sale" badge for
+    everyone else.
+
+    When `user` is the currently authenticated visitor, their own
+    client-targeted promotions ARE included too — a logged-in client with a
+    personal discount must be able to find it on the Promotions page/section
+    like anyone else's sale items, not just see it silently applied at
+    checkout (real client report: "I can't see the promotion made for me").
 
     Returns None when no qualifying promotion is active at all — callers
     decide what that means (homepage: fall back to something else; listing:
     show nothing).
     """
-    public_promotions = [p for p in promotions if p.user_id is None]
+    is_authenticated = user is not None and getattr(user, "is_authenticated", False)
+    visible_promotions = [
+        p
+        for p in promotions
+        if p.user_id is None or (is_authenticated and p.user_id == user.id)
+    ]
     product_ids = {
-        p.product_id for p in public_promotions if p.scope == Promotion.SCOPE_PRODUCT
+        p.product_id for p in visible_promotions if p.scope == Promotion.SCOPE_PRODUCT
     }
     category_ids: set = set()
-    for p in public_promotions:
+    for p in visible_promotions:
         if p.scope == Promotion.SCOPE_CATEGORY and p.category_id:
             category_ids |= get_descendant_category_ids(p.category)
-    has_global_promo = any(p.scope == Promotion.SCOPE_GLOBAL for p in public_promotions)
+    has_global_promo = any(
+        p.scope == Promotion.SCOPE_GLOBAL for p in visible_promotions
+    )
     if product_ids or category_ids:
         return Q(id__in=product_ids) | Q(category_id__in=category_ids)
     if has_global_promo:

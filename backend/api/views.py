@@ -203,7 +203,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
                 return qs.none()
             qs = qs.filter(category_id__in=get_descendant_category_ids(category))
         if self.request.query_params.get("on_promotion"):
-            promo_q = promoted_products_q(get_active_promotions())
+            promo_q = promoted_products_q(get_active_promotions(), self.request.user)
             qs = qs.filter(promo_q).distinct() if promo_q is not None else qs.none()
         return qs
 
@@ -550,7 +550,7 @@ class HomeSectionsView(APIView):
             .order_by("-created_at")[: self.SECTION_SIZE]
         )
 
-        promo_q = promoted_products_q(context["active_promotions"])
+        promo_q = promoted_products_q(context["active_promotions"], request.user)
         promo_qs = Product.objects.filter(
             status=Product.STATUS_PUBLISHED
         ).select_related("category", "brand")

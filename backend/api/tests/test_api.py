@@ -283,6 +283,61 @@ def test_category_promotion_applies_to_descendant_category_only(api_client):
 
 
 @pytest.mark.django_db
+def test_client_can_see_own_personal_promotion_on_promotions_page(api_client):
+    """Real client report: a customer with a personal (user-targeted)
+    promotion couldn't find it anywhere on the site - it was silently
+    applied at checkout, but the /promotions listing (and homepage
+    Promotions section, backed by the same promoted_products_q) never
+    included it since that function used to have no notion of "who's
+    looking". It must still stay invisible to anyone else."""
+    from promotions.models import Promotion
+
+    category = Category.objects.create(
+        external_id="vip-cat", slug="vip-cat", name="VIP Category"
+    )
+    Product.objects.create(
+        external_id="vip-product",
+        slug="vip-product",
+        name="VIP Product",
+        category=category,
+        client_price="50.00",
+    )
+    target_client = User.objects.create_user(username="vip3", password="pass12345")
+    other_client = User.objects.create_user(username="notvip3", password="pass12345")
+    Promotion.objects.create(
+        name="Personal VIP discount",
+        discount_type="percent",
+        value="20.00",
+        scope="category",
+        category=category,
+        user=target_client,
+    )
+
+    # Anonymous: must not see it on the promotions listing at all.
+    anon_ids = {
+        p["external_id"]
+        for p in api_client.get("/api/v1/products/?on_promotion=1").data["results"]
+    }
+    assert "vip-product" not in anon_ids
+
+    # A different logged-in client: still must not see it.
+    api_client.force_authenticate(user=other_client)
+    other_ids = {
+        p["external_id"]
+        for p in api_client.get("/api/v1/products/?on_promotion=1").data["results"]
+    }
+    assert "vip-product" not in other_ids
+
+    # The actual target client: now finds it on the promotions listing.
+    api_client.force_authenticate(user=target_client)
+    target_ids = {
+        p["external_id"]
+        for p in api_client.get("/api/v1/products/?on_promotion=1").data["results"]
+    }
+    assert "vip-product" in target_ids
+
+
+@pytest.mark.django_db
 def test_admin_promotions_list_shows_category_and_product_names(
     api_client, admin_user, sample_product
 ):
