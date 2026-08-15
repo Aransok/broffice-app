@@ -117,7 +117,12 @@ export function AdminCustomerDetailPage() {
       {tab === 'cart' && <CartTab customerId={customerId} />}
       {tab === 'orders' && <OrdersTab customerId={customerId} />}
       {tab === 'pricing' && <PricingTab customerId={customerId} />}
-      {tab === 'promotions' && <PromotionsTab customerId={customerId} />}
+      {tab === 'promotions' && (
+        <PromotionsTab
+          customerId={customerId}
+          customerName={customer?.username ?? `Клиент #${customerId}`}
+        />
+      )}
       {tab === 'activity' && <ActivityTab customerId={customerId} />}
     </div>
   )
@@ -481,7 +486,13 @@ function PricingTab({ customerId }: { customerId: number }) {
   )
 }
 
-function PromotionsTab({ customerId }: { customerId: number }) {
+function PromotionsTab({
+  customerId,
+  customerName,
+}: {
+  customerId: number
+  customerName: string
+}) {
   const { data, refetch } = usePromotions({ user: customerId })
   const { data: categories } = useCategories()
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -588,6 +599,11 @@ function PromotionsTab({ customerId }: { customerId: number }) {
             Пълното управление на промоции
           </Link>{' '}
           е тук, ако трябва промоция за целия сайт (за всички клиенти).
+        </p>
+        <p className="mb-2 text-xs text-slate-500">
+          🔒 Всяка промоция тук е видима само за {customerName} — за да проверите, че НЕ е
+          видима за други клиенти, проверявайте в анонимен/инкогнито прозорец, а не докато сте
+          влезли в неговия акаунт.
         </p>
 
         <input

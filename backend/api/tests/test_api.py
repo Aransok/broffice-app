@@ -639,6 +639,85 @@ def test_promotion_client_targeted_global_only_applies_to_that_user(
 
 
 @pytest.mark.django_db
+def test_many_category_promotions_for_one_client_never_leak_to_other_users(
+    api_client,
+):
+    """Real client report: after creating more than 3 category promotions
+    for one specific client, one of them appeared to apply to ALL
+    customers, with the price dropping further as more were added.
+    Reproduces the exact shape of that report (4 correctly-scoped,
+    client-targeted category promotions created one at a time) against the
+    real matching code, checking after EVERY single one that an anonymous
+    visitor and an unrelated second client still see no discount at all."""
+    from promotions.models import Promotion
+
+    category = Category.objects.create(external_id="paper", slug="paper", name="Хартия")
+    Product.objects.create(
+        external_id="paper-product",
+        slug="paper-product",
+        name="Paper Product",
+        category=category,
+        client_price="100.00",
+    )
+    target_client = User.objects.create_user(username="target", password="pass12345")
+    other_client = User.objects.create_user(username="other", password="pass12345")
+
+    discount_values = ["5.00", "10.00", "15.00", "20.00", "25.00"]
+    for i, value in enumerate(discount_values, start=1):
+        Promotion.objects.create(
+            name=f"Client category promo #{i}",
+            discount_type="percent",
+            value=value,
+            scope="category",
+            category=category,
+            user=target_client,
+        )
+
+        # After EVERY promo added (including past the 3rd), anonymous and
+        # an unrelated second client must still see zero discount.
+        anon_listed = next(
+            p
+            for p in api_client.get("/api/v1/products/").data["results"]
+            if p["external_id"] == "paper-product"
+        )
+        assert anon_listed["promo_price_bgn"] is None, (
+            f"LEAK after creating promo #{i}: anonymous visitor saw a "
+            f"discount that was only meant for the target client"
+        )
+
+        api_client.force_authenticate(user=other_client)
+        other_listed = next(
+            p
+            for p in api_client.get("/api/v1/products/").data["results"]
+            if p["external_id"] == "paper-product"
+        )
+        assert other_listed["promo_price_bgn"] is None, (
+            f"LEAK after creating promo #{i}: an unrelated second client "
+            f"saw a discount that was only meant for the target client"
+        )
+        api_client.force_authenticate(user=None)
+
+        # The actual target client should see the single BEST (lowest)
+        # price among their own promos so far, not a compounded/stacked one.
+        api_client.force_authenticate(user=target_client)
+        target_listed = next(
+            p
+            for p in api_client.get("/api/v1/products/").data["results"]
+            if p["external_id"] == "paper-product"
+        )
+        best_value = max(Decimal(v) for v in discount_values[:i])
+        expected = (Decimal("100.00") * (1 - best_value / 100)).quantize(
+            Decimal("0.01")
+        )
+        assert Decimal(target_listed["promo_price_bgn"]) == expected, (
+            f"After promo #{i}, target client's price should reflect only "
+            f"the single best discount among their own promos, not a "
+            f"stacked/compounded total"
+        )
+        api_client.force_authenticate(user=None)
+
+
+@pytest.mark.django_db
 def test_promotion_target_and_audience_are_independent(api_client, sample_product):
     """The actual new capability: a promotion can target one specific
     product AND one specific client at the same time — previously

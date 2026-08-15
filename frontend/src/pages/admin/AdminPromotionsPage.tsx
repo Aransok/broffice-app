@@ -269,16 +269,23 @@ export function AdminPromotionsPage() {
             </ul>
           )}
           {form.userId && (
-            <p className="mt-1 text-sm text-primary">
-              Избран: {form.username}{' '}
-              <button
-                type="button"
-                onClick={() => setForm((prev) => ({ ...prev, userId: '', username: '' }))}
-                className="ml-1 text-slate-500 underline"
-              >
-                премахни
-              </button>
-            </p>
+            <>
+              <p className="mt-1 text-sm text-primary">
+                Избран: {form.username}{' '}
+                <button
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, userId: '', username: '' }))}
+                  className="ml-1 text-slate-500 underline"
+                >
+                  премахни
+                </button>
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Тази промоция ще е видима само за {form.username} — за да проверите, че НЕ е
+                видима за други, проверявайте от анонимен/инкогнито прозорец, а не докато сте
+                влезли в неговия акаунт.
+              </p>
+            </>
           )}
         </div>
 
@@ -322,7 +329,17 @@ export function AdminPromotionsPage() {
         <tbody>
           {promotions?.results.map((promo) => (
             <tr key={promo.id} className="border-b border-slate-100">
-              <td className="py-2 pr-4">{promo.name}</td>
+              <td className="py-2 pr-4">
+                {promo.name}
+                {promo.username && (
+                  <span
+                    className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
+                    title={`Видима само за ${promo.username} — проверявайте в анонимен/инкогнито прозорец, не докато сте влезли в неговия акаунт`}
+                  >
+                    🔒 Лично: {promo.username}
+                  </span>
+                )}
+              </td>
               <td className="py-2 pr-4 text-slate-500">
                 {SCOPE_LABELS[promo.scope]}
                 {promo.scope === 'category' && promo.category_name && (
@@ -330,9 +347,6 @@ export function AdminPromotionsPage() {
                 )}
                 {promo.scope === 'product' && promo.product_name && (
                   <span className="block text-xs text-slate-700">{promo.product_name}</span>
-                )}
-                {promo.username && (
-                  <span className="block text-xs text-primary">клиент: {promo.username}</span>
                 )}
               </td>
               <td className="py-2 pr-4">
