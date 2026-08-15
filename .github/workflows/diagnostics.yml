@@ -141,6 +141,31 @@ jobs:
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: Get-PSDrive C | Select-Object Used, Free
 
+      - name: Active promotions - full detail (read-only, investigating client-reported bug)
+        # Added 2026-08-15 - client reports that after creating "more than 3"
+        # category promotions for one specific client, one of them starts
+        # applying to ALL customers, and prices keep dropping further as more
+        # get added. find_matching_promotions/get_effective_price code review
+        # didn't show an obvious matching bug - this dumps every currently
+        # active promotion's real scope/user/category/value so the actual
+        # data can be checked against what's expected, rather than guessing.
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          $lines = @(
+            'from promotions.services import get_active_promotions',
+            'promos = get_active_promotions()',
+            'print(f"Total active promotions: {len(promos)}")',
+            'print()',
+            'for p in promos:',
+            '    cat = p.category.name if p.category_id else None',
+            '    prod = p.product.name if p.product_id else None',
+            '    user = p.user.username if p.user_id else "(none - PUBLIC/GLOBAL AUDIENCE)"',
+            '    print(f"id={p.id} name={p.name!r} scope={p.scope} user={user} product={prod} category={cat} type={p.discount_type} value={p.value} active={p.active} status={p.status} starts={p.starts_at} ends={p.ends_at} created={p.created_at}")'
+          )
+          $pythonSource = $lines -join "`n"
+          $b64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($pythonSource))
+          docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell -c "import base64; exec(base64.b64decode('$b64').decode('utf-8'))"
+
       - name: Nightly backup folder contents (did last night's 01:00 run actually happen)
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
