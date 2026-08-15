@@ -4,7 +4,7 @@ import { useAddresses } from '../api/addresses'
 import { type CouponDiscountType, validateCoupon } from '../api/coupons'
 import { createOrder } from '../api/orders'
 import { fetchSpeedyQuote, useSpeedyOffices } from '../api/shipping'
-import type { ShippingMethod, SpeedyOffice } from '../api/types'
+import type { PaymentMethod, ShippingMethod, SpeedyOffice } from '../api/types'
 import { Seo } from '../components/Seo'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
@@ -94,6 +94,7 @@ export function CheckoutPage() {
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('speedy_address')
   const [selectedOffice, setSelectedOffice] = useState<SpeedyOffice | null>(null)
   const [shippingCost, setShippingCost] = useState<string | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash_on_delivery')
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -153,6 +154,19 @@ export function CheckoutPage() {
     }
   }
 
+  // Auto-fills the customer's default (or otherwise first, per the API's
+  // own "-is_default, -created_at" ordering) saved address as soon as it
+  // loads, so a returning customer doesn't have to re-pick it every time -
+  // they can still switch to a different saved address or type a new one,
+  // this only sets the initial value.
+  useEffect(() => {
+    if (selectedAddressId || !addresses || addresses.results.length === 0) return
+    // One-time initialization of local form state from async-loaded data, not a derived value.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    handleSelectAddress(addresses.results[0].id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addresses])
+
   useEffect(() => {
     const city = shippingMethod === 'speedy_office' ? selectedOffice?.city : deliveryCity
     if (!city) return
@@ -206,7 +220,7 @@ export function CheckoutPage() {
         items: items.map((item) => ({ product_id: item.productId, quantity: item.quantity })),
         address_id: selectedAddressId ?? undefined,
         shipping_method: shippingMethod,
-        payment_method: 'cash_on_delivery',
+        payment_method: paymentMethod,
         coupon_code: appliedCoupon?.code,
         is_company_order: isCompanyOrder,
         ...(isCompanyOrder
@@ -409,10 +423,24 @@ export function CheckoutPage() {
 
         <section>
           <h2 className="mb-3 font-semibold text-slate-900">Начин на плащане</h2>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="radio" checked readOnly />
-            Наложен платеж (в брой при доставка)
-          </label>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                checked={paymentMethod === 'cash_on_delivery'}
+                onChange={() => setPaymentMethod('cash_on_delivery')}
+              />
+              Наложен платеж (в брой при доставка)
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                checked={paymentMethod === 'bank_transfer'}
+                onChange={() => setPaymentMethod('bank_transfer')}
+              />
+              Плащане по банков път
+            </label>
+          </div>
           <p className="mt-1 text-xs text-slate-500">Плащане с карта ще бъде добавено скоро.</p>
         </section>
 

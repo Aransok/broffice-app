@@ -52,8 +52,10 @@ class Order(TimeStampedModel):
     ]
 
     PAYMENT_CASH_ON_DELIVERY = "cash_on_delivery"
+    PAYMENT_BANK_TRANSFER = "bank_transfer"
     PAYMENT_METHOD_CHOICES = [
         (PAYMENT_CASH_ON_DELIVERY, "Наложен платеж"),
+        (PAYMENT_BANK_TRANSFER, "Плащане по банков път"),
     ]
 
     number = models.CharField(max_length=32, unique=True, db_index=True)

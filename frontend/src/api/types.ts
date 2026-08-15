@@ -131,7 +131,7 @@ export interface SpeedyOffice {
 }
 
 export type ShippingMethod = 'speedy_address' | 'speedy_office'
-export type PaymentMethod = 'cash_on_delivery'
+export type PaymentMethod = 'cash_on_delivery' | 'bank_transfer'
 
 export interface OrderItemDto {
   id: string

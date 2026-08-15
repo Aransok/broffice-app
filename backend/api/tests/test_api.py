@@ -1545,6 +1545,24 @@ def test_order_checkout_speedy_address(api_client, sample_product):
 
 
 @pytest.mark.django_db
+def test_order_checkout_accepts_bank_transfer_payment_method(
+    api_client, sample_product
+):
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "customer_phone": "0888123456",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+            "payment_method": "bank_transfer",
+        },
+        format="json",
+    )
+    assert resp.status_code == 201
+    assert resp.data["payment_method"] == "bank_transfer"
+
+
+@pytest.mark.django_db
 def test_order_checkout_speedy_address_missing_fields(api_client, sample_product):
     resp = api_client.post(
         "/api/v1/orders/",

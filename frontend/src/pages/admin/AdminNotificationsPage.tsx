@@ -17,6 +17,11 @@ const SHIPPING_LABELS: Record<string, string> = {
   speedy_office: 'До офис на Спиди',
 }
 
+const PAYMENT_LABELS: Record<string, string> = {
+  cash_on_delivery: 'Наложен платеж',
+  bank_transfer: 'Плащане по банков път',
+}
+
 /** Deep link to the exact product page on the supplier's live site, for
  * items synced from their catalog (external_id = "supplier-{id}") — the
  * slug segment is cosmetic on their end, any value resolves correctly by
@@ -231,7 +236,7 @@ export function AdminNotificationsPage() {
                     {order.company_mol && <p>МОЛ: {order.company_mol}</p>}
                   </>
                 )}
-                <p>Плащане: Наложен платеж</p>
+                <p>Плащане: {PAYMENT_LABELS[order.payment_method] ?? order.payment_method}</p>
                 <p className="font-medium text-slate-900">
                   Общо: {formatEur(order.total_bgn)}
                 </p>
