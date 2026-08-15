@@ -25,6 +25,7 @@ import requests
 from django.conf import settings
 from PIL import Image, ImageDraw, ImageFont
 
+from common.currency import format_eur
 from common.emails import BRAND_BLUE, BRAND_ORANGE
 from common.fonts import (
     FONT_PATH_CANDIDATES_BOLD,
@@ -95,7 +96,10 @@ def _trim_decimal(value: Decimal) -> str:
 def _discount_label(promotion: Promotion) -> str:
     if promotion.discount_type == Promotion.TYPE_PERCENT:
         return f"-{_trim_decimal(promotion.value)}%"
-    return f"{_trim_decimal(promotion.value)} лв."
+    # Flat is the final price itself (see compute_promo_price), shown in
+    # EUR - the site is EUR-only everywhere else, this banner text was the
+    # one place still showing the internal BGN storage value directly.
+    return format_eur(promotion.value)
 
 
 def _font(candidates: list[str], size: int) -> ImageFont.FreeTypeFont:
@@ -286,9 +290,9 @@ def _make_product_banner(promotion: Promotion) -> Image.Image | None:
         subject_image=subject,
         discount_label=_discount_label(promotion),
         old_price_text=(
-            f"{base:.2f} лв." if new_price != base.quantize(Decimal("0.01")) else None
+            format_eur(base) if new_price != base.quantize(Decimal("0.01")) else None
         ),
-        new_price_text=f"{new_price:.2f} лв.",
+        new_price_text=format_eur(new_price),
     )
 
 

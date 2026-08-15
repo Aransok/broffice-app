@@ -80,6 +80,39 @@ def test_sync_banners_creates_banner_for_product_promotion(product):
 
 
 @pytest.mark.django_db
+def test_sync_banners_flat_promotion_label_is_eur_not_bgn(product):
+    """The banner's price text used to be rendered straight from the
+    internal BGN storage value - the site is EUR-only everywhere else, this
+    was the one place still leaking BGN."""
+    from common.currency import format_eur
+
+    value = Decimal("19.56")  # ~ 10.00 EUR at the fixed BGN_PER_EUR rate
+    _active_promotion(
+        scope=Promotion.SCOPE_PRODUCT,
+        product=product,
+        discount_type=Promotion.TYPE_FLAT,
+        value=value,
+    )
+
+    sync_banners()
+
+    # encoding="utf-8" is required here (not just the default) - Path.
+    # read_text() without it falls back to the OS locale's preferred
+    # encoding, which is cp1252 on Windows dev machines and silently
+    # mangles the euro sign on read even though services.py's own write
+    # already specifies UTF-8 correctly. Linux (prod) defaults to UTF-8
+    # either way, so this was only ever a local-test-environment trap.
+    manifest = json.loads(
+        (Path(settings.MEDIA_ROOT) / "highlights" / "manifest.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert manifest[0]["discount_label"] == format_eur(value)
+    assert "лв" not in manifest[0]["discount_label"]
+    assert "лв" not in manifest[0]["discount_label"]
+
+
+@pytest.mark.django_db
 def test_sync_banners_creates_banner_for_category_promotion(category):
     promo = _active_promotion(scope=Promotion.SCOPE_CATEGORY, category=category)
 
