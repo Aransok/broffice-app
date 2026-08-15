@@ -70,7 +70,7 @@ export function CategoriesMegaMenu() {
                   className={
                     root.id === activeRoot?.id
                       ? 'w-full border-l-2 border-primary bg-primary/5 px-7 py-3.25 text-left text-sm font-medium text-primary transition-colors duration-200'
-                      : 'w-full border-l-2 border-transparent px-7 py-3.25 text-left text-sm font-medium text-slate-400 transition-colors duration-200 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900'
+                      : 'w-full border-l-2 border-transparent px-7 py-3.25 text-left text-sm font-medium text-slate-600 transition-colors duration-200 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900'
                   }
                 >
                   {root.name}
@@ -120,7 +120,7 @@ export function CategoriesMegaMenu() {
                             <Link
                               to={`/category/${leaf.slug}`}
                               onClick={() => setOpen(false)}
-                              className="block py-2.5 text-sm font-medium text-slate-500 transition-all duration-200 hover:translate-x-1 hover:text-primary"
+                              className="block py-2.5 text-sm font-medium text-slate-700 transition-all duration-200 hover:translate-x-1 hover:text-primary"
                             >
                               {leaf.name}
                             </Link>

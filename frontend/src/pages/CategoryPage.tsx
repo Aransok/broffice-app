@@ -158,7 +158,7 @@ export function CategoryPage() {
                         'relative block py-1.5 pl-7 text-sm font-medium transition-colors duration-200 before:absolute before:left-0 before:top-0.75 before:h-4 before:w-4 before:rounded-full before:border before:transition-colors before:duration-200 hover:text-primary hover:before:border-primary ' +
                         (child.slug === slug
                           ? 'text-primary before:border-primary before:bg-primary/20'
-                          : 'text-slate-500 before:border-slate-400')
+                          : 'text-slate-700 before:border-slate-400')
                       }
                     >
                       {child.name}
