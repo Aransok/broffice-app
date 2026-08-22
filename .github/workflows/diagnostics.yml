@@ -261,34 +261,6 @@ jobs:
           $b64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($pythonSource))
           docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell -c "import base64; exec(base64.b64decode('$b64').decode('utf-8'))"
 
-      - name: Check deployed commit + AdminPriceOverride serialization (read-only)
-        # Added 2026-08-22 - client reports the "Бележка" column still isn't
-        # showing the product number after the reseller-floor deploy, even
-        # though the price fix itself is visibly working. Checking both
-        # whether the running container is actually on the latest commit
-        # (rules out a stale/cached image) and what the serializer actually
-        # returns for a real override row, rather than guessing between
-        # "not deployed" and "a real bug in get_product_number".
-        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
-        run: |
-          Write-Host "--- Deployed backend commit ---"
-          docker compose -f docker-compose.prod.yml exec -T backend sh -c "cd /app && git rev-parse HEAD 2>&1 || echo 'no git info in container'"
-          Write-Host "--- Local (runner checkout) commit ---"
-          git rev-parse HEAD
-          Write-Host "--- AdminPriceOverride serialization sample ---"
-          $lines = @(
-            'from pricing.models import AdminPriceOverride',
-            'from api.serializers import AdminPriceOverrideSerializer',
-            'qs = AdminPriceOverride.objects.select_related("product").order_by("-created_at")[:5]',
-            'print(f"Total overrides: {AdminPriceOverride.objects.count()}")',
-            'for o in qs:',
-            '    data = AdminPriceOverrideSerializer(o).data',
-            '    print(f"id={o.id} product={o.product.name!r} supplier_id={o.product.supplier_id!r} item_number={o.product.item_number!r} serialized_product_number={data.get(\"product_number\")!r} client_price={data.get(\"client_price\")!r}")'
-          )
-          $pythonSource = $lines -join "`n"
-          $b64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($pythonSource))
-          docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell -c "import base64; exec(base64.b64decode('$b64').decode('utf-8'))"
-
       - name: Scheduled task status (backup, restore watcher, watchdog)
         # Moved last - this step has some intermittent crash after
         # printing results (cause not fully pinned down yet), which
