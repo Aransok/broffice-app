@@ -9,7 +9,7 @@ import {
   useCustomerActivity,
   useCustomerCart,
 } from '../../api/adminCustomers'
-import { useAdminOrders } from '../../api/adminOrders'
+import { getAdminInvoiceDownloadUrl, useAdminOrders } from '../../api/adminOrders'
 import {
   createPriceOverride,
   deletePriceOverride,
@@ -297,25 +297,109 @@ function CartTab({ customerId }: { customerId: number }) {
 
 function OrdersTab({ customerId }: { customerId: number }) {
   const { data, isLoading } = useAdminOrders({ user: customerId })
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   return (
     <div>
       {isLoading && <p className="text-slate-500">Зареждане...</p>}
       <div className="flex flex-col gap-3">
-        {data?.results.map((order) => (
-          <div key={order.id} className="rounded-ui border border-slate-200 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-semibold text-slate-900">{order.number}</span>
-              <span className="text-sm text-slate-500">
-                {ORDER_STATUS_LABELS[order.status] ?? order.status}
-              </span>
-              <span className="text-sm text-slate-500">
-                {new Date(order.created_at).toLocaleDateString('bg-BG')}
-              </span>
-              <span className="font-medium text-slate-900">€{bgnToEur(order.total_bgn)}</span>
+        {data?.results.map((order) => {
+          const expanded = expandedId === order.id
+          return (
+            <div key={order.id} className="rounded-ui border border-slate-200 p-3">
+              <button
+                type="button"
+                onClick={() => setExpandedId(expanded ? null : order.id)}
+                className="flex w-full flex-wrap items-center justify-between gap-2 text-left"
+              >
+                <span className="font-semibold text-slate-900">{order.number}</span>
+                <span className="text-sm text-slate-500">
+                  {ORDER_STATUS_LABELS[order.status] ?? order.status}
+                </span>
+                <span className="text-sm text-slate-500">
+                  {new Date(order.created_at).toLocaleDateString('bg-BG')}
+                </span>
+                {/* Preview thumbnails - visible even collapsed, so the
+                    products in this order are recognizable at a glance. */}
+                <span className="flex -space-x-2">
+                  {order.items.slice(0, 4).map((item) => {
+                    const imageUrl = getImageUrl(item.product_image)
+                    return (
+                      <span
+                        key={item.id}
+                        className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white bg-slate-50 ring-1 ring-slate-200"
+                      >
+                        {imageUrl ? (
+                          <img src={imageUrl} alt="" className="h-full w-full object-contain" />
+                        ) : (
+                          <span className="text-[7px] text-slate-400">—</span>
+                        )}
+                      </span>
+                    )
+                  })}
+                  {order.items.length > 4 && (
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white bg-slate-100 text-[10px] text-slate-500 ring-1 ring-slate-200">
+                      +{order.items.length - 4}
+                    </span>
+                  )}
+                </span>
+                <span className="font-medium text-slate-900">€{bgnToEur(order.total_bgn)}</span>
+                <span className="text-xs text-primary">
+                  {expanded ? 'Скрий детайли' : 'Детайли'}
+                </span>
+              </button>
+
+              {expanded && (
+                <div className="mt-3 border-t border-slate-100 pt-3">
+                  {order.invoice && (
+                    <a
+                      href={getAdminInvoiceDownloadUrl(order.number)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mb-2 inline-block text-xs text-primary hover:underline"
+                    >
+                      Изтегли фактура ({order.invoice.number})
+                    </a>
+                  )}
+                  <ul className="divide-y divide-slate-100 text-sm">
+                    {order.items.map((item) => {
+                      const imageUrl = getImageUrl(item.product_image)
+                      return (
+                        <li key={item.id} className="flex items-center gap-3 py-2">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-ui border border-slate-200 bg-slate-50">
+                            {imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt=""
+                                className="h-full w-full object-contain"
+                              />
+                            ) : (
+                              <span className="text-center text-[8px] text-slate-400">
+                                Без снимка
+                              </span>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium text-slate-900">
+                              {item.product_name}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {item.quantity} бр. × €{bgnToEur(item.unit_price)}
+                              {item.discount_label && ` · ${item.discount_label}`}
+                            </p>
+                          </div>
+                          <div className="shrink-0 font-medium text-slate-900">
+                            €{bgnToEur(item.line_total)}
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
       {data && data.results.length === 0 && (
         <p className="py-4 text-slate-500">Няма поръчки от този клиент.</p>
