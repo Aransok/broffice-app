@@ -1,4 +1,5 @@
 import uuid
+from decimal import ROUND_DOWN, Decimal
 
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
@@ -693,9 +694,60 @@ class PromotionSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(
         source="product.name", read_only=True, default=None
     )
+    product_number = serializers.SerializerMethodField()
     category_name = serializers.CharField(
         source="category.name", read_only=True, default=None
     )
+
+    def get_product_number(self, obj):
+        # Same "one number everywhere" concept as product cards/cart/orders
+        # (supplier_id for API-synced products, item_number as a fallback
+        # for manually-added ones) - lets the admin tell products with
+        # similar names apart in the client's promotions list.
+        if not obj.product_id:
+            return None
+        return obj.product.supplier_id or (
+            str(obj.product.item_number) if obj.product.item_number else None
+        )
+
+    def validate(self, attrs):
+        # Product-scoped promos never get discounted below that product's
+        # own reseller/cost price - silently clamped (not rejected) so the
+        # admin doesn't lose their place mid-edit, and the stored value
+        # itself reflects what's actually applied ("set to 80% but that's
+        # below cost, so it's really 62%"), not just a value that gets
+        # capped invisibly at checkout time. Category/global promos can't
+        # be clamped this way (one % covers many products with different
+        # costs) - those are protected at price-resolution time instead,
+        # see pricing.services.compute_promo_price.
+        scope = attrs.get("scope", getattr(self.instance, "scope", None))
+        product = attrs.get("product", getattr(self.instance, "product", None))
+        discount_type = attrs.get(
+            "discount_type", getattr(self.instance, "discount_type", None)
+        )
+        value = attrs.get("value", getattr(self.instance, "value", None))
+        if (
+            scope == Promotion.SCOPE_PRODUCT
+            and product is not None
+            and value is not None
+            and product.admin_price is not None
+        ):
+            admin_price = product.admin_price
+            if discount_type == Promotion.TYPE_FLAT:
+                if value < admin_price:
+                    attrs["value"] = admin_price
+            elif discount_type == Promotion.TYPE_PERCENT:
+                base_price = get_base_price(product)
+                if base_price and base_price > 0:
+                    max_percent = max(
+                        Decimal(0),
+                        (Decimal(1) - admin_price / base_price) * Decimal(100),
+                    )
+                    if value > max_percent:
+                        attrs["value"] = max_percent.quantize(
+                            Decimal("0.01"), rounding=ROUND_DOWN
+                        )
+        return attrs
 
     class Meta:
         model = Promotion
@@ -709,6 +761,7 @@ class PromotionSerializer(serializers.ModelSerializer):
             "username",
             "product",
             "product_name",
+            "product_number",
             "category",
             "category_name",
             "active",

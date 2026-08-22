@@ -276,7 +276,7 @@ def _make_product_banner(promotion: Promotion) -> Image.Image | None:
     base = get_base_price(product)
     if base is None:
         return None
-    new_price = compute_promo_price(base, promotion)
+    new_price = compute_promo_price(base, promotion, product=product)
 
     subject = None
     first_image = product.images.first()

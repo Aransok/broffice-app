@@ -443,9 +443,10 @@ def test_admin_reprice_applies_a_promotion_created_after_checkout(
     order.refresh_from_db()
     item = order.items.get()
     assert item.discount_label != ""
-    assert item.unit_price == Decimal(
-        "0.68"
-    )  # 1.35 * 0.5 -> 0.675 -> round-half-even 0.68
+    # 1.35 * 0.5 = 0.675, which is below this product's admin_price (1.00) -
+    # floored there instead, so the reseller is never charged less than
+    # their own cost.
+    assert item.unit_price == Decimal("1.00")
     assert order.total_bgn < original_total
 
 
@@ -651,7 +652,9 @@ def test_individual_price_overrides_promotion(api_client, sample_product):
     api_client.force_authenticate(user=vip)
     resp = api_client.get("/api/v1/products/")
     listed = next(p for p in resp.data["results"] if p["external_id"] == "272")
-    # Individual price (1.10) must win, NOT the 50% global promo (which would be 0.68).
+    # Individual price (1.10) must win, NOT the 50% global promo (which would
+    # resolve to 1.00 - floored at this product's admin_price, since
+    # 1.35 * 0.5 = 0.675 is below it).
     assert listed["promo_price_bgn"] == "1.10"
 
     # A different, non-VIP user still gets the promotion, not the VIP's price.
@@ -659,7 +662,77 @@ def test_individual_price_overrides_promotion(api_client, sample_product):
     api_client.force_authenticate(user=other)
     resp2 = api_client.get("/api/v1/products/")
     listed2 = next(p for p in resp2.data["results"] if p["external_id"] == "272")
-    assert listed2["promo_price_bgn"] == "0.68"
+    assert listed2["promo_price_bgn"] == "1.00"
+
+
+@pytest.mark.django_db
+def test_category_promo_never_prices_below_reseller_cost(api_client, sample_product):
+    """A category-scoped (or global) promo can't have its stored % adjusted
+    per-product - the floor has to be enforced at the point a specific
+    product's price is resolved instead."""
+    from promotions.models import Promotion
+
+    Promotion.objects.create(
+        name="Category 90% off",
+        discount_type="percent",
+        value="90.00",
+        scope="category",
+        category=sample_product.category,
+    )
+    resp = api_client.get("/api/v1/products/")
+    listed = next(p for p in resp.data["results"] if p["external_id"] == "272")
+    # 1.35 * 0.10 = 0.135 -> would round to 0.14, but admin_price is 1.00.
+    assert listed["promo_price_bgn"] == "1.00"
+
+
+@pytest.mark.django_db
+def test_admin_promotion_percent_clamped_to_reseller_floor_on_save(
+    api_client, admin_user, sample_product
+):
+    """Creating a product-scoped promo through the admin API with a percent
+    that would price below the reseller's own cost gets silently clamped to
+    the exact percent that lands right at that cost - not rejected, and not
+    left showing a value that isn't what's actually applied."""
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.post(
+        "/api/v1/admin/promotions/",
+        {
+            "name": "Too generous",
+            "discount_type": "percent",
+            "value": "80.00",
+            "scope": "product",
+            "product": str(sample_product.id),
+        },
+        format="json",
+    )
+    assert resp.status_code == 201
+    # base=1.35, admin_price=1.00 -> max percent = (1 - 1/1.35)*100 = 25.925...,
+    # floored (not rounded up) so the resulting price never dips under 1.00.
+    assert resp.data["value"] == "25.92"
+
+    resp2 = api_client.get("/api/v1/products/")
+    listed = next(p for p in resp2.data["results"] if p["external_id"] == "272")
+    assert float(listed["promo_price_bgn"]) >= 1.00
+
+
+@pytest.mark.django_db
+def test_admin_promotion_flat_clamped_to_reseller_floor_on_save(
+    api_client, admin_user, sample_product
+):
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.post(
+        "/api/v1/admin/promotions/",
+        {
+            "name": "Way too cheap",
+            "discount_type": "flat",
+            "value": "0.20",
+            "scope": "product",
+            "product": str(sample_product.id),
+        },
+        format="json",
+    )
+    assert resp.status_code == 201
+    assert resp.data["value"] == "1.00"
 
 
 @pytest.mark.django_db
@@ -690,7 +763,8 @@ def test_promotion_client_targeted_global_only_applies_to_that_user(
         for p in api_client.get("/api/v1/products/").data["results"]
         if p["external_id"] == "272"
     )
-    assert listed_vip["promo_price_bgn"] == "0.50"
+    # 0.50 is below this product's admin_price (1.00) - floored there instead.
+    assert listed_vip["promo_price_bgn"] == "1.00"
 
 
 @pytest.mark.django_db

@@ -37,10 +37,19 @@ def get_base_price(product) -> Decimal | None:
     return product.client_price or product.price_bgn
 
 
-def compute_promo_price(base: Decimal, promotion: Promotion) -> Decimal:
+def compute_promo_price(base: Decimal, promotion: Promotion, product=None) -> Decimal:
     """The price a promotion resolves to for a given base price — shared by
     get_effective_price below and the promo banner generator (banners/services.py),
-    so both apply "percent off" / "flat = final price" identically."""
+    so both apply "percent off" / "flat = final price" identically.
+
+    Never resolves below the product's own reseller/cost price
+    (`admin_price`) when known - a promotion (of any scope: product,
+    category, or global) is a discount for the customer, not a subsidy paid
+    out of the reseller's own margin. A category/global promo can't have its
+    stored value adjusted per-product (one % covers many products with
+    different costs), so the floor is enforced here, at the point where a
+    specific product's price is actually resolved, rather than on the
+    Promotion record itself."""
     if promotion.discount_type == Promotion.TYPE_PERCENT:
         candidate = base * (Decimal(1) - promotion.value / Decimal(100))
     else:
@@ -48,7 +57,10 @@ def compute_promo_price(base: Decimal, promotion: Promotion) -> Decimal:
         # customer"), not an amount subtracted off the base price — matches
         # how admins actually enter it (a target price).
         candidate = promotion.value
-    return max(candidate, Decimal(0)).quantize(Decimal("0.01"))
+    candidate = max(candidate, Decimal(0))
+    if product is not None and product.admin_price is not None:
+        candidate = max(candidate, product.admin_price)
+    return candidate.quantize(Decimal("0.01"))
 
 
 def get_user_overrides(user) -> dict:
@@ -93,7 +105,7 @@ def get_effective_price(
         best_price = base
         best_promo = None
         for promo in matches:
-            candidate = compute_promo_price(base, promo)
+            candidate = compute_promo_price(base, promo, product=product)
             if best_promo is None or candidate < best_price:
                 best_price = candidate
                 best_promo = promo

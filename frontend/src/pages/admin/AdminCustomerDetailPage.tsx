@@ -632,7 +632,11 @@ function PromotionsTab({
           >
             <option value="">Избери категория</option>
             {orderedCategoryOptions(categories?.results ?? []).map(({ category, depth }) => (
-              <option key={category.id} value={category.id}>
+              <option
+                key={category.id}
+                value={category.id}
+                style={depth === 0 ? { backgroundColor: '#e0f2fe', fontWeight: 600 } : undefined}
+              >
                 {'  '.repeat(depth)}
                 {depth > 0 ? '— ' : ''}
                 {category.name}
@@ -738,7 +742,10 @@ function PromotionsTab({
                     <span className="block text-xs text-slate-500">{promo.category_name}</span>
                   )}
                   {promo.scope === 'product' && promo.product_name && (
-                    <span className="block text-xs text-slate-500">{promo.product_name}</span>
+                    <span className="block text-xs text-slate-500">
+                      {promo.product_number && `№${promo.product_number} `}
+                      {promo.product_name}
+                    </span>
                   )}
                 </td>
                 <td className="py-2 pr-4">

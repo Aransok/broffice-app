@@ -22,6 +22,9 @@ export interface Promotion {
   product: string | null
   /** Read-only, populated alongside `product` for display (admin list). */
   product_name?: string | null
+  /** Read-only - the same "№..." number shown everywhere else a product is
+   * listed (supplier_id, falling back to item_number). */
+  product_number?: string | null
   category: string | null
   /** Read-only, populated alongside `category` for display (admin list). */
   category_name?: string | null
