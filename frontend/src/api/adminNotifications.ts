@@ -39,6 +39,31 @@ export function repriceOrder(number: string) {
   return apiClient.post<Order>(`/admin/orders/${number}/reprice/`).then((res) => res.data)
 }
 
+/** Adds a product to a still-pending order before it's confirmed/rejected -
+ * e.g. swapping in a replacement for an out-of-stock item. `unitPriceBgn`
+ * bypasses the pricing engine entirely as a manual override (e.g. "0.00"
+ * for a free gift) - leave it out to price the item normally. */
+export function addOrderItem(
+  number: string,
+  productId: string,
+  quantity: number,
+  unitPriceBgn?: string,
+) {
+  return apiClient
+    .post<Order>(`/admin/orders/${number}/add-item/`, {
+      product_id: productId,
+      quantity,
+      ...(unitPriceBgn !== undefined ? { unit_price: unitPriceBgn } : {}),
+    })
+    .then((res) => res.data)
+}
+
+export function removeOrderItem(number: string, itemId: string) {
+  return apiClient
+    .delete<Order>(`/admin/orders/${number}/items/${itemId}/`)
+    .then((res) => res.data)
+}
+
 export function useNotifications() {
   return useQuery({
     queryKey: ['admin-notifications'],

@@ -551,6 +551,70 @@ def reprice_pending_order(order: Order) -> Order:
     return order
 
 
+def add_item_to_pending_order(
+    order: Order, product: Product, quantity: int, unit_price: Decimal | None = None
+) -> Order:
+    """Lets admin add a product to a still-pending order before deciding
+    confirm/reject - e.g. swapping in a replacement for an out-of-stock
+    item, or throwing in a free gift. Raises ValueError if the order isn't
+    pending, matching confirm/reject/reprice's own guard.
+
+    `unit_price`, when given, bypasses the pricing engine entirely as a
+    deliberate manual override (e.g. unit_price=0 for a free gift) rather
+    than trying to represent "free" as some kind of promotion. Left None,
+    the item is priced exactly like a normal checkout line - respecting
+    this customer's own promotions/overrides."""
+    if order.status != Order.STATUS_PENDING:
+        raise ValueError("Only a pending order can be edited.")
+
+    if unit_price is not None:
+        line = {
+            "quantity": quantity,
+            "unit_price": unit_price,
+            "original_unit_price": None,
+            "discount_label": "Ръчна корекция",
+            "applied_promotion": None,
+            "cost_price_bgn": product.admin_price,
+        }
+        _create_order_item(order, product, line)
+    else:
+        is_authenticated = order.user_id is not None
+        pricing_user = order.user if is_authenticated else None
+        active_promotions = get_active_promotions()
+        user_overrides = get_user_overrides(pricing_user)
+        category_descendant_map = build_promo_category_descendant_map(active_promotions)
+        for line in _price_order_item_lines(
+            product,
+            quantity,
+            pricing_user,
+            active_promotions,
+            user_overrides,
+            category_descendant_map,
+        ):
+            _create_order_item(order, product, line)
+
+    order.refresh_from_db()
+    recalc_order_total(order)
+    return order
+
+
+def remove_item_from_pending_order(order: Order, item_id) -> Order:
+    """The other half of add_item_to_pending_order - e.g. dropping an
+    out-of-stock item before confirming. Never allowed to leave an order
+    with zero items (that's what rejecting the whole order is for)."""
+    if order.status != Order.STATUS_PENDING:
+        raise ValueError("Only a pending order can be edited.")
+    if order.items.count() <= 1:
+        raise ValueError("Поръчката трябва да съдържа поне един продукт.")
+    deleted, _ = order.items.filter(id=item_id).delete()
+    if not deleted:
+        raise ValueError("Артикулът не е намерен в тази поръчка.")
+
+    order.refresh_from_db()
+    recalc_order_total(order)
+    return order
+
+
 def _get_or_save_address(
     user,
     address_id,

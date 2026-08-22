@@ -53,11 +53,13 @@ from favorites.services import get_favorited_product_ids
 from navigation.models import Menu
 from orders.models import Order, OrderItem, OrderNotification
 from orders.services import (
+    add_item_to_pending_order,
     create_order,
     deactivate_used_item_promotions,
     get_admin_invoice_pdf_bytes,
     get_invoice_pdf_bytes,
     issue_invoice_for_order,
+    remove_item_from_pending_order,
     reprice_pending_order,
     send_admin_confirmation_email,
     send_customer_invoice_email,
@@ -849,6 +851,43 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
         order = self.get_object()
         try:
             reprice_pending_order(order)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(OrderSerializer(order, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"], url_path="add-item")
+    def add_item(self, request, number=None):
+        # Lets admin add/swap a product to a still-pending order before
+        # confirming or rejecting - e.g. a free gift (pass unit_price=0) or
+        # a replacement for an out-of-stock item.
+        order = self.get_object()
+        product = Product.objects.filter(id=request.data.get("product_id")).first()
+        if product is None:
+            return Response(
+                {"detail": "Продуктът не е намерен."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            quantity = int(request.data.get("quantity") or 1)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "Невалидно количество."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        unit_price_raw = request.data.get("unit_price")
+        unit_price = (
+            Decimal(str(unit_price_raw)) if unit_price_raw not in (None, "") else None
+        )
+        try:
+            add_item_to_pending_order(order, product, quantity, unit_price)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(OrderSerializer(order, context={"request": request}).data)
+
+    @action(detail=True, methods=["delete"], url_path=r"items/(?P<item_id>[^/.]+)")
+    def remove_item(self, request, number=None, item_id=None):
+        order = self.get_object()
+        try:
+            remove_item_from_pending_order(order, item_id)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(OrderSerializer(order, context={"request": request}).data)

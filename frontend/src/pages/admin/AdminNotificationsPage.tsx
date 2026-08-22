@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
+  addOrderItem,
   confirmOrder,
   markNotificationRead,
   rejectOrder,
+  removeOrderItem,
   repriceOrder,
   useNotifications,
 } from '../../api/adminNotifications'
 import { getAdminInvoiceDownloadUrl } from '../../api/adminOrders'
 import { getImageUrl } from '../../api/media'
+import type { ProductListItem } from '../../api/types'
+import { AdminProductPicker } from '../../components/admin/AdminProductPicker'
 import { AdminQuickPromotionButton } from '../../components/admin/AdminQuickPromotionButton'
 import { formatEur } from '../../utils/currency'
 
@@ -55,6 +59,12 @@ export function AdminNotificationsPage() {
   const highlightOrder = searchParams.get('order')
   const rowRefs = useRef(new Map<string, HTMLDivElement>())
 
+  // Which pending order currently has its "add product" panel open - only
+  // one at a time, an admin works one order at a time in practice.
+  const [addPanelOrder, setAddPanelOrder] = useState<string | null>(null)
+  const [addQuantity, setAddQuantity] = useState(1)
+  const [addFreeGift, setAddFreeGift] = useState(false)
+
   useEffect(() => {
     if (!highlightOrder) return
     const el = rowRefs.current.get(highlightOrder)
@@ -88,6 +98,30 @@ export function AdminNotificationsPage() {
     setBusyOrder(number)
     try {
       await repriceOrder(number)
+      await refetch()
+    } finally {
+      setBusyOrder(null)
+    }
+  }
+
+  async function handleAddItem(number: string, product: ProductListItem) {
+    setBusyOrder(number)
+    try {
+      await addOrderItem(number, product.id, addQuantity, addFreeGift ? '0.00' : undefined)
+      setAddPanelOrder(null)
+      setAddQuantity(1)
+      setAddFreeGift(false)
+      await refetch()
+    } finally {
+      setBusyOrder(null)
+    }
+  }
+
+  async function handleRemoveItem(number: string, itemId: string, productName: string) {
+    if (!confirm(`Премахване на "${productName}" от поръчката?`)) return
+    setBusyOrder(number)
+    try {
+      await removeOrderItem(number, itemId)
       await refetch()
     } finally {
       setBusyOrder(null)
@@ -210,11 +244,72 @@ export function AdminNotificationsPage() {
                           )}
                         </div>
                       </div>
-                      <span className="shrink-0">{formatEur(item.line_total)}</span>
+                      <span className="shrink-0 flex items-center gap-2">
+                        {formatEur(item.line_total)}
+                        {order.status === 'pending' && (
+                          <button
+                            type="button"
+                            disabled={busyOrder === order.number}
+                            onClick={() =>
+                              handleRemoveItem(order.number, item.id, item.product_name)
+                            }
+                            title="Премахни от поръчката"
+                            className="text-red-600 hover:underline disabled:opacity-50"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </span>
                     </li>
                   )
                 })}
               </ul>
+
+              {order.status === 'pending' &&
+                (addPanelOrder === order.number ? (
+                  <div className="mb-2 rounded-ui border border-slate-200 p-2">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <label className="text-xs text-slate-600">
+                        Кол-во
+                        <input
+                          type="number"
+                          min={1}
+                          value={addQuantity}
+                          onChange={(event) =>
+                            setAddQuantity(Number(event.target.value) || 1)
+                          }
+                          className="ml-1 w-16 rounded-ui border border-slate-300 px-2 py-1 text-sm"
+                        />
+                      </label>
+                      <label className="flex items-center gap-1 text-xs text-slate-600">
+                        <input
+                          type="checkbox"
+                          checked={addFreeGift}
+                          onChange={(event) => setAddFreeGift(event.target.checked)}
+                        />
+                        Безплатен подарък (€0.00)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setAddPanelOrder(null)}
+                        className="text-xs text-slate-500 hover:underline"
+                      >
+                        Отказ
+                      </button>
+                    </div>
+                    <AdminProductPicker
+                      onSelect={(product) => handleAddItem(order.number, product)}
+                    />
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAddPanelOrder(order.number)}
+                    className="mb-2 text-xs text-primary hover:underline"
+                  >
+                    + Добави продукт
+                  </button>
+                ))}
 
               <div className="mb-2 text-sm text-slate-600">
                 {order.shipping_method && (

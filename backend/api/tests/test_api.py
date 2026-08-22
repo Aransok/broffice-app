@@ -471,6 +471,167 @@ def test_admin_reprice_rejects_a_non_pending_order(
 
 
 @pytest.mark.django_db
+def test_admin_add_item_to_pending_order(api_client, admin_user, sample_product):
+    """Admin can add a product to a still-pending order before confirming
+    or rejecting - e.g. swapping in a replacement for an out-of-stock item.
+    Priced normally (through the pricing engine) when no unit_price is
+    given."""
+    from products.models import Product
+
+    other = Product.objects.create(
+        external_id="273",
+        slug="other-product",
+        name="Other Product",
+        category=sample_product.category,
+        price_bgn="5.00",
+        client_price="5.00",
+    )
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+        },
+        format="json",
+    )
+    number = resp.data["number"]
+    original_total = Decimal(resp.data["total_bgn"])
+
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.post(
+        f"/api/v1/admin/orders/{number}/add-item/",
+        {"product_id": str(other.id), "quantity": 2},
+        format="json",
+    )
+    assert resp.status_code == 200
+    assert len(resp.data["items"]) == 2
+    added = next(i for i in resp.data["items"] if i["product_name"] == "Other Product")
+    assert added["quantity"] == 2
+    assert added["unit_price"] == "5.00"
+    assert Decimal(resp.data["total_bgn"]) > original_total
+
+
+@pytest.mark.django_db
+def test_admin_add_item_with_manual_price_for_a_free_gift(
+    api_client, admin_user, sample_product
+):
+    """unit_price bypasses the pricing engine entirely - a deliberate manual
+    override, e.g. giving a customer a free gift item."""
+    from products.models import Product
+
+    gift = Product.objects.create(
+        external_id="274",
+        slug="gift-product",
+        name="Gift Product",
+        category=sample_product.category,
+        price_bgn="8.00",
+        client_price="8.00",
+    )
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+        },
+        format="json",
+    )
+    number = resp.data["number"]
+
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.post(
+        f"/api/v1/admin/orders/{number}/add-item/",
+        {"product_id": str(gift.id), "quantity": 1, "unit_price": "0.00"},
+        format="json",
+    )
+    assert resp.status_code == 200
+    added = next(i for i in resp.data["items"] if i["product_name"] == "Gift Product")
+    assert added["unit_price"] == "0.00"
+    assert added["line_total"] == "0.00"
+    assert added["discount_label"] == "Ръчна корекция"
+
+
+@pytest.mark.django_db
+def test_admin_add_item_rejects_a_non_pending_order(
+    api_client, admin_user, sample_product
+):
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+        },
+        format="json",
+    )
+    number = resp.data["number"]
+    api_client.force_authenticate(user=admin_user)
+    api_client.post(f"/api/v1/admin/orders/{number}/confirm/")
+
+    resp = api_client.post(
+        f"/api/v1/admin/orders/{number}/add-item/",
+        {"product_id": str(sample_product.id), "quantity": 1},
+        format="json",
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_admin_remove_item_from_pending_order(api_client, admin_user, sample_product):
+    from products.models import Product
+
+    other = Product.objects.create(
+        external_id="273",
+        slug="other-product",
+        name="Other Product",
+        category=sample_product.category,
+        price_bgn="5.00",
+        client_price="5.00",
+    )
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "items": [
+                {"product_external_id": "272", "quantity": 1},
+                {"product_id": str(other.id), "quantity": 1},
+            ],
+        },
+        format="json",
+    )
+    number = resp.data["number"]
+    item_to_remove = next(
+        i for i in resp.data["items"] if i["product_name"] == "Other Product"
+    )
+
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.delete(
+        f"/api/v1/admin/orders/{number}/items/{item_to_remove['id']}/"
+    )
+    assert resp.status_code == 200
+    assert len(resp.data["items"]) == 1
+    assert resp.data["items"][0]["product_name"] == "Test Product"
+
+
+@pytest.mark.django_db
+def test_admin_remove_item_rejects_removing_the_last_item(
+    api_client, admin_user, sample_product
+):
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+        },
+        format="json",
+    )
+    number = resp.data["number"]
+    item_id = resp.data["items"][0]["id"]
+
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.delete(f"/api/v1/admin/orders/{number}/items/{item_id}/")
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
 def test_admin_reject_sends_customer_email(api_client, admin_user, sample_product):
     """Previously reject() sent no email at all - the customer had no idea
     their order was declined."""
