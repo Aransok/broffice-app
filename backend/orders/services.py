@@ -20,7 +20,10 @@ from orders.pdf import generate_invoice_pdf
 from pricing.services import get_base_price, get_effective_price, get_user_overrides
 from products.models import Product
 from promotions.models import Promotion
-from promotions.services import get_active_promotions
+from promotions.services import (
+    build_promo_category_descendant_map,
+    get_active_promotions,
+)
 from shipping.services import get_speedy_client
 
 PAYMENT_METHOD_LABELS = dict(Order.PAYMENT_METHOD_CHOICES)
@@ -407,14 +410,23 @@ def recalc_order_total(order: Order) -> Decimal:
 
 
 def _price_order_item_lines(
-    product, qty, pricing_user, active_promotions, user_overrides
+    product,
+    qty,
+    pricing_user,
+    active_promotions,
+    user_overrides,
+    category_descendant_map=None,
 ) -> list[dict]:
     """Computes the OrderItem line(s) for `qty` units of `product` under the
     current pricing rules — shared by create_order and reprice_pending_order
     so "how a line gets priced" only ever lives in one place."""
     base = get_base_price(product) or Decimal(0)
     result = get_effective_price(
-        product, pricing_user, active_promotions, user_overrides
+        product,
+        pricing_user,
+        active_promotions,
+        user_overrides,
+        category_descendant_map,
     )
 
     # Default: one line for the whole quantity, either discounted or not.
@@ -498,6 +510,7 @@ def reprice_pending_order(order: Order) -> Order:
     pricing_user = order.user if is_authenticated else None
     active_promotions = get_active_promotions()
     user_overrides = get_user_overrides(pricing_user)
+    category_descendant_map = build_promo_category_descendant_map(active_promotions)
 
     # Group by product first — the order's existing lines may already be
     # split (e.g. a max_quantity cap applied at checkout), so repricing must
@@ -516,7 +529,12 @@ def reprice_pending_order(order: Order) -> Order:
     for product_id, qty in quantities.items():
         product = products[product_id]
         lines = _price_order_item_lines(
-            product, qty, pricing_user, active_promotions, user_overrides
+            product,
+            qty,
+            pricing_user,
+            active_promotions,
+            user_overrides,
+            category_descendant_map,
         )
         for line in lines:
             _create_order_item(order, product, line)
@@ -708,6 +726,7 @@ def create_order(
     pricing_user = user if is_authenticated else None
     active_promotions = get_active_promotions()
     user_overrides = get_user_overrides(pricing_user)
+    category_descendant_map = build_promo_category_descendant_map(active_promotions)
 
     for raw in items:
         product = None
@@ -724,7 +743,12 @@ def create_order(
         # The frontend never gets to name a price — it's always recomputed
         # here from the product + the customer's own pricing rules.
         lines = _price_order_item_lines(
-            product, qty, pricing_user, active_promotions, user_overrides
+            product,
+            qty,
+            pricing_user,
+            active_promotions,
+            user_overrides,
+            category_descendant_map,
         )
         for line in lines:
             _create_order_item(order, product, line)

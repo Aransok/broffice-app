@@ -70,7 +70,27 @@ def promoted_products_q(promotions, user=None):
     return None
 
 
-def find_matching_promotions(product, user, promotions):
+def build_promo_category_descendant_map(promotions) -> dict:
+    """Precomputes get_descendant_category_ids() once per unique
+    category-scoped promotion, instead of once per (product, promotion)
+    pair. find_matching_promotions runs once per product in a listing, so
+    without this a page of N products with M active category promotions
+    did N x M fresh recursive category-tree queries - the actual cause of
+    a real reported slowdown (product listing taking 10-15s to load).
+    Callers that already fetch get_active_promotions() once per request
+    should build this alongside it, once, and pass it through."""
+    result: dict = {}
+    for promo in promotions:
+        if (
+            promo.scope == Promotion.SCOPE_CATEGORY
+            and promo.category_id
+            and promo.category_id not in result
+        ):
+            result[promo.category_id] = get_descendant_category_ids(promo.category)
+    return result
+
+
+def find_matching_promotions(product, user, promotions, category_descendant_map=None):
     """A promotion applies when its target matches AND (it has no audience
     restriction OR the audience is this exact customer) — a real AND, not a
     branch on a single scope value. Replaces the old model where "for this
@@ -78,14 +98,19 @@ def find_matching_promotions(product, user, promotions):
     is_authenticated = user is not None and getattr(user, "is_authenticated", False)
     matches = []
     for promo in promotions:
+        if promo.scope == Promotion.SCOPE_CATEGORY and promo.category_id:
+            if category_descendant_map is not None:
+                descendant_ids = category_descendant_map.get(promo.category_id, set())
+            else:
+                descendant_ids = get_descendant_category_ids(promo.category)
+            category_matches = bool(
+                product.category_id and product.category_id in descendant_ids
+            )
+        else:
+            category_matches = False
         target_matches = (
             promo.scope == Promotion.SCOPE_GLOBAL
-            or (
-                promo.scope == Promotion.SCOPE_CATEGORY
-                and product.category_id
-                and promo.category_id
-                and product.category_id in get_descendant_category_ids(promo.category)
-            )
+            or category_matches
             or (
                 promo.scope == Promotion.SCOPE_PRODUCT
                 and promo.product_id == product.id

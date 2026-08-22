@@ -736,6 +736,68 @@ def test_admin_promotion_flat_clamped_to_reseller_floor_on_save(
 
 
 @pytest.mark.django_db
+def test_product_listing_query_count_does_not_scale_with_products_or_promotions(
+    api_client,
+):
+    """Real client report: the product listing took 10-15s to load. Root
+    cause: find_matching_promotions ran once per product row, and for every
+    category-scoped promotion it called get_descendant_category_ids - a
+    fresh recursive DB query with zero caching - so a page of N products
+    against M active category promotions did N x M recursive query chains.
+    Fixed by precomputing each unique category's descendant set once per
+    request (build_promo_category_descendant_map) instead of once per
+    (product, promotion) pair. This asserts the query count stays flat
+    regardless of how many products/category-promotions exist, rather than
+    just asserting the price is still correct (already covered elsewhere)."""
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    from promotions.models import Promotion
+
+    for i in range(5):
+        parent = Category.objects.create(
+            external_id=f"perf-parent-{i}", slug=f"perf-parent-{i}", name=f"Parent {i}"
+        )
+        child = Category.objects.create(
+            external_id=f"perf-child-{i}",
+            slug=f"perf-child-{i}",
+            name=f"Child {i}",
+            parent=parent,
+        )
+        for j in range(3):
+            Product.objects.create(
+                external_id=f"perf-{i}-{j}",
+                slug=f"perf-product-{i}-{j}",
+                name=f"Perf Product {i}-{j}",
+                category=child,
+                price_bgn="10.00",
+                client_price="10.00",
+            )
+        Promotion.objects.create(
+            name=f"Category promo {i}",
+            discount_type="percent",
+            value="10.00",
+            scope="category",
+            category=parent,
+        )
+
+    # Default PAGE_SIZE is 24 and these 15 are the only products in this
+    # test's (isolated, per-test transaction) database, so they all land on
+    # page 1 without needing a page_size override.
+    with CaptureQueriesContext(connection) as ctx:
+        resp = api_client.get("/api/v1/products/")
+    assert resp.status_code == 200
+    assert (
+        len([p for p in resp.data["results"] if p["external_id"].startswith("perf-")])
+        == 15
+    )
+    # Flat, small, and independent of the 15 products x 5 category promos
+    # above - without the fix this scaled with that product, and would be
+    # in the hundreds.
+    assert len(ctx.captured_queries) < 30
+
+
+@pytest.mark.django_db
 def test_promotion_client_targeted_global_only_applies_to_that_user(
     api_client, sample_product
 ):

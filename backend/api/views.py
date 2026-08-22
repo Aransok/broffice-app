@@ -71,7 +71,11 @@ from products.management.commands.sync_supplier_catalog import (
 )
 from products.models import Product, ProductImage
 from promotions.models import Promotion
-from promotions.services import get_active_promotions, promoted_products_q
+from promotions.services import (
+    build_promo_category_descendant_map,
+    get_active_promotions,
+    promoted_products_q,
+)
 from shipping.services import get_speedy_client
 
 from .serializers import (
@@ -215,6 +219,9 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context["active_promotions"] = get_active_promotions()
+        context["category_descendant_map"] = build_promo_category_descendant_map(
+            context["active_promotions"]
+        )
         context["user_overrides"] = get_user_overrides(self.request.user)
         context["favorite_product_ids"] = get_favorited_product_ids(self.request.user)
         return context
@@ -393,12 +400,16 @@ class SearchView(APIView):
                 | Q(category__name__icontains=word)
             )
         page = self.paginate(qs[:100])
+        active_promotions = get_active_promotions()
         serializer = ProductListSerializer(
             page,
             many=True,
             context={
                 "request": request,
-                "active_promotions": get_active_promotions(),
+                "active_promotions": active_promotions,
+                "category_descendant_map": build_promo_category_descendant_map(
+                    active_promotions
+                ),
                 "user_overrides": get_user_overrides(request.user),
                 "favorite_product_ids": get_favorited_product_ids(request.user),
             },
@@ -518,9 +529,13 @@ class HomeSectionsView(APIView):
     SECTION_SIZE = 20
 
     def get(self, request):
+        active_promotions = get_active_promotions()
         context = {
             "request": request,
-            "active_promotions": get_active_promotions(),
+            "active_promotions": active_promotions,
+            "category_descendant_map": build_promo_category_descendant_map(
+                active_promotions
+            ),
             "user_overrides": get_user_overrides(request.user),
             "favorite_product_ids": get_favorited_product_ids(request.user),
         }
@@ -678,6 +693,9 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         # profit even on a product that's currently on sale.
         context = super().get_serializer_context()
         context["active_promotions"] = get_active_promotions()
+        context["category_descendant_map"] = build_promo_category_descendant_map(
+            context["active_promotions"]
+        )
         context["user_overrides"] = get_user_overrides(self.request.user)
         return context
 
@@ -1295,12 +1313,16 @@ class AdminCustomerActivityView(APIView):
             .order_by("-last_viewed_at")
         )
         target_user = User.objects.filter(id=user_id).first()
+        active_promotions = get_active_promotions()
         context = {
             # Same pricing engine every storefront/cart view uses — the
             # price shown here is exactly what this customer would actually
             # pay right now, e.g. immediately reflecting a promotion an
             # admin just added from this same tab.
-            "active_promotions": get_active_promotions(),
+            "active_promotions": active_promotions,
+            "category_descendant_map": build_promo_category_descendant_map(
+                active_promotions
+            ),
             "user_overrides": get_user_overrides(target_user),
             "pricing_user": target_user,
         }

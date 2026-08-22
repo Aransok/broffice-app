@@ -1,7 +1,10 @@
 from decimal import Decimal
 
 from pricing.services import get_base_price, get_effective_price, get_user_overrides
-from promotions.services import get_active_promotions
+from promotions.services import (
+    build_promo_category_descendant_map,
+    get_active_promotions,
+)
 
 from .models import Cart, CartItem
 
@@ -46,6 +49,7 @@ def price_cart(cart: Cart) -> dict:
     what admin sees here can never drift from what checkout would charge."""
     active_promotions = get_active_promotions()
     user_overrides = get_user_overrides(cart.user)
+    category_descendant_map = build_promo_category_descendant_map(active_promotions)
 
     lines = []
     subtotal = Decimal(0)
@@ -55,7 +59,11 @@ def price_cart(cart: Cart) -> dict:
         product = item.product
         base = get_base_price(product) or Decimal(0)
         result = get_effective_price(
-            product, cart.user, active_promotions, user_overrides
+            product,
+            cart.user,
+            active_promotions,
+            user_overrides,
+            category_descendant_map,
         )
         unit_price = result.price if result else base
         line_total = (unit_price * item.quantity).quantize(Decimal("0.01"))

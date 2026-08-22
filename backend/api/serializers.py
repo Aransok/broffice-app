@@ -268,11 +268,13 @@ class ProductListSerializer(serializers.ModelSerializer):
         return None
 
     def get_promo_price_bgn(self, obj):
-        # `active_promotions`/`user_overrides` are each fetched once per
-        # request (not per-product) by the view and passed through context —
-        # avoids an N+1 query per row for both.
+        # `active_promotions`/`user_overrides`/`category_descendant_map` are
+        # each computed once per request (not per-product) by the view and
+        # passed through context — avoids an N+1 (or worse: N x M recursive
+        # category-tree query) cost per row.
         promotions = self.context.get("active_promotions")
         overrides = self.context.get("user_overrides")
+        category_descendant_map = self.context.get("category_descendant_map")
         request = self.context.get("request")
         user = getattr(request, "user", None) if request else None
         result = get_effective_price(
@@ -280,6 +282,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             user,
             promotions if promotions is not None else [],
             overrides if overrides is not None else {},
+            category_descendant_map,
         )
         if result is None or result.source == "base":
             return None
@@ -366,6 +369,7 @@ class ProductViewSerializer(serializers.ModelSerializer):
             self.context.get("pricing_user"),
             self.context.get("active_promotions"),
             self.context.get("user_overrides"),
+            self.context.get("category_descendant_map"),
         )
 
     def get_effective_price_bgn(self, obj):

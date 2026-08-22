@@ -83,7 +83,7 @@ def get_individual_override(product, user, overrides=None) -> AdminPriceOverride
 
 
 def get_effective_price(
-    product, user=None, promotions=None, overrides=None
+    product, user=None, promotions=None, overrides=None, category_descendant_map=None
 ) -> PriceResult | None:
     base = get_base_price(product)
     if base is None:
@@ -100,7 +100,9 @@ def get_effective_price(
 
     if promotions is None:
         promotions = get_active_promotions()
-    matches = find_matching_promotions(product, user, promotions)
+    matches = find_matching_promotions(
+        product, user, promotions, category_descendant_map
+    )
     if matches:
         best_price = base
         best_promo = None
