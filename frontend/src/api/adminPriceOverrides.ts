@@ -6,6 +6,9 @@ export interface AdminPriceOverride {
   id: string
   product: string
   product_name: string
+  /** Read-only - the same "№..." number shown everywhere else a product is
+   * listed (supplier_id, falling back to item_number). */
+  product_number: string | null
   user: number
   username: string
   client_price: string | null

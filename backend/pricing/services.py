@@ -91,8 +91,14 @@ def get_effective_price(
 
     override = get_individual_override(product, user, overrides)
     if override and override.client_price is not None:
+        price = override.client_price.quantize(Decimal("0.01"))
+        # Same reseller-cost floor as a promotion (compute_promo_price) - an
+        # individual price is still a discount for one customer, not a
+        # subsidy paid out of the reseller's own margin.
+        if product.admin_price is not None:
+            price = max(price, product.admin_price)
         return PriceResult(
-            price=override.client_price.quantize(Decimal("0.01")),
+            price=price,
             source="individual",
             label="Индивидуална цена",
             override=override,

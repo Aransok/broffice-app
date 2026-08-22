@@ -897,6 +897,31 @@ def test_admin_promotion_flat_clamped_to_reseller_floor_on_save(
 
 
 @pytest.mark.django_db
+def test_admin_price_override_clamped_to_reseller_floor_on_save(
+    api_client, admin_user, sample_product
+):
+    """An individual client price is still a discount for one customer, not
+    a subsidy paid out of the reseller's own margin - same floor as a
+    product-scoped promotion (test_admin_promotion_percent/flat_clamped_...
+    above), just via AdminPriceOverrideSerializer.validate instead of
+    PromotionSerializer.validate."""
+    customer = User.objects.create_user(username="floor-client", password="pass12345")
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.post(
+        "/api/v1/admin/price-overrides/",
+        {
+            "product": str(sample_product.id),
+            "user": customer.id,
+            "client_price": "0.20",
+        },
+        format="json",
+    )
+    assert resp.status_code == 201
+    # sample_product's admin_price is 1.00 - clamped up to that, not left at 0.20.
+    assert resp.data["client_price"] == "1.00"
+
+
+@pytest.mark.django_db
 def test_product_listing_query_count_does_not_scale_with_products_or_promotions(
     api_client,
 ):
@@ -1924,6 +1949,9 @@ def test_order_uses_individual_price_not_frontend_price(api_client, sample_produ
     from pricing.models import AdminPriceOverride
 
     vip = User.objects.create_user(username="vip-order", password="vippass")
+    # Below sample_product's admin_price (1.00) - written directly via the
+    # ORM (bypassing AdminPriceOverrideSerializer's save-time clamp) so this
+    # also proves get_effective_price's own floor catches it independently.
     AdminPriceOverride.objects.create(
         product=sample_product, user=vip, client_price="0.50"
     )
@@ -1940,11 +1968,12 @@ def test_order_uses_individual_price_not_frontend_price(api_client, sample_produ
     )
     assert resp.status_code == 201
     item = resp.data["items"][0]
-    assert item["unit_price"] == "0.50"
+    # 0.50 is below admin_price (1.00) - floored there instead.
+    assert item["unit_price"] == "1.00"
     assert item["original_unit_price"] == "1.35"
-    assert item["line_total"] == "1.50"
+    assert item["line_total"] == "3.00"
     assert item["discount_label"] == "Индивидуална цена"
-    assert float(resp.data["subtotal_bgn"]) == 1.50
+    assert float(resp.data["subtotal_bgn"]) == 3.00
 
 
 @pytest.mark.django_db
@@ -2419,8 +2448,10 @@ def test_admin_customer_cart_uses_individual_price(
     from pricing.models import AdminPriceOverride
 
     customer = User.objects.create_user(username="vip-cart", password="pass12345")
+    # Above sample_product's admin_price (1.00), so the reseller-cost floor
+    # doesn't interfere with what this test actually checks.
     AdminPriceOverride.objects.create(
-        product=sample_product, user=customer, client_price="0.50"
+        product=sample_product, user=customer, client_price="1.10"
     )
 
     api_client.force_authenticate(user=admin_user)
@@ -2429,7 +2460,7 @@ def test_admin_customer_cart_uses_individual_price(
         {"product_id": sample_product.id, "quantity": 1},
     )
     resp = api_client.get(f"/api/v1/admin/customers/{customer.id}/cart/")
-    assert resp.data["items"][0]["unit_price"] == "0.50"
+    assert resp.data["items"][0]["unit_price"] == "1.10"
     assert resp.data["items"][0]["price_source"] == "Индивидуална цена"
 
 

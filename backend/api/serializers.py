@@ -400,7 +400,35 @@ class ProductViewSerializer(serializers.ModelSerializer):
 
 class AdminPriceOverrideSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="product.name", read_only=True)
+    product_number = serializers.SerializerMethodField()
     username = serializers.CharField(source="user.username", read_only=True)
+
+    def get_product_number(self, obj):
+        # Same "one number everywhere" concept as elsewhere (supplier_id,
+        # falling back to item_number) - lets the admin tell products with
+        # similar names apart in this client's individual-prices list.
+        return obj.product.supplier_id or (
+            str(obj.product.item_number) if obj.product.item_number else None
+        )
+
+    def validate(self, attrs):
+        # Same reseller-cost floor as a product-scoped promotion (see
+        # PromotionSerializer.validate) - an individual price for one
+        # client is still a discount, not a subsidy paid out of the
+        # reseller's own margin, silently clamped rather than rejected so
+        # the admin doesn't lose their place mid-edit.
+        product = attrs.get("product", getattr(self.instance, "product", None))
+        client_price = attrs.get(
+            "client_price", getattr(self.instance, "client_price", None)
+        )
+        if (
+            product is not None
+            and client_price is not None
+            and product.admin_price is not None
+            and client_price < product.admin_price
+        ):
+            attrs["client_price"] = product.admin_price
+        return attrs
 
     class Meta:
         model = AdminPriceOverride
@@ -408,6 +436,7 @@ class AdminPriceOverrideSerializer(serializers.ModelSerializer):
             "id",
             "product",
             "product_name",
+            "product_number",
             "user",
             "username",
             "client_price",

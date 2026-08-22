@@ -548,7 +548,10 @@ function PricingTab({ customerId }: { customerId: number }) {
                 <td className="py-2 pr-4">
                   {override.client_price ? `€${bgnToEur(override.client_price)}` : '—'}
                 </td>
-                <td className="py-2 pr-4 text-slate-500">{override.notes || '—'}</td>
+                <td className="py-2 pr-4 text-slate-500">
+                  {override.notes ||
+                    (override.product_number ? `№${override.product_number}` : '—')}
+                </td>
                 <td className="py-2">
                   <button
                     type="button"
