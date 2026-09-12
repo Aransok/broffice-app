@@ -145,7 +145,21 @@ export function ProductCard({ product }: { product: ProductListItem }) {
             >
               -
             </button>
-            <span className="w-6 text-center text-sm">{quantity}</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              aria-label="Количество"
+              value={quantity}
+              onChange={(event) => {
+                const digits = event.target.value.replace(/\D/g, '')
+                if (digits === '') {
+                  setQuantity(1)
+                  return
+                }
+                setQuantity(Math.max(1, Number(digits)))
+              }}
+              className="w-8 border-x border-slate-300 py-1 text-center text-sm focus:outline-none"
+            />
             <button
               type="button"
               onClick={() => setQuantity((q) => q + 1)}
