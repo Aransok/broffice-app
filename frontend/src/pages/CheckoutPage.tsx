@@ -399,8 +399,8 @@ export function CheckoutPage() {
           : Boolean(pigeonExpressOffice)
       if (!ready) return
       let cancelled = false
-      setShippingQuoteError(null)
       const timeout = setTimeout(() => {
+        setShippingQuoteError(null)
         fetchPigeonExpressQuote({
           shipping_method: shippingMethod,
           pigeon_express_city_id: pigeonExpressCity?.id,
@@ -431,8 +431,8 @@ export function CheckoutPage() {
     const city = shippingMethod === 'speedy_office' ? selectedOffice?.city : deliveryCity
     if (!city) return
     let cancelled = false
-    setShippingQuoteError(null)
     const timeout = setTimeout(() => {
+      setShippingQuoteError(null)
       fetchSpeedyQuote(shippingMethod, city).then((quote) => {
         if (!cancelled) setShippingCost(quote.shipping_cost_bgn)
       })
