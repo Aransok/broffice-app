@@ -26,7 +26,10 @@ from promotions.services import (
     build_promo_category_descendant_map,
     get_active_promotions,
 )
-from shipping.pigeon_express import get_pigeon_express_client
+from shipping.pigeon_express import (
+    PigeonExpressNotConfigured,
+    get_pigeon_express_client,
+)
 from shipping.services import get_speedy_client
 
 PAYMENT_METHOD_LABELS = dict(Order.PAYMENT_METHOD_CHOICES)
@@ -691,7 +694,12 @@ def _get_or_save_address(
 
 def _pigeon_express_pickup_payload() -> dict:
     if not settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID:
-        raise ValueError(
+        # PigeonExpressNotConfigured (a PigeonExpressAPIError) rather than a
+        # bare ValueError - so this is caught by the same except
+        # PigeonExpressAPIError handlers already in OrderCreateView.post and
+        # PigeonExpressQuoteView, returning a clean 502/503 instead of an
+        # unhandled 500 while PIGEON_EXPRESS_PICKUP_OFFICE_ID is still blank.
+        raise PigeonExpressNotConfigured(
             "PIGEON_EXPRESS_PICKUP_OFFICE_ID is not set — add it to .env "
             "(get it from Pigeon Express support) before shipments can be "
             "quoted or created."

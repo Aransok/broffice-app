@@ -313,6 +313,10 @@ export function CheckoutPage() {
     null,
   )
   const [shippingCost, setShippingCost] = useState<string | null>(null)
+  // Distinct from shippingCost being merely unset (not yet quoted) —
+  // a failed quote must never silently read as "free shipping" in the
+  // totals below, and must block submission for the affected method.
+  const [shippingQuoteError, setShippingQuoteError] = useState<string | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash_on_delivery')
 
   const [submitting, setSubmitting] = useState(false)
@@ -395,6 +399,7 @@ export function CheckoutPage() {
           : Boolean(pigeonExpressOffice)
       if (!ready) return
       let cancelled = false
+      setShippingQuoteError(null)
       const timeout = setTimeout(() => {
         fetchPigeonExpressQuote({
           shipping_method: shippingMethod,
@@ -403,9 +408,19 @@ export function CheckoutPage() {
           pigeon_express_street_number: pigeonExpressStreetNumber,
           pigeon_express_additional_info: pigeonExpressAdditionalInfo,
           pigeon_express_office_id: pigeonExpressOffice?.id,
-        }).then((quote) => {
-          if (!cancelled) setShippingCost(quote.shipping_cost_bgn)
         })
+          .then((quote) => {
+            if (cancelled) return
+            setShippingCost(quote.shipping_cost_bgn)
+            setShippingQuoteError(null)
+          })
+          .catch(() => {
+            if (cancelled) return
+            setShippingCost(null)
+            setShippingQuoteError(
+              'Доставката с Pigeon Express не може да бъде изчислена в момента. Опитайте отново по-късно.',
+            )
+          })
       }, 300)
       return () => {
         cancelled = true
@@ -416,6 +431,7 @@ export function CheckoutPage() {
     const city = shippingMethod === 'speedy_office' ? selectedOffice?.city : deliveryCity
     if (!city) return
     let cancelled = false
+    setShippingQuoteError(null)
     const timeout = setTimeout(() => {
       fetchSpeedyQuote(shippingMethod, city).then((quote) => {
         if (!cancelled) setShippingCost(quote.shipping_cost_bgn)
@@ -448,6 +464,10 @@ export function CheckoutPage() {
     event.preventDefault()
     setError(null)
 
+    if (PIGEON_EXPRESS_METHODS.includes(shippingMethod) && shippingQuoteError) {
+      setError(shippingQuoteError)
+      return
+    }
     if (shippingMethod === 'speedy_office' && !selectedOffice) {
       setError('Изберете офис на Спиди.')
       return
@@ -749,6 +769,10 @@ export function CheckoutPage() {
               selected={pigeonExpressOffice}
               onSelect={setPigeonExpressOffice}
             />
+          )}
+
+          {PIGEON_EXPRESS_METHODS.includes(shippingMethod) && shippingQuoteError && (
+            <p className="mt-2 text-sm text-red-600">{shippingQuoteError}</p>
           )}
         </section>
 
