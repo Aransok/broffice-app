@@ -32,8 +32,14 @@ class PigeonExpressAPIError(Exception):
         self.errors = errors
 
 
-class PigeonExpressNotConfigured(Exception):
-    pass
+class PigeonExpressNotConfigured(PigeonExpressAPIError):
+    """A PigeonExpressAPIError subclass (not a bare Exception) so every
+    existing `except PigeonExpressAPIError` call site — every proxy view,
+    the order-create serializer/view — already handles a missing/blank
+    .env config as a clean error response instead of an unhandled 500."""
+
+    def __init__(self, message: str):
+        super().__init__(message, status_code=503)
 
 
 class PigeonExpressClient:
