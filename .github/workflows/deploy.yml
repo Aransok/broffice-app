@@ -81,6 +81,52 @@ jobs:
       - uses: actions/checkout@v4
         with:
           clean: false
+      # Real credentials live only as encrypted GitHub Actions secrets
+      # (Settings -> Secrets and variables -> Actions), never in this repo
+      # or in any committed script (unlike the DJANGO_SECRET_KEY/
+      # POSTGRES_PASSWORD/SUPPLIER_CATALOG_API_KEY mistake already sitting
+      # in deploy/bootstrap-deploy-machine.ps1 - do not repeat that here).
+      # Only updates the specific keys listed below inside the runner's own
+      # .env, leaving every other line (DB password, etc.) untouched. A
+      # blank/unset secret is skipped, not written as an empty value, so an
+      # optional credential that hasn't been set yet (e.g.
+      # PIGEON_EXPRESS_PICKUP_OFFICE_ID) never clobbers a real value.
+      - name: Sync Pigeon Express credentials into .env
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        env:
+          PIGEON_EXPRESS_API_KEY: ${{ secrets.PIGEON_EXPRESS_API_KEY }}
+          PIGEON_EXPRESS_API_SECRET: ${{ secrets.PIGEON_EXPRESS_API_SECRET }}
+          PIGEON_EXPRESS_BASE_URL: ${{ secrets.PIGEON_EXPRESS_BASE_URL }}
+          PIGEON_EXPRESS_PICKUP_OFFICE_ID: ${{ secrets.PIGEON_EXPRESS_PICKUP_OFFICE_ID }}
+        run: |
+          $EnvPath = ".env"
+          $lines = @(Get-Content -Path $EnvPath -ErrorAction SilentlyContinue)
+
+          function Set-EnvLine {
+              param([string[]]$Lines, [string]$Key, [string]$Value)
+              if (-not $Value) { return $Lines }
+              $prefix = "$Key="
+              $found = $false
+              $result = foreach ($line in $Lines) {
+                  if ($line -like "$prefix*") {
+                      $found = $true
+                      "$Key=$Value"
+                  } else {
+                      $line
+                  }
+              }
+              $result = @($result)
+              if (-not $found) { $result += "$Key=$Value" }
+              return $result
+          }
+
+          $lines = Set-EnvLine -Lines $lines -Key "PIGEON_EXPRESS_API_KEY" -Value $env:PIGEON_EXPRESS_API_KEY
+          $lines = Set-EnvLine -Lines $lines -Key "PIGEON_EXPRESS_API_SECRET" -Value $env:PIGEON_EXPRESS_API_SECRET
+          $lines = Set-EnvLine -Lines $lines -Key "PIGEON_EXPRESS_BASE_URL" -Value $env:PIGEON_EXPRESS_BASE_URL
+          $lines = Set-EnvLine -Lines $lines -Key "PIGEON_EXPRESS_PICKUP_OFFICE_ID" -Value $env:PIGEON_EXPRESS_PICKUP_OFFICE_ID
+
+          Set-Content -Path $EnvPath -Value $lines -Encoding utf8
+          Write-Host "Pigeon Express credentials synced into .env"
       - name: Redeploy
         # Explicit shell override needed: this machine's default Windows
         # PowerShell execution policy blocks running scripts at all (the
