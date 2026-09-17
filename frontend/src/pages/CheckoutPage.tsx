@@ -418,7 +418,7 @@ export function CheckoutPage() {
             if (cancelled) return
             setShippingCost(null)
             setShippingQuoteError(
-              'Доставката с Pigeon Express не може да бъде изчислена в момента. Опитайте отново по-късно.',
+              'Доставката с Pigeon Express в момента не е достъпна. Моля, изберете друг начин на доставка (напр. Спиди), за да завършите поръчката.',
             )
           })
       }, 300)
