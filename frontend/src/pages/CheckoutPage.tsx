@@ -418,7 +418,7 @@ export function CheckoutPage() {
             if (cancelled) return
             setShippingCost(null)
             setShippingQuoteError(
-              'Доставката с Pigeon Express в момента не е достъпна. Моля, изберете друг начин на доставка (напр. Спиди), за да завършите поръчката.',
+              'Доставката с Pigeon Express в момента не е достъпна. Моля, изберете "Доставка до адрес", за да завършите поръчката.',
             )
           })
       }, 300)
