@@ -14,6 +14,7 @@ from coupons.models import Coupon
 from favorites.models import Favorite
 from navigation.models import Menu, MenuItem
 from orders.models import Invoice, Order, OrderItem, OrderNotification
+from orders.services import estimate_pigeon_express_weight_kg
 from pages.models import Page
 from pages.services import render_page_body
 from pricing.models import AdminPriceOverride
@@ -22,6 +23,7 @@ from products.models import Product, ProductImage, next_item_number
 from promotions.models import Promotion
 from shipping.models import SpeedyOffice
 from shipping.services import get_speedy_client
+from shipping.pigeon_express import PigeonExpressAPIError, get_pigeon_express_client
 
 
 def is_admin_user(user) -> bool:
@@ -158,6 +160,37 @@ class SpeedyOfficeSerializer(serializers.ModelSerializer):
     class Meta:
         model = SpeedyOffice
         fields = ("id", "external_id", "name", "city", "address", "phone")
+
+
+class PigeonExpressCitySerializer(serializers.Serializer):
+    # Plain Serializer over dicts from PigeonExpressClient — no backing
+    # model, this is a live proxy of their own API response shape.
+    id = serializers.CharField()
+    name = serializers.CharField()
+    name_en = serializers.CharField(required=False, allow_blank=True)
+    postal_code = serializers.CharField(required=False, allow_blank=True)
+    municipality = serializers.CharField(required=False, allow_blank=True)
+    district = serializers.CharField(required=False, allow_blank=True)
+
+
+class PigeonExpressStreetSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    name = serializers.CharField()
+
+
+class PigeonExpressOfficeSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    name = serializers.CharField()
+    code = serializers.CharField(required=False, allow_blank=True)
+    type = serializers.CharField()
+    address = serializers.CharField(required=False, allow_blank=True)
+    city_name = serializers.SerializerMethodField()
+    postal_code = serializers.CharField(required=False, allow_blank=True)
+    phone = serializers.CharField(required=False, allow_blank=True)
+
+    def get_city_name(self, obj):
+        city = obj.get("city") or {}
+        return city.get("name", "")
 
 
 class BrandSerializer(serializers.ModelSerializer):
@@ -601,6 +634,29 @@ class OrderCreateSerializer(serializers.Serializer):
     speedy_office_id = serializers.CharField(
         required=False, allow_blank=True, default=""
     )
+    pigeon_express_city_id = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
+    pigeon_express_street_id = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
+    # No "get street by id" endpoint exists on Pigeon Express's API (only a
+    # per-city search list) — unlike city_name/office_name below, this can't
+    # be resolved server-side, so it's taken as given from the frontend's
+    # own search result (a display snapshot only; street_id is what's
+    # actually sent to Pigeon Express for pricing/shipment creation).
+    pigeon_express_street_name = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
+    pigeon_express_street_number = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
+    pigeon_express_additional_info = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
+    pigeon_express_office_id = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
     payment_method = serializers.ChoiceField(
         choices=Order.PAYMENT_METHOD_CHOICES, default=Order.PAYMENT_CASH_ON_DELIVERY
     )
@@ -632,6 +688,34 @@ class OrderCreateSerializer(serializers.Serializer):
                 )
             if not get_speedy_client().get_office(office_id):
                 raise serializers.ValidationError("Unknown speedy_office_id")
+        elif method == Order.SHIPPING_PIGEON_EXPRESS_ADDRESS:
+            if not attrs.get("pigeon_express_city_id"):
+                raise serializers.ValidationError(
+                    "pigeon_express_city_id is required for pigeon_express_address"
+                )
+            if not attrs.get("pigeon_express_street_id") and len(
+                attrs.get("pigeon_express_additional_info") or ""
+            ) < 3:
+                raise serializers.ValidationError(
+                    "pigeon_express_street_id or pigeon_express_additional_info "
+                    "(min 3 chars) is required for pigeon_express_address"
+                )
+        elif method in (
+            Order.SHIPPING_PIGEON_EXPRESS_OFFICE,
+            Order.SHIPPING_PIGEON_EXPRESS_LOCKER,
+        ):
+            office_id = attrs.get("pigeon_express_office_id")
+            if not office_id:
+                raise serializers.ValidationError(
+                    "pigeon_express_office_id is required for "
+                    "pigeon_express_office/pigeon_express_locker"
+                )
+            try:
+                office = get_pigeon_express_client().get_office(office_id)
+            except PigeonExpressAPIError as exc:
+                raise serializers.ValidationError(f"Pigeon Express: {exc.message}")
+            if not office:
+                raise serializers.ValidationError("Unknown pigeon_express_office_id")
         if attrs.get("is_company_order") and (
             not attrs.get("company_name") or not attrs.get("company_eik")
         ):
@@ -657,9 +741,17 @@ class OrderSerializer(serializers.ModelSerializer):
     user = serializers.IntegerField(source="user_id", read_only=True)
     username = serializers.SerializerMethodField()
     total_profit_bgn = serializers.SerializerMethodField()
+    pigeon_express_suggested_weight_kg = serializers.SerializerMethodField()
 
     def get_username(self, obj):
         return obj.user.username if obj.user_id else None
+
+    def get_pigeon_express_suggested_weight_kg(self, obj):
+        # Best-effort hint only (see estimate_pigeon_express_weight_kg) — an
+        # admin still reviews/corrects it via pigeon_express_package before
+        # a real shipment is created, never trusted automatically.
+        weight = estimate_pigeon_express_weight_kg(obj)
+        return str(weight) if weight is not None else None
 
     def get_total_profit_bgn(self, obj):
         # Reseller-cost-derived — admin-eyes-only, same gating as
@@ -693,6 +785,21 @@ class OrderSerializer(serializers.ModelSerializer):
             "delivery_post_code",
             "speedy_office_id",
             "speedy_office_name",
+            "pigeon_express_city_id",
+            "pigeon_express_city_name",
+            "pigeon_express_street_id",
+            "pigeon_express_street_name",
+            "pigeon_express_street_number",
+            "pigeon_express_additional_info",
+            "pigeon_express_office_id",
+            "pigeon_express_office_name",
+            "pigeon_express_reference_number",
+            "pigeon_express_label_pdf",
+            "pigeon_express_package_weight_kg",
+            "pigeon_express_package_length_cm",
+            "pigeon_express_package_width_cm",
+            "pigeon_express_package_height_cm",
+            "pigeon_express_suggested_weight_kg",
             "shipping_cost_bgn",
             "subtotal_bgn",
             "coupon_code",

@@ -36,6 +36,10 @@ from .views import (
     PageViewSet,
     PasswordResetConfirmView,
     PasswordResetRequestView,
+    PigeonExpressCityListView,
+    PigeonExpressOfficeListView,
+    PigeonExpressQuoteView,
+    PigeonExpressStreetListView,
     ProductViewSet,
     PublicConfigView,
     RegisterView,
@@ -99,6 +103,26 @@ urlpatterns = [
         name="speedy-offices",
     ),
     path("shipping/speedy/quote/", SpeedyQuoteView.as_view(), name="speedy-quote"),
+    path(
+        "shipping/pigeon-express/cities/",
+        PigeonExpressCityListView.as_view(),
+        name="pigeon-express-cities",
+    ),
+    path(
+        "shipping/pigeon-express/cities/<str:city_id>/streets/",
+        PigeonExpressStreetListView.as_view(),
+        name="pigeon-express-streets",
+    ),
+    path(
+        "shipping/pigeon-express/offices/",
+        PigeonExpressOfficeListView.as_view(),
+        name="pigeon-express-offices",
+    ),
+    path(
+        "shipping/pigeon-express/quote/",
+        PigeonExpressQuoteView.as_view(),
+        name="pigeon-express-quote",
+    ),
     path("admin/users/", AdminUserListView.as_view(), name="admin-users"),
     path(
         "admin/dashboard/stats/",

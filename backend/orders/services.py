@@ -1,4 +1,6 @@
-from decimal import Decimal
+import base64
+import re
+from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -7,7 +9,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from accounts.models import Address
-from common.currency import format_eur
+from common.currency import eur_to_bgn, format_eur
 from coupons.services import (
     calculate_coupon_discount,
     check_min_order_amount,
@@ -24,6 +26,7 @@ from promotions.services import (
     build_promo_category_descendant_map,
     get_active_promotions,
 )
+from shipping.pigeon_express import get_pigeon_express_client
 from shipping.services import get_speedy_client
 
 PAYMENT_METHOD_LABELS = dict(Order.PAYMENT_METHOD_CHOICES)
@@ -686,6 +689,201 @@ def _get_or_save_address(
     )
 
 
+def _pigeon_express_pickup_payload() -> dict:
+    if not settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID:
+        raise ValueError(
+            "PIGEON_EXPRESS_PICKUP_OFFICE_ID is not set — add it to .env "
+            "(get it from Pigeon Express support) before shipments can be "
+            "quoted or created."
+        )
+    return {
+        "pickup_type": "office",
+        "pickup_office_id": settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID,
+    }
+
+
+def _pigeon_express_packages(order: Order | None = None) -> list[dict]:
+    # No per-product weight/dimension fields exist yet, so there's nothing
+    # to compute this from at checkout time (order=None, no items priced
+    # yet) — falls back to the flat PIGEON_EXPRESS_DEFAULT_PACKAGE_* settings.
+    # At confirm time (order given), an admin may have corrected any of the
+    # four via AdminOrderViewSet.pigeon_express_package — each field falls
+    # back to its own setting independently, so correcting just the weight
+    # doesn't require also specifying dimensions. Field names (weight/
+    # length/width/height, not weight_kg) confirmed against the real
+    # sandbox API's 422 response — not documented in the OpenAPI excerpt.
+    weight = (order.pigeon_express_package_weight_kg if order else None) or Decimal(
+        settings.PIGEON_EXPRESS_DEFAULT_PACKAGE_WEIGHT_KG
+    )
+    length = (order.pigeon_express_package_length_cm if order else None) or Decimal(
+        settings.PIGEON_EXPRESS_DEFAULT_PACKAGE_LENGTH_CM
+    )
+    width = (order.pigeon_express_package_width_cm if order else None) or Decimal(
+        settings.PIGEON_EXPRESS_DEFAULT_PACKAGE_WIDTH_CM
+    )
+    height = (order.pigeon_express_package_height_cm if order else None) or Decimal(
+        settings.PIGEON_EXPRESS_DEFAULT_PACKAGE_HEIGHT_CM
+    )
+    return [
+        {
+            "weight": float(weight),
+            "length": float(length),
+            "width": float(width),
+            "height": float(height),
+        }
+    ]
+
+
+def estimate_pigeon_express_weight_kg(order: Order) -> Decimal | None:
+    """Best-effort total weight from each line's product specifications
+    (e.g. "Тегло (кг)": "2.5", set by sync_supplier_catalog.py's free-text
+    specifications JSONField — not a structured field, so this is a hint
+    for the admin to review/correct via pigeon_express_package, never
+    trusted directly for the real shipment. None when no item has anything
+    parseable."""
+    total = Decimal(0)
+    found = False
+    for item in order.items.select_related("product"):
+        if not item.product_id or item.product is None:
+            continue
+        for key, value in (item.product.specifications or {}).items():
+            if "тегло" not in key.lower():
+                continue
+            match = re.search(r"[\d.,]+", str(value))
+            if not match:
+                continue
+            try:
+                per_unit = Decimal(match.group().replace(",", "."))
+            except InvalidOperation:
+                continue
+            total += per_unit * item.quantity
+            found = True
+            break
+    return total.quantize(Decimal("0.01")) if found else None
+
+
+def _build_pigeon_express_delivery_payload(
+    *,
+    shipping_method,
+    pigeon_express_city_id="",
+    pigeon_express_street_id="",
+    pigeon_express_street_number="",
+    pigeon_express_additional_info="",
+    pigeon_express_office_id="",
+) -> dict:
+    if shipping_method == Order.SHIPPING_PIGEON_EXPRESS_ADDRESS:
+        address = {"city_id": pigeon_express_city_id}
+        if pigeon_express_street_id:
+            address["street_id"] = pigeon_express_street_id
+            if pigeon_express_street_number:
+                address["street_number"] = pigeon_express_street_number
+        if pigeon_express_additional_info:
+            address["additional_info"] = pigeon_express_additional_info
+        return {"delivery_type": "address", "delivery_address": address}
+    delivery_type = (
+        "locker"
+        if shipping_method == Order.SHIPPING_PIGEON_EXPRESS_LOCKER
+        else "office"
+    )
+    return {
+        "delivery_type": delivery_type,
+        "delivery_office_id": pigeon_express_office_id,
+    }
+
+
+def calculate_pigeon_express_quote(data: dict) -> dict:
+    """Shared by PigeonExpressQuoteView (the checkout-time quote) and
+    create_order below, so the price shown at checkout can never drift from
+    what actually gets charged."""
+    shipping_method = data.get("shipping_method")
+    if shipping_method not in (
+        Order.SHIPPING_PIGEON_EXPRESS_ADDRESS,
+        Order.SHIPPING_PIGEON_EXPRESS_OFFICE,
+        Order.SHIPPING_PIGEON_EXPRESS_LOCKER,
+    ):
+        raise ValueError("shipping_method must be one of the pigeon_express_* methods")
+    delivery = _build_pigeon_express_delivery_payload(
+        shipping_method=shipping_method,
+        pigeon_express_city_id=data.get("pigeon_express_city_id") or "",
+        pigeon_express_street_id=data.get("pigeon_express_street_id") or "",
+        pigeon_express_street_number=data.get("pigeon_express_street_number") or "",
+        pigeon_express_additional_info=data.get("pigeon_express_additional_info")
+        or "",
+        pigeon_express_office_id=data.get("pigeon_express_office_id") or "",
+    )
+    quote = get_pigeon_express_client().calculate_shipping_cost(
+        pickup=_pigeon_express_pickup_payload(),
+        delivery=delivery,
+        packages=_pigeon_express_packages(),
+    )
+    total_price = Decimal(str(quote["total_price"]))
+    # Everything in this app is stored/priced in BGN internally (EUR is
+    # display-only, per the currency-board peg) — convert if the courier
+    # quoted in EUR, pass through unchanged if they quoted in BGN.
+    if quote.get("currency") == "EUR":
+        shipping_cost_bgn = eur_to_bgn(total_price)
+    else:
+        shipping_cost_bgn = total_price.quantize(Decimal("0.01"))
+    return {"shipping_cost_bgn": str(shipping_cost_bgn)}
+
+
+def create_pigeon_express_shipment_for_order(order: Order) -> None:
+    """Registers the real shipment with Pigeon Express on order confirm
+    (not at checkout, since final contents/totals aren't settled until
+    then). No-op for non-Pigeon-Express orders, and idempotent — safe to
+    call again on a retry, never double-ships an already-shipped order.
+    Raises PigeonExpressAPIError on failure — callers decide whether that
+    should block confirmation (see AdminOrderViewSet.confirm, which does
+    not let it)."""
+    if order.shipping_method not in (
+        Order.SHIPPING_PIGEON_EXPRESS_ADDRESS,
+        Order.SHIPPING_PIGEON_EXPRESS_OFFICE,
+        Order.SHIPPING_PIGEON_EXPRESS_LOCKER,
+    ):
+        return
+    if order.pigeon_express_reference_number:
+        return
+    client = get_pigeon_express_client()
+    delivery = _build_pigeon_express_delivery_payload(
+        shipping_method=order.shipping_method,
+        pigeon_express_city_id=order.pigeon_express_city_id,
+        pigeon_express_street_id=order.pigeon_express_street_id,
+        pigeon_express_street_number=order.pigeon_express_street_number,
+        pigeon_express_additional_info=order.pigeon_express_additional_info,
+        pigeon_express_office_id=order.pigeon_express_office_id,
+    )
+    data = client.create_shipment(
+        receiver_name=order.customer_name or order.customer_email,
+        receiver_phone=order.customer_phone,
+        receiver_email=order.customer_email,
+        pickup=_pigeon_express_pickup_payload(),
+        delivery=delivery,
+        packages=_pigeon_express_packages(order),
+        # "description" confirmed against the real sandbox API's 422
+        # response — "name" (a reasonable guess) is rejected; not
+        # documented in the OpenAPI excerpt.
+        inventory_items=[
+            {"description": item.product_name, "quantity": item.quantity}
+            for item in order.items.all()
+        ],
+        external_reference=order.number,
+        note=order.notes[:1000],
+    )
+    order.pigeon_express_reference_number = data["reference_number"]
+    if data.get("label_pdf"):
+        pdf_bytes = base64.b64decode(data["label_pdf"])
+        order.pigeon_express_label_pdf.save(
+            f"{data['reference_number']}.pdf", ContentFile(pdf_bytes), save=False
+        )
+    order.save(
+        update_fields=[
+            "pigeon_express_reference_number",
+            "pigeon_express_label_pdf",
+            "updated_at",
+        ]
+    )
+
+
 @transaction.atomic
 def create_order(
     *,
@@ -701,6 +899,12 @@ def create_order(
     delivery_city="",
     delivery_post_code="",
     speedy_office_id="",
+    pigeon_express_city_id="",
+    pigeon_express_street_id="",
+    pigeon_express_street_name="",
+    pigeon_express_street_number="",
+    pigeon_express_additional_info="",
+    pigeon_express_office_id="",
     payment_method=Order.PAYMENT_CASH_ON_DELIVERY,
     coupon_code="",
     is_company_order=False,
@@ -757,6 +961,36 @@ def create_order(
             shipping_method=shipping_method, city=delivery_city
         )
 
+    # Pigeon Express IS wired up for real — unlike Speedy above, this
+    # actually charges the courier's real quoted price. city_name/
+    # office_name are resolved here (not trusted from client input) via the
+    # same lookups the serializer already used to validate the id exists.
+    pigeon_express_city_name = ""
+    pigeon_express_office_name = ""
+    if shipping_method in (
+        Order.SHIPPING_PIGEON_EXPRESS_ADDRESS,
+        Order.SHIPPING_PIGEON_EXPRESS_OFFICE,
+        Order.SHIPPING_PIGEON_EXPRESS_LOCKER,
+    ):
+        pe_client = get_pigeon_express_client()
+        if shipping_method == Order.SHIPPING_PIGEON_EXPRESS_ADDRESS:
+            city = pe_client.get_city(pigeon_express_city_id)
+            pigeon_express_city_name = city["name"] if city else ""
+        else:
+            office = pe_client.get_office(pigeon_express_office_id)
+            pigeon_express_office_name = office["name"] if office else ""
+        quote = calculate_pigeon_express_quote(
+            {
+                "shipping_method": shipping_method,
+                "pigeon_express_city_id": pigeon_express_city_id,
+                "pigeon_express_street_id": pigeon_express_street_id,
+                "pigeon_express_street_number": pigeon_express_street_number,
+                "pigeon_express_additional_info": pigeon_express_additional_info,
+                "pigeon_express_office_id": pigeon_express_office_id,
+            }
+        )
+        shipping_cost = Decimal(quote["shipping_cost_bgn"])
+
     order = Order.objects.create(
         number=Order.generate_number(),
         user=user if is_authenticated else None,
@@ -779,6 +1013,14 @@ def create_order(
         delivery_post_code=delivery_post_code or "",
         speedy_office_id=speedy_office_id or "",
         speedy_office_name=speedy_office_name,
+        pigeon_express_city_id=pigeon_express_city_id or "",
+        pigeon_express_city_name=pigeon_express_city_name,
+        pigeon_express_street_id=pigeon_express_street_id or "",
+        pigeon_express_street_name=pigeon_express_street_name or "",
+        pigeon_express_street_number=pigeon_express_street_number or "",
+        pigeon_express_additional_info=pigeon_express_additional_info or "",
+        pigeon_express_office_id=pigeon_express_office_id or "",
+        pigeon_express_office_name=pigeon_express_office_name,
         shipping_cost_bgn=shipping_cost,
         # Snapshot now, frozen forever — later VAT_RATE_PERCENT changes never
         # touch existing orders (recalc_order_total reuses this, not settings).

@@ -9,17 +9,17 @@ import {
   repriceOrder,
   useNotifications,
 } from '../../api/adminNotifications'
-import { getAdminInvoiceDownloadUrl } from '../../api/adminOrders'
+import {
+  getAdminInvoiceDownloadUrl,
+  getAdminPigeonExpressLabelDownloadUrl,
+  updatePigeonExpressPackage,
+} from '../../api/adminOrders'
 import { getImageUrl } from '../../api/media'
-import type { ProductListItem } from '../../api/types'
+import type { Order, ProductListItem } from '../../api/types'
 import { AdminProductPicker } from '../../components/admin/AdminProductPicker'
 import { AdminQuickPromotionButton } from '../../components/admin/AdminQuickPromotionButton'
+import { SHIPPING_LABELS } from '../../constants/shipping'
 import { formatEur } from '../../utils/currency'
-
-const SHIPPING_LABELS: Record<string, string> = {
-  speedy_address: 'Доставка до адрес',
-  speedy_office: 'До офис на Спиди',
-}
 
 const PAYMENT_LABELS: Record<string, string> = {
   cash_on_delivery: 'Наложен платеж',
@@ -64,6 +64,42 @@ export function AdminNotificationsPage() {
   const [addPanelOrder, setAddPanelOrder] = useState<string | null>(null)
   const [addQuantity, setAddQuantity] = useState(1)
   const [addFreeGift, setAddFreeGift] = useState(false)
+
+  // Same one-at-a-time pattern as the add-product panel above, for
+  // correcting the Pigeon Express package weight/dimensions before a real
+  // shipment gets created on confirm.
+  const [packagePanelOrder, setPackagePanelOrder] = useState<string | null>(null)
+  const [packageWeight, setPackageWeight] = useState('')
+  const [packageLength, setPackageLength] = useState('')
+  const [packageWidth, setPackageWidth] = useState('')
+  const [packageHeight, setPackageHeight] = useState('')
+  const [packageSaving, setPackageSaving] = useState(false)
+
+  function openPackagePanel(order: Order) {
+    setPackagePanelOrder(order.number)
+    setPackageWeight(
+      order.pigeon_express_package_weight_kg ?? order.pigeon_express_suggested_weight_kg ?? '',
+    )
+    setPackageLength(order.pigeon_express_package_length_cm ?? '')
+    setPackageWidth(order.pigeon_express_package_width_cm ?? '')
+    setPackageHeight(order.pigeon_express_package_height_cm ?? '')
+  }
+
+  async function handleSavePackage(number: string) {
+    setPackageSaving(true)
+    try {
+      await updatePigeonExpressPackage(number, {
+        weight_kg: packageWeight,
+        length_cm: packageLength,
+        width_cm: packageWidth,
+        height_cm: packageHeight,
+      })
+      setPackagePanelOrder(null)
+      await refetch()
+    } finally {
+      setPackageSaving(false)
+    }
+  }
 
   useEffect(() => {
     if (!highlightOrder) return
@@ -160,6 +196,16 @@ export function AdminNotificationsPage() {
                   <span className="text-sm text-slate-500">
                     ({order.customer_name || order.customer_email})
                   </span>{' '}
+                  <span className="text-sm text-slate-400">
+                    ·{' '}
+                    {new Date(order.created_at).toLocaleString('bg-BG', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>{' '}
                   {order.user ? (
                     <Link
                       to={`/admin/customers/${order.user}`}
@@ -195,6 +241,14 @@ export function AdminNotificationsPage() {
                   className="mb-2 inline-block text-xs text-primary hover:underline"
                 >
                   Изтегли фактура ({order.invoice.number})
+                </a>
+              )}
+              {order.pigeon_express_reference_number && (
+                <a
+                  href={getAdminPigeonExpressLabelDownloadUrl(order.number)}
+                  className="mb-2 ml-3 inline-block text-xs text-primary hover:underline"
+                >
+                  Изтегли товарителница ({order.pigeon_express_reference_number})
                 </a>
               )}
 
@@ -317,7 +371,12 @@ export function AdminNotificationsPage() {
                     Доставка: {SHIPPING_LABELS[order.shipping_method] ?? order.shipping_method}
                     {order.shipping_method === 'speedy_office'
                       ? ` — ${order.speedy_office_name}`
-                      : ` — ${order.delivery_address_line}, ${order.delivery_city} ${order.delivery_post_code}`}
+                      : order.shipping_method === 'pigeon_express_address'
+                        ? ` — ${order.pigeon_express_street_name} ${order.pigeon_express_street_number}, ${order.pigeon_express_city_name}`
+                        : order.shipping_method === 'pigeon_express_office' ||
+                            order.shipping_method === 'pigeon_express_locker'
+                          ? ` — ${order.pigeon_express_office_name}`
+                          : ` — ${order.delivery_address_line}, ${order.delivery_city} ${order.delivery_post_code}`}
                   </p>
                 )}
                 <p>Телефон: {order.customer_phone || '-'}</p>
@@ -341,6 +400,97 @@ export function AdminNotificationsPage() {
                   </p>
                 )}
               </div>
+
+              {order.status === 'pending' &&
+                order.shipping_method.startsWith('pigeon_express') &&
+                !order.pigeon_express_reference_number &&
+                (packagePanelOrder === order.number ? (
+                  <div className="mb-2 rounded-ui border border-slate-200 p-2">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <label className="text-xs text-slate-600">
+                        Тегло (кг)
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={packageWeight}
+                          onChange={(event) => setPackageWeight(event.target.value)}
+                          placeholder="1.00"
+                          className="ml-1 w-16 rounded-ui border border-slate-300 px-2 py-1 text-sm"
+                        />
+                      </label>
+                      <label className="text-xs text-slate-600">
+                        Дължина (см)
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={packageLength}
+                          onChange={(event) => setPackageLength(event.target.value)}
+                          placeholder="20"
+                          className="ml-1 w-14 rounded-ui border border-slate-300 px-2 py-1 text-sm"
+                        />
+                      </label>
+                      <label className="text-xs text-slate-600">
+                        Ширина (см)
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={packageWidth}
+                          onChange={(event) => setPackageWidth(event.target.value)}
+                          placeholder="15"
+                          className="ml-1 w-14 rounded-ui border border-slate-300 px-2 py-1 text-sm"
+                        />
+                      </label>
+                      <label className="text-xs text-slate-600">
+                        Височина (см)
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={packageHeight}
+                          onChange={(event) => setPackageHeight(event.target.value)}
+                          placeholder="10"
+                          className="ml-1 w-14 rounded-ui border border-slate-300 px-2 py-1 text-sm"
+                        />
+                      </label>
+                    </div>
+                    {order.pigeon_express_suggested_weight_kg && !order.pigeon_express_package_weight_kg && (
+                      <p className="mb-2 text-xs text-slate-500">
+                        Предложено тегло по продуктови данни:{' '}
+                        {order.pigeon_express_suggested_weight_kg} кг — проверете преди запис.
+                      </p>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={packageSaving}
+                        onClick={() => handleSavePackage(order.number)}
+                        className="rounded-ui bg-primary px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+                      >
+                        {packageSaving ? 'Запазване...' : 'Запази'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPackagePanelOrder(null)}
+                        className="text-xs text-slate-500 hover:underline"
+                      >
+                        Отказ
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => openPackagePanel(order)}
+                    className="mb-2 block text-xs text-primary hover:underline"
+                  >
+                    {order.pigeon_express_package_weight_kg
+                      ? `Опаковка: ${order.pigeon_express_package_weight_kg} кг` +
+                        (order.pigeon_express_package_length_cm
+                          ? `, ${order.pigeon_express_package_length_cm}×${order.pigeon_express_package_width_cm}×${order.pigeon_express_package_height_cm} см`
+                          : '') +
+                        ' (редактирай)'
+                      : '+ Тегло/размери за Pigeon Express (по подразбиране: 1 кг, 20×15×10 см)'}
+                  </button>
+                ))}
 
               {order.status === 'pending' && (
                 <div className="flex gap-2">

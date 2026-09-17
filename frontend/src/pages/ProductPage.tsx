@@ -13,7 +13,7 @@ import { useVat } from '../context/VatContext'
 
 export function ProductPage() {
   const { slug = '' } = useParams()
-  const { data: product, isLoading, isError } = useProduct(slug)
+  const { data: product, isLoading, isError, refetch } = useProduct(slug)
   const { data: similarProducts } = useSimilarProducts(slug)
   const { data: recommendedProducts } = useRecommendedProducts(slug)
   const [activeImage, setActiveImage] = useState(0)
@@ -146,7 +146,7 @@ export function ProductPage() {
             <p className="mt-1 text-sm text-slate-500">Опаковка: {product.pack_quantity} бр.</p>
           )}
 
-          <AdminPriceEditor product={product} />
+          <AdminPriceEditor product={product} onSaved={refetch} />
 
           <div className="mt-6 flex items-center gap-2">
             <span className="text-sm text-slate-600" id="qty-label">

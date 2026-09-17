@@ -3,8 +3,22 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAddresses } from '../api/addresses'
 import { type CouponDiscountType, validateCoupon } from '../api/coupons'
 import { createOrder } from '../api/orders'
-import { fetchSpeedyQuote, useSpeedyOffices } from '../api/shipping'
-import type { PaymentMethod, ShippingMethod, SpeedyOffice } from '../api/types'
+import {
+  fetchPigeonExpressQuote,
+  fetchSpeedyQuote,
+  usePigeonExpressCities,
+  usePigeonExpressOffices,
+  usePigeonExpressStreets,
+  useSpeedyOffices,
+} from '../api/shipping'
+import type {
+  PaymentMethod,
+  PigeonExpressCity,
+  PigeonExpressOffice,
+  PigeonExpressStreet,
+  ShippingMethod,
+  SpeedyOffice,
+} from '../api/types'
 import { Seo } from '../components/Seo'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
@@ -68,6 +82,202 @@ function SpeedyOfficePicker({
   )
 }
 
+function PigeonExpressCityPicker({
+  selected,
+  onSelect,
+}: {
+  selected: PigeonExpressCity | null
+  onSelect: (city: PigeonExpressCity) => void
+}) {
+  const [query, setQuery] = useState(selected?.name ?? '')
+  const { data: cities, isFetching } = usePigeonExpressCities(query)
+  const showResults = query.trim().length > 0 && (!selected || selected.name !== query)
+
+  return (
+    <div className="flex flex-col gap-2">
+      <input
+        type="text"
+        placeholder="Град"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        className="rounded-ui border border-slate-300 px-3 py-2"
+      />
+      {showResults && isFetching && <p className="text-sm text-slate-500">Търсене...</p>}
+      {showResults && cities && cities.length > 0 && (
+        <ul className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-ui border border-slate-200">
+          {cities.map((city) => (
+            <li key={city.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  onSelect(city)
+                  setQuery(city.name)
+                }}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-primary/10"
+              >
+                {city.name} {city.postal_code && `(${city.postal_code})`}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {showResults && cities && cities.length === 0 && (
+        <p className="text-sm text-slate-500">Няма намерени градове.</p>
+      )}
+    </div>
+  )
+}
+
+function PigeonExpressCityStreetPicker({
+  city,
+  onSelectCity,
+  street,
+  onSelectStreet,
+  streetNumber,
+  onStreetNumberChange,
+  additionalInfo,
+  onAdditionalInfoChange,
+}: {
+  city: PigeonExpressCity | null
+  onSelectCity: (city: PigeonExpressCity) => void
+  street: PigeonExpressStreet | null
+  onSelectStreet: (street: PigeonExpressStreet | null) => void
+  streetNumber: string
+  onStreetNumberChange: (value: string) => void
+  additionalInfo: string
+  onAdditionalInfoChange: (value: string) => void
+}) {
+  const [streetQuery, setStreetQuery] = useState(street?.name ?? '')
+  const { data: streets, isFetching } = usePigeonExpressStreets(city?.id ?? '', streetQuery)
+  const showResults =
+    streetQuery.trim().length >= 2 && (!street || street.name !== streetQuery)
+
+  return (
+    <div className="mt-3 flex flex-col gap-3">
+      <PigeonExpressCityPicker
+        selected={city}
+        onSelect={(selectedCity) => {
+          onSelectCity(selectedCity)
+          onSelectStreet(null)
+          setStreetQuery('')
+        }}
+      />
+      {city && (
+        <>
+          <div className="flex flex-col gap-2">
+            <input
+              type="text"
+              placeholder="Улица (мин. 2 символа)"
+              value={streetQuery}
+              onChange={(event) => setStreetQuery(event.target.value)}
+              className="rounded-ui border border-slate-300 px-3 py-2"
+            />
+            {showResults && isFetching && (
+              <p className="text-sm text-slate-500">Търсене...</p>
+            )}
+            {showResults && streets && streets.length > 0 && (
+              <ul className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-ui border border-slate-200">
+                {streets.map((s) => (
+                  <li key={s.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectStreet(s)
+                        setStreetQuery(s.name)
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-primary/10"
+                    >
+                      {s.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {showResults && streets && streets.length === 0 && (
+              <p className="text-sm text-slate-500">Няма намерена улица.</p>
+            )}
+          </div>
+          <input
+            type="text"
+            placeholder="Номер"
+            value={streetNumber}
+            onChange={(event) => onStreetNumberChange(event.target.value)}
+            className="w-32 rounded-ui border border-slate-300 px-3 py-2"
+          />
+          {!street && (
+            <textarea
+              placeholder="Ако не намерите улицата: допълнителна информация за адреса (мин. 3 символа)"
+              value={additionalInfo}
+              onChange={(event) => onAdditionalInfoChange(event.target.value)}
+              className="rounded-ui border border-slate-300 px-3 py-2"
+              rows={2}
+            />
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+function PigeonExpressOfficePicker({
+  type,
+  selected,
+  onSelect,
+}: {
+  type: 'office' | 'locker'
+  selected: PigeonExpressOffice | null
+  onSelect: (office: PigeonExpressOffice) => void
+}) {
+  const [city, setCity] = useState<PigeonExpressCity | null>(null)
+  const [query, setQuery] = useState('')
+  const { data: offices, isFetching } = usePigeonExpressOffices(type, city?.id ?? '', query)
+
+  return (
+    <div className="mt-3 flex flex-col gap-2">
+      <PigeonExpressCityPicker selected={city} onSelect={setCity} />
+      <input
+        type="text"
+        placeholder={type === 'locker' ? 'Търси автомат по име' : 'Търси офис по име'}
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        className="rounded-ui border border-slate-300 px-3 py-2"
+      />
+      {isFetching && <p className="text-sm text-slate-500">Търсене...</p>}
+      {offices && offices.length > 0 && (
+        <ul className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-ui border border-slate-200">
+          {offices.map((office) => (
+            <li key={office.id}>
+              <button
+                type="button"
+                onClick={() => onSelect(office)}
+                className={
+                  selected?.id === office.id
+                    ? 'w-full bg-primary/10 px-3 py-2 text-left text-sm'
+                    : 'w-full px-3 py-2 text-left text-sm hover:bg-primary/10'
+                }
+              >
+                <div className="font-medium text-slate-800">{office.name}</div>
+                <div className="text-slate-500">{office.address}</div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {offices && offices.length === 0 && (
+        <p className="text-sm text-slate-500">
+          {type === 'locker' ? 'Няма намерени автомати.' : 'Няма намерени офиси.'}
+        </p>
+      )}
+    </div>
+  )
+}
+
+const PIGEON_EXPRESS_METHODS: ShippingMethod[] = [
+  'pigeon_express_address',
+  'pigeon_express_office',
+  'pigeon_express_locker',
+]
+
 export function CheckoutPage() {
   const { items, totalPrice, clear } = useCart()
   const { displayPrice } = useVat()
@@ -93,6 +303,15 @@ export function CheckoutPage() {
 
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('speedy_address')
   const [selectedOffice, setSelectedOffice] = useState<SpeedyOffice | null>(null)
+  const [pigeonExpressCity, setPigeonExpressCity] = useState<PigeonExpressCity | null>(null)
+  const [pigeonExpressStreet, setPigeonExpressStreet] = useState<PigeonExpressStreet | null>(
+    null,
+  )
+  const [pigeonExpressStreetNumber, setPigeonExpressStreetNumber] = useState('')
+  const [pigeonExpressAdditionalInfo, setPigeonExpressAdditionalInfo] = useState('')
+  const [pigeonExpressOffice, setPigeonExpressOffice] = useState<PigeonExpressOffice | null>(
+    null,
+  )
   const [shippingCost, setShippingCost] = useState<string | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash_on_delivery')
 
@@ -168,6 +387,32 @@ export function CheckoutPage() {
   }, [addresses])
 
   useEffect(() => {
+    if (PIGEON_EXPRESS_METHODS.includes(shippingMethod)) {
+      const ready =
+        shippingMethod === 'pigeon_express_address'
+          ? Boolean(pigeonExpressCity) &&
+            (Boolean(pigeonExpressStreet) || pigeonExpressAdditionalInfo.trim().length >= 3)
+          : Boolean(pigeonExpressOffice)
+      if (!ready) return
+      let cancelled = false
+      const timeout = setTimeout(() => {
+        fetchPigeonExpressQuote({
+          shipping_method: shippingMethod,
+          pigeon_express_city_id: pigeonExpressCity?.id,
+          pigeon_express_street_id: pigeonExpressStreet?.id,
+          pigeon_express_street_number: pigeonExpressStreetNumber,
+          pigeon_express_additional_info: pigeonExpressAdditionalInfo,
+          pigeon_express_office_id: pigeonExpressOffice?.id,
+        }).then((quote) => {
+          if (!cancelled) setShippingCost(quote.shipping_cost_bgn)
+        })
+      }, 300)
+      return () => {
+        cancelled = true
+        clearTimeout(timeout)
+      }
+    }
+
     const city = shippingMethod === 'speedy_office' ? selectedOffice?.city : deliveryCity
     if (!city) return
     let cancelled = false
@@ -180,7 +425,16 @@ export function CheckoutPage() {
       cancelled = true
       clearTimeout(timeout)
     }
-  }, [shippingMethod, deliveryCity, selectedOffice])
+  }, [
+    shippingMethod,
+    deliveryCity,
+    selectedOffice,
+    pigeonExpressCity,
+    pigeonExpressStreet,
+    pigeonExpressStreetNumber,
+    pigeonExpressAdditionalInfo,
+    pigeonExpressOffice,
+  ])
 
   if (items.length === 0) {
     return (
@@ -200,6 +454,27 @@ export function CheckoutPage() {
     }
     if (shippingMethod === 'speedy_address' && (!deliveryAddressLine || !deliveryCity)) {
       setError('Попълнете адрес и град за доставка.')
+      return
+    }
+    if (
+      shippingMethod === 'pigeon_express_address' &&
+      (!pigeonExpressCity ||
+        (!pigeonExpressStreet && pigeonExpressAdditionalInfo.trim().length < 3))
+    ) {
+      setError(
+        'Изберете град и улица (или въведете допълнителна информация за адреса, мин. 3 символа).',
+      )
+      return
+    }
+    if (
+      (shippingMethod === 'pigeon_express_office' || shippingMethod === 'pigeon_express_locker') &&
+      !pigeonExpressOffice
+    ) {
+      setError(
+        shippingMethod === 'pigeon_express_locker'
+          ? 'Изберете автомат на Pigeon Express.'
+          : 'Изберете офис на Pigeon Express.',
+      )
       return
     }
     if (!termsAccepted) {
@@ -238,7 +513,17 @@ export function CheckoutPage() {
               delivery_city: deliveryCity,
               delivery_post_code: deliveryPostCode,
             }
-          : { speedy_office_id: selectedOffice?.external_id }),
+          : shippingMethod === 'speedy_office'
+            ? { speedy_office_id: selectedOffice?.external_id }
+            : shippingMethod === 'pigeon_express_address'
+              ? {
+                  pigeon_express_city_id: pigeonExpressCity?.id,
+                  pigeon_express_street_id: pigeonExpressStreet?.id,
+                  pigeon_express_street_name: pigeonExpressStreet?.name,
+                  pigeon_express_street_number: pigeonExpressStreetNumber,
+                  pigeon_express_additional_info: pigeonExpressAdditionalInfo,
+                }
+              : { pigeon_express_office_id: pigeonExpressOffice?.id }),
       })
       clear()
       navigate('/order-confirmation', { state: { order } })
@@ -353,7 +638,7 @@ export function CheckoutPage() {
 
         <section>
           <h2 className="mb-3 font-semibold text-slate-900">Начин на доставка</h2>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-4">
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="radio"
@@ -369,6 +654,30 @@ export function CheckoutPage() {
                 onChange={() => setShippingMethod('speedy_office')}
               />
               До офис на Спиди
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                checked={shippingMethod === 'pigeon_express_address'}
+                onChange={() => setShippingMethod('pigeon_express_address')}
+              />
+              Доставка до адрес (Pigeon Express)
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                checked={shippingMethod === 'pigeon_express_office'}
+                onChange={() => setShippingMethod('pigeon_express_office')}
+              />
+              До офис на Pigeon Express
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                checked={shippingMethod === 'pigeon_express_locker'}
+                onChange={() => setShippingMethod('pigeon_express_locker')}
+              />
+              До автомат на Pigeon Express
             </label>
           </div>
 
@@ -418,6 +727,28 @@ export function CheckoutPage() {
 
           {shippingMethod === 'speedy_office' && (
             <SpeedyOfficePicker selected={selectedOffice} onSelect={setSelectedOffice} />
+          )}
+
+          {shippingMethod === 'pigeon_express_address' && (
+            <PigeonExpressCityStreetPicker
+              city={pigeonExpressCity}
+              onSelectCity={setPigeonExpressCity}
+              street={pigeonExpressStreet}
+              onSelectStreet={setPigeonExpressStreet}
+              streetNumber={pigeonExpressStreetNumber}
+              onStreetNumberChange={setPigeonExpressStreetNumber}
+              additionalInfo={pigeonExpressAdditionalInfo}
+              onAdditionalInfoChange={setPigeonExpressAdditionalInfo}
+            />
+          )}
+
+          {(shippingMethod === 'pigeon_express_office' ||
+            shippingMethod === 'pigeon_express_locker') && (
+            <PigeonExpressOfficePicker
+              type={shippingMethod === 'pigeon_express_locker' ? 'locker' : 'office'}
+              selected={pigeonExpressOffice}
+              onSelect={setPigeonExpressOffice}
+            />
           )}
         </section>
 

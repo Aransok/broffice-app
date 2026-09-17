@@ -121,13 +121,6 @@ def generate_invoice_pdf(invoice, *, include_profit: bool = False) -> bytes:
     header_table = Table(
         [
             [
-                Paragraph(f"<b>Заявка №</b> {invoice.number}", normal),
-                Paragraph(
-                    f"<b>Дата на издаване</b> {invoice.issued_at.strftime('%d.%m.%Y')}",
-                    normal,
-                ),
-            ],
-            [
                 Paragraph(f"<b>Поръчка №</b> {order.number}", normal),
                 Paragraph(
                     f"<b>Дата на поръчка</b> {order.created_at.strftime('%d.%m.%Y')}",
@@ -155,6 +148,19 @@ def generate_invoice_pdf(invoice, *, include_profit: bool = False) -> bytes:
             customer_lines.append(f"МОЛ: {order.company_mol}")
     if order.shipping_method == order.SHIPPING_SPEEDY_OFFICE:
         customer_lines.append(f"Доставка до офис на Спиди: {order.speedy_office_name}")
+    elif order.shipping_method in (
+        order.SHIPPING_PIGEON_EXPRESS_OFFICE,
+        order.SHIPPING_PIGEON_EXPRESS_LOCKER,
+    ):
+        customer_lines.append(
+            f"Доставка до офис на Pigeon Express: {order.pigeon_express_office_name}"
+        )
+    elif order.shipping_method == order.SHIPPING_PIGEON_EXPRESS_ADDRESS:
+        customer_lines.append(
+            f"Адрес за доставка: {order.pigeon_express_street_name} "
+            f"{order.pigeon_express_street_number}, "
+            f"{order.pigeon_express_city_name}".strip()
+        )
     elif order.delivery_address_line:
         customer_lines.append(
             f"Адрес за доставка: {order.delivery_address_line}, "

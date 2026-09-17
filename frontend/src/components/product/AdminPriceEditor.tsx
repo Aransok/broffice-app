@@ -6,7 +6,13 @@ import { useAuth } from '../../context/AuthContext'
 import { bgnToEur, eurToBgn } from '../../utils/currency'
 import { AdminQuickPromotionButton } from '../admin/AdminQuickPromotionButton'
 
-export function AdminPriceEditor({ product }: { product: ProductDetail }) {
+export function AdminPriceEditor({
+  product,
+  onSaved,
+}: {
+  product: ProductDetail
+  onSaved?: () => void
+}) {
   const { user } = useAuth()
   const [clientPrice, setClientPrice] = useState(product.client_price ?? '')
   const [clientPriceEur, setClientPriceEur] = useState(bgnToEur(product.client_price ?? ''))
@@ -37,6 +43,7 @@ export function AdminPriceEditor({ product }: { product: ProductDetail }) {
         admin_price: adminPrice || undefined,
       })
       setSaved(true)
+      onSaved?.()
     } finally {
       setSaving(false)
     }

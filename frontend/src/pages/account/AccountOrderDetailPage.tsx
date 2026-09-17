@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import { getInvoiceDownloadUrl, useMyOrder } from '../../api/myOrders'
 import { getImageUrl } from '../../api/media'
+import { SHIPPING_LABELS } from '../../constants/shipping'
 import { formatEur } from '../../utils/currency'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -57,6 +58,25 @@ export function AccountOrderDetailPage() {
       </ul>
 
       <div className="mb-4 space-y-1 text-sm text-slate-600">
+        {order.shipping_method && (
+          <p>
+            Начин на доставка: {SHIPPING_LABELS[order.shipping_method] ?? order.shipping_method}
+            {order.pigeon_express_reference_number && (
+              <>
+                {' '}
+                ·{' '}
+                <a
+                  href={`https://track.pigeonexpress.com/?tracking_number=${order.pigeon_express_reference_number}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Следи пратката
+                </a>
+              </>
+            )}
+          </p>
+        )}
         <p>Междинна сума: {formatEur(order.subtotal_bgn)}</p>
         {Number(order.shipping_cost_bgn) > 0 && (
           <p>Доставка: {formatEur(order.shipping_cost_bgn)}</p>

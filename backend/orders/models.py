@@ -46,9 +46,15 @@ class Order(TimeStampedModel):
 
     SHIPPING_SPEEDY_ADDRESS = "speedy_address"
     SHIPPING_SPEEDY_OFFICE = "speedy_office"
+    SHIPPING_PIGEON_EXPRESS_ADDRESS = "pigeon_express_address"
+    SHIPPING_PIGEON_EXPRESS_OFFICE = "pigeon_express_office"
+    SHIPPING_PIGEON_EXPRESS_LOCKER = "pigeon_express_locker"
     SHIPPING_METHOD_CHOICES = [
         (SHIPPING_SPEEDY_ADDRESS, "Доставка до адрес"),
         (SHIPPING_SPEEDY_OFFICE, "До офис на Спиди"),
+        (SHIPPING_PIGEON_EXPRESS_ADDRESS, "Доставка до адрес (Pigeon Express)"),
+        (SHIPPING_PIGEON_EXPRESS_OFFICE, "До офис на Pigeon Express"),
+        (SHIPPING_PIGEON_EXPRESS_LOCKER, "До автомат на Pigeon Express"),
     ]
 
     PAYMENT_CASH_ON_DELIVERY = "cash_on_delivery"
@@ -111,6 +117,50 @@ class Order(TimeStampedModel):
     speedy_office_id = models.CharField(max_length=64, blank=True, default="")
     speedy_office_name = models.CharField(max_length=255, blank=True, default="")
     shipping_cost_bgn = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    # Pigeon Express delivery details — structured (not free text) because
+    # their calculate/create-shipment APIs require real city_id/street_id,
+    # unlike Speedy's free-text delivery_address_line/city/post_code above.
+    # Only populated when shipping_method starts with "pigeon_express_".
+    # Either street_id or additional_info (min 3 chars) is required by
+    # their API — validated in the order-creation service, not at the DB
+    # level (same style as the rest of this model).
+    pigeon_express_city_id = models.CharField(max_length=32, blank=True, default="")
+    pigeon_express_city_name = models.CharField(max_length=255, blank=True, default="")
+    pigeon_express_street_id = models.CharField(max_length=32, blank=True, default="")
+    pigeon_express_street_name = models.CharField(max_length=255, blank=True, default="")
+    pigeon_express_street_number = models.CharField(max_length=32, blank=True, default="")
+    pigeon_express_additional_info = models.CharField(
+        max_length=255, blank=True, default=""
+    )
+    pigeon_express_office_id = models.CharField(max_length=32, blank=True, default="")
+    pigeon_express_office_name = models.CharField(max_length=255, blank=True, default="")
+    # Set only once admin confirms the order and a real shipment is
+    # registered with Pigeon Express (see create_pigeon_express_shipment_for_order)
+    # — blank until then, same as Invoice not existing until confirm either.
+    pigeon_express_reference_number = models.CharField(
+        max_length=64, blank=True, default="", db_index=True
+    )
+    pigeon_express_label_pdf = models.FileField(
+        upload_to="pigeon-express-labels/", null=True, blank=True
+    )
+    # Package facts for the real shipment — null until an admin sets them
+    # (see AdminOrderViewSet.pigeon_express_package); _pigeon_express_packages()
+    # falls back to the PIGEON_EXPRESS_DEFAULT_PACKAGE_* settings per-field
+    # for whichever of these are still null. No per-product weight/dimension
+    # fields exist yet, so this can only ever be a best-effort admin
+    # correction, never fully automatic.
+    pigeon_express_package_weight_kg = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True
+    )
+    pigeon_express_package_length_cm = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True
+    )
+    pigeon_express_package_width_cm = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True
+    )
+    pigeon_express_package_height_cm = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True
+    )
     # Snapshot, same as everything else above — a coupon's value could
     # change (it can't, single-use, but this stays consistent with the
     # "never recompute historical orders" rule regardless) and deleting the

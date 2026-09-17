@@ -1,4 +1,6 @@
+from contextlib import contextmanager
 from decimal import Decimal
+from unittest.mock import MagicMock, patch
 
 import pytest
 from django.contrib.auth.models import User
@@ -7,6 +9,20 @@ from rest_framework.test import APIClient
 from categories.models import Category
 from orders.models import Order
 from products.models import Product, ProductImage
+
+
+@contextmanager
+def mock_pigeon_express_client(**method_returns):
+    """Patches shipping.pigeon_express.PigeonExpressClient (the one place
+    every call site — views, serializers, orders/services — ultimately
+    resolves through get_pigeon_express_client()) so a test never hits the
+    real network, regardless of which module's own copy of the factory
+    function actually runs."""
+    client = MagicMock()
+    for name, value in method_returns.items():
+        getattr(client, name).return_value = value
+    with patch("shipping.pigeon_express.PigeonExpressClient", return_value=client):
+        yield client
 
 
 @pytest.fixture
@@ -1763,6 +1779,76 @@ def test_speedy_quote_invalid_method(api_client):
 
 
 @pytest.mark.django_db
+def test_pigeon_express_cities_search(api_client):
+    with mock_pigeon_express_client(
+        search_cities={"results": [{"id": "1", "name": "Пловдив"}], "meta": {}}
+    ):
+        resp = api_client.get(
+            "/api/v1/shipping/pigeon-express/cities/", {"name": "Плов"}
+        )
+    assert resp.status_code == 200
+    assert resp.data["results"][0]["name"] == "Пловдив"
+
+
+@pytest.mark.django_db
+def test_pigeon_express_offices_search(api_client):
+    with mock_pigeon_express_client(
+        search_offices={
+            "results": [
+                {
+                    "id": "125",
+                    "name": "Офис Пловдив",
+                    "type": "office",
+                    "address": "ул. Тест 1",
+                    "city": {"name": "Пловдив"},
+                    "postal_code": "4000",
+                }
+            ],
+            "meta": {},
+        }
+    ):
+        resp = api_client.get("/api/v1/shipping/pigeon-express/offices/")
+    assert resp.status_code == 200
+    assert resp.data["results"][0]["city_name"] == "Пловдив"
+
+
+@pytest.mark.django_db
+def test_pigeon_express_quote(api_client, settings):
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    with mock_pigeon_express_client(
+        calculate_shipping_cost={"total_price": "13.26", "currency": "BGN"}
+    ):
+        resp = api_client.post(
+            "/api/v1/shipping/pigeon-express/quote/",
+            {"shipping_method": "pigeon_express_office", "pigeon_express_office_id": "125"},
+        )
+    assert resp.status_code == 200
+    assert resp.data["shipping_cost_bgn"] == "13.26"
+
+
+@pytest.mark.django_db
+def test_pigeon_express_quote_converts_eur_to_bgn(api_client, settings):
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    with mock_pigeon_express_client(
+        calculate_shipping_cost={"total_price": "10.00", "currency": "EUR"}
+    ):
+        resp = api_client.post(
+            "/api/v1/shipping/pigeon-express/quote/",
+            {"shipping_method": "pigeon_express_office", "pigeon_express_office_id": "125"},
+        )
+    assert resp.status_code == 200
+    assert resp.data["shipping_cost_bgn"] == "19.56"
+
+
+@pytest.mark.django_db
+def test_pigeon_express_quote_invalid_method(api_client):
+    resp = api_client.post(
+        "/api/v1/shipping/pigeon-express/quote/", {"shipping_method": "teleport"}
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
 def test_search_multi_word_any_order(api_client):
     cat = Category.objects.create(external_id="chairs", slug="chairs", name="Столове")
     Product.objects.create(
@@ -2196,6 +2282,227 @@ def test_order_checkout_speedy_office_unknown(api_client, sample_product):
         format="json",
     )
     assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_order_checkout_pigeon_express_office(api_client, sample_product, settings):
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    with mock_pigeon_express_client(
+        get_office={"id": "125", "name": "Офис Пловдив"},
+        calculate_shipping_cost={"total_price": "5.00", "currency": "BGN"},
+    ):
+        resp = api_client.post(
+            "/api/v1/orders/",
+            {
+                "customer_email": "buyer@example.com",
+                "items": [{"product_external_id": "272", "quantity": 1}],
+                "shipping_method": "pigeon_express_office",
+                "pigeon_express_office_id": "125",
+            },
+            format="json",
+        )
+    assert resp.status_code == 201
+    assert resp.data["pigeon_express_office_name"] == "Офис Пловдив"
+    # Unlike Speedy (stubbed to 0), Pigeon Express is charged for real.
+    assert resp.data["shipping_cost_bgn"] == "5.00"
+
+
+@pytest.mark.django_db
+def test_order_checkout_pigeon_express_office_unknown(api_client, sample_product):
+    with mock_pigeon_express_client(get_office=None):
+        resp = api_client.post(
+            "/api/v1/orders/",
+            {
+                "customer_email": "buyer@example.com",
+                "items": [{"product_external_id": "272", "quantity": 1}],
+                "shipping_method": "pigeon_express_office",
+                "pigeon_express_office_id": "does-not-exist",
+            },
+            format="json",
+        )
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_order_checkout_pigeon_express_address(api_client, sample_product, settings):
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    with mock_pigeon_express_client(
+        get_city={"id": "68134", "name": "София"},
+        calculate_shipping_cost={"total_price": "5.00", "currency": "BGN"},
+    ):
+        resp = api_client.post(
+            "/api/v1/orders/",
+            {
+                "customer_email": "buyer@example.com",
+                "items": [{"product_external_id": "272", "quantity": 1}],
+                "shipping_method": "pigeon_express_address",
+                "pigeon_express_city_id": "68134",
+                "pigeon_express_additional_info": "до входа",
+            },
+            format="json",
+        )
+    assert resp.status_code == 201
+    assert resp.data["pigeon_express_city_name"] == "София"
+
+
+@pytest.mark.django_db
+def test_pigeon_express_weight_estimate_from_product_specs(api_client, settings):
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    cat = Category.objects.create(external_id="2", slug="weighted-cat", name="Cat")
+    Product.objects.create(
+        external_id="500",
+        slug="weighted-product",
+        name="Weighted Product",
+        category=cat,
+        price_bgn="1.35",
+        client_price="1.35",
+        specifications={"Тегло (кг)": "2.5"},
+    )
+    with mock_pigeon_express_client(
+        get_office={"id": "125", "name": "Офис Пловдив"},
+        calculate_shipping_cost={"total_price": "5.00", "currency": "BGN"},
+    ):
+        resp = api_client.post(
+            "/api/v1/orders/",
+            {
+                "customer_email": "buyer@example.com",
+                "items": [{"product_external_id": "500", "quantity": 2}],
+                "shipping_method": "pigeon_express_office",
+                "pigeon_express_office_id": "125",
+            },
+            format="json",
+        )
+    assert resp.status_code == 201
+    # 2.5kg per unit x 2 units — a hint only, not written anywhere yet.
+    assert resp.data["pigeon_express_suggested_weight_kg"] == "5.00"
+    assert resp.data["pigeon_express_package_weight_kg"] is None
+
+
+@pytest.mark.django_db
+def test_admin_pigeon_express_package_update(api_client, admin_user, sample_product, settings):
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    with mock_pigeon_express_client(
+        get_office={"id": "125", "name": "Офис Пловдив"},
+        calculate_shipping_cost={"total_price": "5.00", "currency": "BGN"},
+    ):
+        resp = api_client.post(
+            "/api/v1/orders/",
+            {
+                "customer_email": "buyer@example.com",
+                "items": [{"product_external_id": "272", "quantity": 1}],
+                "shipping_method": "pigeon_express_office",
+                "pigeon_express_office_id": "125",
+            },
+            format="json",
+        )
+    number = resp.data["number"]
+
+    api_client.force_authenticate(user=admin_user)
+    package_resp = api_client.post(
+        f"/api/v1/admin/orders/{number}/pigeon-express-package/",
+        {"weight_kg": "3.5", "length_cm": "30", "width_cm": "20", "height_cm": "15"},
+        format="json",
+    )
+    api_client.force_authenticate(user=None)
+
+    assert package_resp.status_code == 200
+    assert package_resp.data["pigeon_express_package_weight_kg"] == "3.50"
+    order = Order.objects.get(number=number)
+    assert order.pigeon_express_package_length_cm == Decimal("30.00")
+
+
+@pytest.mark.django_db
+def test_admin_pigeon_express_package_frozen_after_shipment(
+    api_client, admin_user, sample_product, settings
+):
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    with mock_pigeon_express_client(
+        get_office={"id": "125", "name": "Офис Пловдив"},
+        calculate_shipping_cost={"total_price": "5.00", "currency": "BGN"},
+    ):
+        resp = api_client.post(
+            "/api/v1/orders/",
+            {
+                "customer_email": "buyer@example.com",
+                "items": [{"product_external_id": "272", "quantity": 1}],
+                "shipping_method": "pigeon_express_office",
+                "pigeon_express_office_id": "125",
+            },
+            format="json",
+        )
+    number = resp.data["number"]
+
+    api_client.force_authenticate(user=admin_user)
+    with mock_pigeon_express_client(
+        create_shipment={"reference_number": "459073686609", "label_pdf": None}
+    ):
+        api_client.post(f"/api/v1/admin/orders/{number}/confirm/")
+
+    package_resp = api_client.post(
+        f"/api/v1/admin/orders/{number}/pigeon-express-package/",
+        {"weight_kg": "3.5"},
+        format="json",
+    )
+    api_client.force_authenticate(user=None)
+    assert package_resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_admin_order_confirm_creates_pigeon_express_shipment(
+    api_client, admin_user, sample_product, settings
+):
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    with mock_pigeon_express_client(
+        get_office={"id": "125", "name": "Офис Пловдив"},
+        calculate_shipping_cost={"total_price": "5.00", "currency": "BGN"},
+    ):
+        resp = api_client.post(
+            "/api/v1/orders/",
+            {
+                "customer_email": "buyer@example.com",
+                "items": [{"product_external_id": "272", "quantity": 1}],
+                "shipping_method": "pigeon_express_office",
+                "pigeon_express_office_id": "125",
+            },
+            format="json",
+        )
+    number = resp.data["number"]
+
+    api_client.force_authenticate(user=admin_user)
+    with mock_pigeon_express_client(
+        create_shipment={
+            "reference_number": "459073686609",
+            "label_pdf": "SGVsbG8=",  # base64 "Hello"
+            "label_content_type": "application/pdf",
+        }
+    ):
+        confirm_resp = api_client.post(f"/api/v1/admin/orders/{number}/confirm/")
+    api_client.force_authenticate(user=None)
+
+    assert confirm_resp.status_code == 200
+    order = Order.objects.get(number=number)
+    assert order.pigeon_express_reference_number == "459073686609"
+    assert order.pigeon_express_label_pdf.name
+
+
+@pytest.mark.django_db
+def test_admin_pigeon_express_label_download_404_before_shipment(
+    api_client, admin_user, sample_product
+):
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+        },
+        format="json",
+    )
+    number = resp.data["number"]
+
+    api_client.force_authenticate(user=admin_user)
+    label_resp = api_client.get(f"/api/v1/admin/orders/{number}/pigeon-express-label/")
+    api_client.force_authenticate(user=None)
+    assert label_resp.status_code == 404
 
 
 @pytest.mark.django_db

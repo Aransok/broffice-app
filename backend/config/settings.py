@@ -374,6 +374,34 @@ SUPPLIER_CATALOG_BASE_URL = os.getenv(
     "SUPPLIER_CATALOG_BASE_URL", "https://officecenter-bg.com/api/client-integration"
 )
 
+# Pigeon Express shipping (shipping.pigeon_express) — real API access, unlike
+# Speedy above. Server-side only (no VITE_ prefix) — never expose the key/
+# secret to the frontend. Real values live only in the gitignored .env on
+# each machine, never in a committed file.
+PIGEON_EXPRESS_API_KEY = os.getenv("PIGEON_EXPRESS_API_KEY", "")
+PIGEON_EXPRESS_API_SECRET = os.getenv("PIGEON_EXPRESS_API_SECRET", "")
+# Sandbox first — swap to the production base URL later via this one env
+# var, no code change required.
+PIGEON_EXPRESS_BASE_URL = os.getenv("PIGEON_EXPRESS_BASE_URL", "")
+# Our warehouse's pickup point with Pigeon Express (from their support) —
+# required before a real quote/shipment can be requested.
+PIGEON_EXPRESS_PICKUP_OFFICE_ID = os.getenv("PIGEON_EXPRESS_PICKUP_OFFICE_ID", "")
+# No per-product weight/dimension fields exist yet — every package is
+# quoted/shipped as this one flat placeholder until real per-order weight/
+# dimensions are tracked.
+PIGEON_EXPRESS_DEFAULT_PACKAGE_WEIGHT_KG = os.getenv(
+    "PIGEON_EXPRESS_DEFAULT_PACKAGE_WEIGHT_KG", "1.00"
+)
+PIGEON_EXPRESS_DEFAULT_PACKAGE_LENGTH_CM = os.getenv(
+    "PIGEON_EXPRESS_DEFAULT_PACKAGE_LENGTH_CM", "20"
+)
+PIGEON_EXPRESS_DEFAULT_PACKAGE_WIDTH_CM = os.getenv(
+    "PIGEON_EXPRESS_DEFAULT_PACKAGE_WIDTH_CM", "15"
+)
+PIGEON_EXPRESS_DEFAULT_PACKAGE_HEIGHT_CM = os.getenv(
+    "PIGEON_EXPRESS_DEFAULT_PACKAGE_HEIGHT_CM", "10"
+)
+
 KNOWLEDGE_DIR = PROJECT_ROOT / "knowledge"
 _httrack_root = (os.getenv("HTTRACK_ROOT") or "").strip()
 HTTRACK_ROOT = (

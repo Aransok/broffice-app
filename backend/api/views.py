@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 import requests
 from django.conf import settings
@@ -54,7 +54,9 @@ from navigation.models import Menu
 from orders.models import Order, OrderItem, OrderNotification
 from orders.services import (
     add_item_to_pending_order,
+    calculate_pigeon_express_quote,
     create_order,
+    create_pigeon_express_shipment_for_order,
     deactivate_used_item_promotions,
     get_admin_invoice_pdf_bytes,
     get_invoice_pdf_bytes,
@@ -79,6 +81,7 @@ from promotions.services import (
     promoted_products_q,
 )
 from shipping.services import get_speedy_client
+from shipping.pigeon_express import PigeonExpressAPIError, get_pigeon_express_client
 
 from .serializers import (
     AddressSerializer,
@@ -99,6 +102,9 @@ from .serializers import (
     PageSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
+    PigeonExpressCitySerializer,
+    PigeonExpressOfficeSerializer,
+    PigeonExpressStreetSerializer,
     ProductDetailSerializer,
     ProductImageSerializer,
     ProductListSerializer,
@@ -186,7 +192,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         .filter(status=Product.STATUS_PUBLISHED)
     )
     lookup_field = "slug"
-    search_fields = ("name", "slug", "external_id", "supplier_id")
+    search_fields = ("name", "slug", "external_id", "supplier_id", "item_number")
     filterset_fields = {
         "brand__slug": ["exact"],
         "category__external_id": ["exact"],
@@ -398,6 +404,7 @@ class SearchView(APIView):
                 | Q(short_description__icontains=word)
                 | Q(supplier_id__icontains=word)
                 | Q(external_id__icontains=word)
+                | Q(item_number__icontains=word)
                 | Q(brand__name__icontains=word)
                 | Q(category__name__icontains=word)
             )
@@ -440,6 +447,24 @@ def _invoice_pdf_response(order: Order, *, include_profit: bool = False):
     )
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{invoice.number}.pdf"'
+    return response
+
+
+def _pigeon_express_label_response(order: Order):
+    if not order.pigeon_express_label_pdf:
+        return Response(
+            {"detail": "This order has no Pigeon Express label yet."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    order.pigeon_express_label_pdf.open("rb")
+    try:
+        pdf_bytes = order.pigeon_express_label_pdf.read()
+    finally:
+        order.pigeon_express_label_pdf.close()
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = (
+        f'attachment; filename="{order.pigeon_express_reference_number}.pdf"'
+    )
     return response
 
 
@@ -626,6 +651,19 @@ class OrderCreateView(APIView):
                 delivery_city=data.get("delivery_city") or "",
                 delivery_post_code=data.get("delivery_post_code") or "",
                 speedy_office_id=data.get("speedy_office_id") or "",
+                pigeon_express_city_id=data.get("pigeon_express_city_id") or "",
+                pigeon_express_street_id=data.get("pigeon_express_street_id") or "",
+                pigeon_express_street_name=data.get("pigeon_express_street_name")
+                or "",
+                pigeon_express_street_number=data.get(
+                    "pigeon_express_street_number"
+                )
+                or "",
+                pigeon_express_additional_info=data.get(
+                    "pigeon_express_additional_info"
+                )
+                or "",
+                pigeon_express_office_id=data.get("pigeon_express_office_id") or "",
                 payment_method=data.get("payment_method")
                 or Order.PAYMENT_CASH_ON_DELIVERY,
                 coupon_code=data.get("coupon_code") or "",
@@ -639,6 +677,11 @@ class OrderCreateView(APIView):
         except CouponError as exc:
             return Response(
                 {"coupon_code": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST
+            )
+        except PigeonExpressAPIError as exc:
+            return Response(
+                {"detail": f"Pigeon Express: {exc.message}"},
+                status=status.HTTP_502_BAD_GATEWAY,
             )
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
@@ -656,7 +699,7 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         .annotate(profit=F("client_price") - F("admin_price"))
         .all()
     )
-    search_fields = ("name", "slug", "external_id", "supplier_id")
+    search_fields = ("name", "slug", "external_id", "supplier_id", "item_number")
     filterset_fields = ("category__external_id", "brand__external_id", "status")
     ordering_fields = (
         "external_id",
@@ -826,6 +869,50 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
     def invoice(self, request, number=None):
         return _invoice_pdf_response(self.get_object(), include_profit=True)
 
+    @action(detail=True, methods=["get"], url_path="pigeon-express-label")
+    def pigeon_express_label(self, request, number=None):
+        return _pigeon_express_label_response(self.get_object())
+
+    @action(detail=True, methods=["post"], url_path="pigeon-express-package")
+    def pigeon_express_package(self, request, number=None):
+        order = self.get_object()
+        if order.shipping_method not in (
+            Order.SHIPPING_PIGEON_EXPRESS_ADDRESS,
+            Order.SHIPPING_PIGEON_EXPRESS_OFFICE,
+            Order.SHIPPING_PIGEON_EXPRESS_LOCKER,
+        ):
+            return Response(
+                {"detail": "This order isn't shipped via Pigeon Express."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if order.pigeon_express_reference_number:
+            return Response(
+                {"detail": "Shipment already registered — package details are frozen."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        fields = {
+            "weight_kg": "pigeon_express_package_weight_kg",
+            "length_cm": "pigeon_express_package_length_cm",
+            "width_cm": "pigeon_express_package_width_cm",
+            "height_cm": "pigeon_express_package_height_cm",
+        }
+        for request_key, model_field in fields.items():
+            if request_key not in request.data:
+                continue
+            raw = request.data.get(request_key)
+            if raw in (None, ""):
+                setattr(order, model_field, None)
+                continue
+            try:
+                setattr(order, model_field, Decimal(str(raw)))
+            except InvalidOperation:
+                return Response(
+                    {request_key: ["Невалидна стойност."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        order.save(update_fields=[*fields.values(), "updated_at"])
+        return Response(OrderSerializer(order, context={"request": request}).data)
+
     @action(detail=True, methods=["post"])
     def confirm(self, request, number=None):
         order = self.get_object()
@@ -839,6 +926,19 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
         deactivate_used_item_promotions(order)
         send_customer_invoice_email(order)
         send_admin_confirmation_email(order)
+        # Wrapped so a Pigeon Express outage never blocks the confirm itself
+        # (status/invoice/emails above already succeeded) — surfaced via a
+        # notification instead, for an admin to retry manually.
+        try:
+            create_pigeon_express_shipment_for_order(order)
+        except PigeonExpressAPIError as exc:
+            OrderNotification.objects.create(
+                order=order,
+                message=(
+                    f"⚠ Pigeon Express: неуспешно създаване на пратка за "
+                    f"поръчка {order.number} — {exc.message}"
+                ),
+            )
         return Response(OrderSerializer(order, context={"request": request}).data)
 
     @action(detail=True, methods=["post"])
@@ -1397,6 +1497,93 @@ class SpeedyQuoteView(APIView):
         # charges (0).
         get_speedy_client().calculate_price(shipping_method=shipping_method, city=city)
         return Response({"shipping_cost_bgn": "0.00"})
+
+
+class PigeonExpressCityListView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        name = request.query_params.get("name") or ""
+        postal_code = request.query_params.get("postal_code") or ""
+        try:
+            page = int(request.query_params.get("page") or 1)
+        except ValueError:
+            page = 1
+        try:
+            result = get_pigeon_express_client().search_cities(
+                name=name, postal_code=postal_code, page=page
+            )
+        except PigeonExpressAPIError as exc:
+            return Response({"detail": exc.message}, status=status.HTTP_502_BAD_GATEWAY)
+        return Response(
+            {
+                "results": PigeonExpressCitySerializer(
+                    result["results"], many=True
+                ).data,
+                "meta": result["meta"],
+            }
+        )
+
+
+class PigeonExpressStreetListView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, city_id=None):
+        name = request.query_params.get("name") or ""
+        try:
+            result = get_pigeon_express_client().search_streets(city_id, name=name)
+        except PigeonExpressAPIError as exc:
+            return Response({"detail": exc.message}, status=status.HTTP_502_BAD_GATEWAY)
+        return Response(
+            {
+                "results": PigeonExpressStreetSerializer(
+                    result["results"], many=True
+                ).data
+            }
+        )
+
+
+class PigeonExpressOfficeListView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        office_type = request.query_params.get("type") or "office"
+        name = request.query_params.get("name") or ""
+        city_id = request.query_params.get("city_id") or ""
+        try:
+            result = get_pigeon_express_client().search_offices(
+                type=office_type, name=name, city_id=city_id
+            )
+        except PigeonExpressAPIError as exc:
+            return Response({"detail": exc.message}, status=status.HTTP_502_BAD_GATEWAY)
+        return Response(
+            {
+                "results": PigeonExpressOfficeSerializer(
+                    result["results"], many=True
+                ).data
+            }
+        )
+
+
+class PigeonExpressQuoteView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        # Delegates to the exact same service function create_order calls,
+        # so the price shown at checkout can never drift from what actually
+        # gets charged.
+        try:
+            quote = calculate_pigeon_express_quote(request.data)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except PigeonExpressAPIError as exc:
+            return Response(
+                {"detail": exc.message, "errors": exc.errors},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY
+                if exc.status_code == 422
+                else status.HTTP_502_BAD_GATEWAY,
+            )
+        return Response(quote)
 
 
 class BackupListView(APIView):

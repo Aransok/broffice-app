@@ -130,7 +130,32 @@ export interface SpeedyOffice {
   phone: string
 }
 
-export type ShippingMethod = 'speedy_address' | 'speedy_office'
+export interface PigeonExpressCity {
+  id: string
+  name: string
+  postal_code: string
+}
+
+export interface PigeonExpressStreet {
+  id: string
+  name: string
+}
+
+export interface PigeonExpressOffice {
+  id: string
+  name: string
+  type: 'office' | 'locker'
+  address: string
+  city_name: string
+  postal_code: string
+}
+
+export type ShippingMethod =
+  | 'speedy_address'
+  | 'speedy_office'
+  | 'pigeon_express_address'
+  | 'pigeon_express_office'
+  | 'pigeon_express_locker'
 export type PaymentMethod = 'cash_on_delivery' | 'bank_transfer'
 
 export interface OrderItemDto {
@@ -184,6 +209,23 @@ export interface Order {
   delivery_post_code: string
   speedy_office_id: string
   speedy_office_name: string
+  pigeon_express_city_id: string
+  pigeon_express_city_name: string
+  pigeon_express_street_id: string
+  pigeon_express_street_name: string
+  pigeon_express_street_number: string
+  pigeon_express_additional_info: string
+  pigeon_express_office_id: string
+  pigeon_express_office_name: string
+  pigeon_express_reference_number: string
+  pigeon_express_label_pdf: string | null
+  pigeon_express_package_weight_kg: string | null
+  pigeon_express_package_length_cm: string | null
+  pigeon_express_package_width_cm: string | null
+  pigeon_express_package_height_cm: string | null
+  /** Best-effort estimate from product specs — a hint to pre-fill the
+   * package weight admin edit form with, never used automatically. */
+  pigeon_express_suggested_weight_kg: string | null
   shipping_cost_bgn: string
   subtotal_bgn: string
   coupon_code: string
@@ -213,6 +255,12 @@ export interface OrderCreatePayload {
   delivery_city?: string
   delivery_post_code?: string
   speedy_office_id?: string
+  pigeon_express_city_id?: string
+  pigeon_express_street_id?: string
+  pigeon_express_street_name?: string
+  pigeon_express_street_number?: string
+  pigeon_express_additional_info?: string
+  pigeon_express_office_id?: string
   payment_method?: PaymentMethod
   coupon_code?: string
   is_company_order?: boolean
