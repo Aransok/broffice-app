@@ -1820,7 +1820,10 @@ def test_pigeon_express_quote(api_client, settings):
     ):
         resp = api_client.post(
             "/api/v1/shipping/pigeon-express/quote/",
-            {"shipping_method": "pigeon_express_office", "pigeon_express_office_id": "125"},
+            {
+                "shipping_method": "pigeon_express_office",
+                "pigeon_express_office_id": "125",
+            },
         )
     assert resp.status_code == 200
     assert resp.data["shipping_cost_bgn"] == "13.26"
@@ -1834,7 +1837,10 @@ def test_pigeon_express_quote_converts_eur_to_bgn(api_client, settings):
     ):
         resp = api_client.post(
             "/api/v1/shipping/pigeon-express/quote/",
-            {"shipping_method": "pigeon_express_office", "pigeon_express_office_id": "125"},
+            {
+                "shipping_method": "pigeon_express_office",
+                "pigeon_express_office_id": "125",
+            },
         )
     assert resp.status_code == 200
     assert resp.data["shipping_cost_bgn"] == "19.56"
@@ -2379,7 +2385,9 @@ def test_pigeon_express_weight_estimate_from_product_specs(api_client, settings)
 
 
 @pytest.mark.django_db
-def test_admin_pigeon_express_package_update(api_client, admin_user, sample_product, settings):
+def test_admin_pigeon_express_package_update(
+    api_client, admin_user, sample_product, settings
+):
     settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
     with mock_pigeon_express_client(
         get_office={"id": "125", "name": "Офис Пловдив"},

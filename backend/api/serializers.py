@@ -22,8 +22,8 @@ from pricing.services import get_base_price, get_effective_price
 from products.models import Product, ProductImage, next_item_number
 from promotions.models import Promotion
 from shipping.models import SpeedyOffice
-from shipping.services import get_speedy_client
 from shipping.pigeon_express import PigeonExpressAPIError, get_pigeon_express_client
+from shipping.services import get_speedy_client
 
 
 def is_admin_user(user) -> bool:
@@ -693,9 +693,10 @@ class OrderCreateSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     "pigeon_express_city_id is required for pigeon_express_address"
                 )
-            if not attrs.get("pigeon_express_street_id") and len(
-                attrs.get("pigeon_express_additional_info") or ""
-            ) < 3:
+            if (
+                not attrs.get("pigeon_express_street_id")
+                and len(attrs.get("pigeon_express_additional_info") or "") < 3
+            ):
                 raise serializers.ValidationError(
                     "pigeon_express_street_id or pigeon_express_additional_info "
                     "(min 3 chars) is required for pigeon_express_address"

@@ -807,8 +807,7 @@ def calculate_pigeon_express_quote(data: dict) -> dict:
         pigeon_express_city_id=data.get("pigeon_express_city_id") or "",
         pigeon_express_street_id=data.get("pigeon_express_street_id") or "",
         pigeon_express_street_number=data.get("pigeon_express_street_number") or "",
-        pigeon_express_additional_info=data.get("pigeon_express_additional_info")
-        or "",
+        pigeon_express_additional_info=data.get("pigeon_express_additional_info") or "",
         pigeon_express_office_id=data.get("pigeon_express_office_id") or "",
     )
     quote = get_pigeon_express_client().calculate_shipping_cost(

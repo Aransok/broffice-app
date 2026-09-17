@@ -75,12 +75,22 @@ class PigeonExpressClient:
         return {"results": body.get("data") or [], "meta": body.get("meta") or {}}
 
     def search_cities(
-        self, *, name: str = "", postal_code: str = "", page: int = 1, per_page: int = 20
+        self,
+        *,
+        name: str = "",
+        postal_code: str = "",
+        page: int = 1,
+        per_page: int = 20,
     ) -> dict:
         return self._paginated(
             "GET",
             "/cities",
-            params={"name": name, "postal_code": postal_code, "page": page, "per_page": per_page},
+            params={
+                "name": name,
+                "postal_code": postal_code,
+                "page": page,
+                "per_page": per_page,
+            },
         )
 
     def get_city(self, city_id) -> dict | None:

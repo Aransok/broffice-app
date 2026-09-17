@@ -80,8 +80,8 @@ from promotions.services import (
     get_active_promotions,
     promoted_products_q,
 )
-from shipping.services import get_speedy_client
 from shipping.pigeon_express import PigeonExpressAPIError, get_pigeon_express_client
+from shipping.services import get_speedy_client
 
 from .serializers import (
     AddressSerializer,
@@ -653,11 +653,8 @@ class OrderCreateView(APIView):
                 speedy_office_id=data.get("speedy_office_id") or "",
                 pigeon_express_city_id=data.get("pigeon_express_city_id") or "",
                 pigeon_express_street_id=data.get("pigeon_express_street_id") or "",
-                pigeon_express_street_name=data.get("pigeon_express_street_name")
-                or "",
-                pigeon_express_street_number=data.get(
-                    "pigeon_express_street_number"
-                )
+                pigeon_express_street_name=data.get("pigeon_express_street_name") or "",
+                pigeon_express_street_number=data.get("pigeon_express_street_number")
                 or "",
                 pigeon_express_additional_info=data.get(
                     "pigeon_express_additional_info"
@@ -1579,9 +1576,11 @@ class PigeonExpressQuoteView(APIView):
         except PigeonExpressAPIError as exc:
             return Response(
                 {"detail": exc.message, "errors": exc.errors},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY
-                if exc.status_code == 422
-                else status.HTTP_502_BAD_GATEWAY,
+                status=(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY
+                    if exc.status_code == 422
+                    else status.HTTP_502_BAD_GATEWAY
+                ),
             )
         return Response(quote)
 

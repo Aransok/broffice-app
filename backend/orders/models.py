@@ -127,13 +127,19 @@ class Order(TimeStampedModel):
     pigeon_express_city_id = models.CharField(max_length=32, blank=True, default="")
     pigeon_express_city_name = models.CharField(max_length=255, blank=True, default="")
     pigeon_express_street_id = models.CharField(max_length=32, blank=True, default="")
-    pigeon_express_street_name = models.CharField(max_length=255, blank=True, default="")
-    pigeon_express_street_number = models.CharField(max_length=32, blank=True, default="")
+    pigeon_express_street_name = models.CharField(
+        max_length=255, blank=True, default=""
+    )
+    pigeon_express_street_number = models.CharField(
+        max_length=32, blank=True, default=""
+    )
     pigeon_express_additional_info = models.CharField(
         max_length=255, blank=True, default=""
     )
     pigeon_express_office_id = models.CharField(max_length=32, blank=True, default="")
-    pigeon_express_office_name = models.CharField(max_length=255, blank=True, default="")
+    pigeon_express_office_name = models.CharField(
+        max_length=255, blank=True, default=""
+    )
     # Set only once admin confirms the order and a real shipment is
     # registered with Pigeon Express (see create_pigeon_express_shipment_for_order)
     # — blank until then, same as Invoice not existing until confirm either.
