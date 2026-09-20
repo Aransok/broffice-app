@@ -162,10 +162,7 @@ def generate_invoice_pdf(invoice, *, include_profit: bool = False) -> bytes:
             f"{order.pigeon_express_city_name}".strip()
         )
     elif order.delivery_address_line:
-        customer_lines.append(
-            f"Адрес за доставка: {order.delivery_address_line}, "
-            f"{order.delivery_city} {order.delivery_post_code}".strip()
-        )
+        customer_lines.append(f"Адрес за доставка: {order.delivery_address_display}")
     for line in customer_lines:
         if line:
             elements.append(Paragraph(line, normal))

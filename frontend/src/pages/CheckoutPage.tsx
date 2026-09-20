@@ -23,6 +23,9 @@ import { Seo } from '../components/Seo'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { useVat } from '../context/VatContext'
+import brofficeLogo from '../assets/logo.png'
+import pigeonLogo from '../assets/couriers/pigeon.svg'
+import speedyLogo from '../assets/couriers/speedy.png'
 import { bgnToEur } from '../utils/currency'
 
 function SpeedyOfficePicker({
@@ -278,6 +281,37 @@ const PIGEON_EXPRESS_METHODS: ShippingMethod[] = [
   'pigeon_express_locker',
 ]
 
+type Courier = 'broffice' | 'speedy' | 'pigeon_express'
+
+// "Broffice" delivery is the store's own shipping - internally the
+// speedy_* methods (no real courier API behind them). The real Speedy
+// integration isn't available yet, hence disabled. Pigeon lockers are
+// intentionally not offered.
+const COURIERS: {
+  id: Courier
+  name: string
+  logo: string
+  disabled?: boolean
+  options: { method: ShippingMethod; label: string }[]
+}[] = [
+  {
+    id: 'broffice',
+    name: 'BRoffice',
+    logo: brofficeLogo,
+    options: [{ method: 'speedy_address', label: 'Доставка до адрес' }],
+  },
+  { id: 'speedy', name: 'Speedy', logo: speedyLogo, disabled: true, options: [] },
+  {
+    id: 'pigeon_express',
+    name: 'Pigeon Express',
+    logo: pigeonLogo,
+    options: [
+      { method: 'pigeon_express_address', label: 'Доставка до адрес' },
+      { method: 'pigeon_express_office', label: 'До офис на Pigeon Express' },
+    ],
+  },
+]
+
 export function CheckoutPage() {
   const { items, totalPrice, clear } = useCart()
   const { displayPrice } = useVat()
@@ -298,8 +332,9 @@ export function CheckoutPage() {
   const { data: addresses } = useAddresses(Boolean(user))
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
   const [deliveryAddressLine, setDeliveryAddressLine] = useState('')
-  const [deliveryCity, setDeliveryCity] = useState('')
-  const [deliveryPostCode, setDeliveryPostCode] = useState('')
+  // BRoffice delivery is a single free-text address (shipped by hand), so
+  // there's no separate city to quote against.
+  const deliveryCity = ''
 
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('speedy_address')
   const [selectedOffice, setSelectedOffice] = useState<SpeedyOffice | null>(null)
@@ -317,6 +352,22 @@ export function CheckoutPage() {
   // a failed quote must never silently read as "free shipping" in the
   // totals below, and must block submission for the affected method.
   const [shippingQuoteError, setShippingQuoteError] = useState<string | null>(null)
+  const [courier, setCourier] = useState<Courier>('broffice')
+
+  // Picking a courier/option resets any stale quote state from the previous
+  // choice (done here in the event handler, not in the quote effect).
+  function selectShippingMethod(method: ShippingMethod) {
+    setShippingMethod(method)
+    setShippingCost(null)
+    setShippingQuoteError(null)
+  }
+
+  function selectCourier(next: Courier) {
+    const entry = COURIERS.find((c) => c.id === next)
+    if (!entry || entry.disabled) return
+    setCourier(next)
+    selectShippingMethod(entry.options[0].method)
+  }
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash_on_delivery')
 
   const [submitting, setSubmitting] = useState(false)
@@ -361,9 +412,11 @@ export function CheckoutPage() {
     setSelectedAddressId(id || null)
     const address = addresses?.results.find((a) => a.id === id)
     if (address) {
-      setDeliveryAddressLine(address.address_line)
-      setDeliveryCity(address.city)
-      setDeliveryPostCode(address.post_code)
+      setDeliveryAddressLine(
+        [address.address_line, `${address.city} ${address.post_code}`.trim()]
+          .filter(Boolean)
+          .join(', '),
+      )
       setPhone((prev) => prev || address.phone)
       setName((prev) => prev || address.full_name)
       if (address.is_company) {
@@ -418,7 +471,7 @@ export function CheckoutPage() {
             if (cancelled) return
             setShippingCost(null)
             setShippingQuoteError(
-              'Доставката с Pigeon Express в момента не е достъпна. Моля, изберете "Доставка до адрес", за да завършите поръчката.',
+              'Доставката с Pigeon Express в момента не е достъпна. Моля, изберете BRoffice и "Доставка до адрес", за да завършите поръчката.',
             )
           })
       }, 300)
@@ -472,8 +525,8 @@ export function CheckoutPage() {
       setError('Изберете офис на Спиди.')
       return
     }
-    if (shippingMethod === 'speedy_address' && (!deliveryAddressLine || !deliveryCity)) {
-      setError('Попълнете адрес и град за доставка.')
+    if (shippingMethod === 'speedy_address' && !deliveryAddressLine.trim()) {
+      setError('Попълнете адрес за доставка.')
       return
     }
     if (
@@ -529,9 +582,7 @@ export function CheckoutPage() {
           : {}),
         ...(shippingMethod === 'speedy_address'
           ? {
-              delivery_address_line: deliveryAddressLine,
-              delivery_city: deliveryCity,
-              delivery_post_code: deliveryPostCode,
+              delivery_address_line: deliveryAddressLine.trim(),
             }
           : shippingMethod === 'speedy_office'
             ? { speedy_office_id: selectedOffice?.external_id }
@@ -658,90 +709,53 @@ export function CheckoutPage() {
 
         <section>
           <h2 className="mb-3 font-semibold text-slate-900">Начин на доставка</h2>
-          <div className="flex flex-wrap gap-4">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                checked={shippingMethod === 'speedy_address'}
-                onChange={() => setShippingMethod('speedy_address')}
-              />
-              Доставка до адрес
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                checked={shippingMethod === 'speedy_office'}
-                onChange={() => setShippingMethod('speedy_office')}
-              />
-              До офис на Спиди
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                checked={shippingMethod === 'pigeon_express_address'}
-                onChange={() => setShippingMethod('pigeon_express_address')}
-              />
-              Доставка до адрес (Pigeon Express)
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                checked={shippingMethod === 'pigeon_express_office'}
-                onChange={() => setShippingMethod('pigeon_express_office')}
-              />
-              До офис на Pigeon Express
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                checked={shippingMethod === 'pigeon_express_locker'}
-                onChange={() => setShippingMethod('pigeon_express_locker')}
-              />
-              До автомат на Pigeon Express
-            </label>
+          <div className="grid grid-cols-3 gap-3">
+            {COURIERS.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                disabled={c.disabled}
+                onClick={() => selectCourier(c.id)}
+                aria-pressed={courier === c.id}
+                className={`flex h-20 flex-col items-center justify-center gap-1 rounded-ui border px-2 py-2 transition ${
+                  courier === c.id
+                    ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                    : 'border-slate-300 hover:border-primary/60'
+                } ${c.disabled ? 'cursor-not-allowed opacity-50' : ''}`}
+              >
+                <img src={c.logo} alt={c.name} className="h-9 w-auto max-w-full object-contain" />
+                {c.disabled && <span className="text-[10px] text-slate-500">Очаквайте скоро</span>}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-4">
+            {(COURIERS.find((c) => c.id === courier)?.options ?? []).length > 1 &&
+              COURIERS.find((c) => c.id === courier)?.options.map((option) => (
+              <label key={option.method} className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  checked={shippingMethod === option.method}
+                  onChange={() => selectShippingMethod(option.method)}
+                />
+                {option.label}
+              </label>
+            ))}
           </div>
 
           {shippingMethod === 'speedy_address' && (
             <div className="mt-3 flex flex-col gap-3">
-              {user && addresses && addresses.results.length > 0 && (
-                <select
-                  value={selectedAddressId ?? ''}
-                  onChange={(event) => handleSelectAddress(event.target.value)}
-                  className="rounded-ui border border-slate-300 px-3 py-2"
-                >
-                  <option value="">Нов адрес</option>
-                  {addresses.results.map((address) => (
-                    <option key={address.id} value={address.id}>
-                      {address.label || address.full_name} — {address.city}, {address.address_line}
-                    </option>
-                  ))}
-                </select>
-              )}
               <input
                 type="text"
                 required
-                placeholder="Адрес"
+                placeholder="Адрес за доставка (град, улица, номер, пощенски код...)"
                 value={deliveryAddressLine}
-                onChange={(event) => setDeliveryAddressLine(event.target.value)}
+                onChange={(event) => {
+                  setDeliveryAddressLine(event.target.value)
+                  setSelectedAddressId(null)
+                }}
                 className="rounded-ui border border-slate-300 px-3 py-2"
               />
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  required
-                  placeholder="Град"
-                  value={deliveryCity}
-                  onChange={(event) => setDeliveryCity(event.target.value)}
-                  className="flex-1 rounded-ui border border-slate-300 px-3 py-2"
-                />
-                <input
-                  type="text"
-                  placeholder="Пощенски код"
-                  value={deliveryPostCode}
-                  onChange={(event) => setDeliveryPostCode(event.target.value)}
-                  className="w-32 rounded-ui border border-slate-300 px-3 py-2"
-                />
-              </div>
             </div>
           )}
 
@@ -762,10 +776,9 @@ export function CheckoutPage() {
             />
           )}
 
-          {(shippingMethod === 'pigeon_express_office' ||
-            shippingMethod === 'pigeon_express_locker') && (
+          {shippingMethod === 'pigeon_express_office' && (
             <PigeonExpressOfficePicker
-              type={shippingMethod === 'pigeon_express_locker' ? 'locker' : 'office'}
+              type="office"
               selected={pigeonExpressOffice}
               onSelect={setPigeonExpressOffice}
             />

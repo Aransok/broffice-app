@@ -194,6 +194,13 @@ class Order(TimeStampedModel):
         return str(OrderNumberSequence.next_value())
 
     @property
+    def delivery_address_display(self) -> str:
+        # BRoffice orders carry the whole address in one free-text line, so
+        # city/post code are usually empty - join only what's there.
+        place = f"{self.delivery_city} {self.delivery_post_code}".strip()
+        return ", ".join(part for part in (self.delivery_address_line, place) if part)
+
+    @property
     def total_profit_bgn(self) -> Decimal | None:
         # None (not zero) when no line has a recorded cost — e.g. orders
         # placed before cost_price_bgn existed, or products with no

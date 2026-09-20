@@ -376,7 +376,7 @@ export function AdminNotificationsPage() {
                         : order.shipping_method === 'pigeon_express_office' ||
                             order.shipping_method === 'pigeon_express_locker'
                           ? ` — ${order.pigeon_express_office_name}`
-                          : ` — ${order.delivery_address_line}, ${order.delivery_city} ${order.delivery_post_code}`}
+                          : ` — ${[order.delivery_address_line, `${order.delivery_city} ${order.delivery_post_code}`.trim()].filter(Boolean).join(', ')}`}
                   </p>
                 )}
                 <p>Телефон: {order.customer_phone || '-'}</p>

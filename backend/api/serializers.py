@@ -676,9 +676,12 @@ class OrderCreateSerializer(serializers.Serializer):
     def validate(self, attrs):
         method = attrs.get("shipping_method")
         if method == Order.SHIPPING_SPEEDY_ADDRESS:
-            if not attrs.get("delivery_address_line") or not attrs.get("delivery_city"):
+            # BRoffice delivery is shipped by hand from a single free-text
+            # address box, so the city is optional (it's typed inside the
+            # address itself).
+            if not attrs.get("delivery_address_line"):
                 raise serializers.ValidationError(
-                    "delivery_address_line and delivery_city are required for speedy_address"
+                    "delivery_address_line is required for speedy_address"
                 )
         elif method == Order.SHIPPING_SPEEDY_OFFICE:
             office_id = attrs.get("speedy_office_id")

@@ -76,9 +76,7 @@ def _order_lines_text(order: Order) -> str:
         if order.shipping_method == Order.SHIPPING_SPEEDY_OFFICE:
             lines.append(f"Офис: {order.speedy_office_name}")
         else:
-            lines.append(
-                f"Адрес: {order.delivery_address_line}, {order.delivery_city} {order.delivery_post_code}".strip()
-            )
+            lines.append(f"Адрес: {order.delivery_address_display}")
     lines.append(
         f"Плащане: {PAYMENT_METHOD_LABELS.get(order.payment_method, order.payment_method)}"
     )

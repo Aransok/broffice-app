@@ -2097,6 +2097,24 @@ def test_order_checkout_speedy_address(api_client, sample_product):
 
 
 @pytest.mark.django_db
+def test_order_checkout_broffice_single_free_text_address(api_client, sample_product):
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+            "shipping_method": "speedy_address",
+            "delivery_address_line": "Пловдив, ул. Тест 1, вх. Б",
+        },
+        format="json",
+    )
+    assert resp.status_code == 201
+    order = Order.objects.get(number=resp.data["number"])
+    assert order.delivery_city == ""
+    assert order.delivery_address_display == "Пловдив, ул. Тест 1, вх. Б"
+
+
+@pytest.mark.django_db
 def test_order_checkout_accepts_bank_transfer_payment_method(
     api_client, sample_product
 ):

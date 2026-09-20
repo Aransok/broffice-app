@@ -63,7 +63,7 @@ def _delivery_line(order) -> str:
     label = SHIPPING_METHOD_LABELS.get(order.shipping_method, order.shipping_method)
     if order.shipping_method == "speedy_office":
         return f"{label} — {order.speedy_office_name}"
-    return f"{label} — {order.delivery_address_line}, {order.delivery_city} {order.delivery_post_code}".strip()
+    return f"{label} — {order.delivery_address_display}"
 
 
 def render_order_email_html(
