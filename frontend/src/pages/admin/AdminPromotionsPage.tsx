@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
 import { orderedCategoryOptions, useCategories } from '../../api/categories'
 import { AdminProductPicker } from '../../components/admin/AdminProductPicker'
 import {
@@ -20,6 +20,8 @@ const SCOPE_LABELS: Record<PromotionScope, string> = {
   product: 'Конкретен продукт',
 }
 
+type Tab = 'global' | 'clients'
+
 const emptyForm = {
   name: '',
   discount_type: 'percent' as PromotionDiscountType,
@@ -35,6 +37,78 @@ const emptyForm = {
   active: true,
 }
 
+function PromotionsTable({
+  promotions,
+  onEdit,
+  onDelete,
+}: {
+  promotions: Promotion[]
+  onEdit: (promo: Promotion) => void
+  onDelete: (id: string) => void
+}) {
+  if (promotions.length === 0) {
+    return <p className="text-sm text-slate-500">Няма промоции.</p>
+  }
+  return (
+    <table className="w-full border-collapse text-sm">
+      <thead>
+        <tr className="border-b border-slate-200 text-left text-slate-500">
+          <th className="py-2">Име</th>
+          <th className="py-2">Обхват</th>
+          <th className="py-2">Отстъпка</th>
+          <th className="py-2">Активна</th>
+          <th className="py-2" />
+        </tr>
+      </thead>
+      <tbody>
+        {promotions.map((promo) => (
+          <tr key={promo.id} className="border-b border-slate-100">
+            <td className="py-2 pr-4">
+              {promo.name}
+              {promo.username && (
+                <span
+                  className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
+                  title={`Видима само за ${promo.username} — проверявайте в анонимен/инкогнито прозорец, не докато сте влезли в неговия акаунт`}
+                >
+                  🔒 Лично: {promo.username}
+                </span>
+              )}
+            </td>
+            <td className="py-2 pr-4 text-slate-500">
+              {SCOPE_LABELS[promo.scope]}
+              {promo.scope === 'category' && promo.category_name && (
+                <span className="block text-xs text-slate-700">{promo.category_name}</span>
+              )}
+              {promo.scope === 'product' && promo.product_name && (
+                <span className="block text-xs text-slate-700">
+                  {promo.product_number && `№${promo.product_number} `}
+                  {promo.product_name}
+                </span>
+              )}
+            </td>
+            <td className="py-2 pr-4">
+              {promo.discount_type === 'percent' ? `${promo.value}%` : `€${bgnToEur(promo.value)}`}
+            </td>
+            <td className="py-2 pr-4">{promo.active ? 'Да' : 'Не'}</td>
+            <td className="flex gap-3 py-2">
+              <button type="button" onClick={() => onEdit(promo)} className="text-primary hover:underline">
+                Редактирай
+              </button>
+              <button
+                type="button"
+                onClick={() => onDelete(promo.id)}
+                className="text-red-600 hover:underline"
+              >
+                Изтрий
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
 export function AdminPromotionsPage() {
   const { data: promotions, refetch } = usePromotions()
   const { data: categories } = useCategories()
@@ -42,6 +116,25 @@ export function AdminPromotionsPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [userResults, setUserResults] = useState<AdminUserResult[]>([])
   const [error, setError] = useState<string | null>(null)
+
+  const [tab, setTab] = useState<Tab>('global')
+  // Filters the client-promotions tab down to one client — independent of
+  // the form's own "for a specific client" field below, though picking one
+  // here also pre-fills the form, since browsing a client's promos and
+  // adding a new one for them is the same workflow.
+  const [clientFilterSearch, setClientFilterSearch] = useState('')
+  const [clientFilterResults, setClientFilterResults] = useState<AdminUserResult[]>([])
+  const [clientFilterId, setClientFilterId] = useState('')
+  const [clientFilterName, setClientFilterName] = useState('')
+
+  const globalPromotions = useMemo(
+    () => promotions?.results.filter((p) => !p.user) ?? [],
+    [promotions],
+  )
+  const clientPromotions = useMemo(() => {
+    const all = promotions?.results.filter((p) => p.user) ?? []
+    return clientFilterId ? all.filter((p) => String(p.user) === clientFilterId) : all
+  }, [promotions, clientFilterId])
 
   function resetForm() {
     setForm(emptyForm)
@@ -87,6 +180,36 @@ export function AdminPromotionsPage() {
     if (userResults.length === 0) {
       setUserResults(await searchAdminUsers(form.userSearch))
     }
+  }
+
+  async function handleClientFilterSearch(value: string) {
+    setClientFilterSearch(value)
+    setClientFilterResults(await searchAdminUsers(value))
+  }
+
+  async function handleClientFilterFocus() {
+    if (clientFilterResults.length === 0) {
+      setClientFilterResults(await searchAdminUsers(clientFilterSearch))
+    }
+  }
+
+  function selectClientFilter(user: AdminUserResult) {
+    setClientFilterId(String(user.id))
+    setClientFilterName(user.username)
+    setClientFilterSearch('')
+    setClientFilterResults([])
+    // Convenience: default the create/edit form's target client to match,
+    // so adding a new promo while browsing this client's list needs no
+    // extra typing. Only when creating (editingId is set aside deliberately
+    // untouched, so it never silently reassigns an existing promo).
+    if (!editingId) {
+      setForm((prev) => ({ ...prev, userId: String(user.id), username: user.username }))
+    }
+  }
+
+  function clearClientFilter() {
+    setClientFilterId('')
+    setClientFilterName('')
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -212,7 +335,7 @@ export function AdminPromotionsPage() {
                 value={category.id}
                 style={depth === 0 ? { backgroundColor: '#e0f2fe', fontWeight: 600 } : undefined}
               >
-                {'  '.repeat(depth)}
+                {'  '.repeat(depth)}
                 {depth > 0 ? '— ' : ''}
                 {category.name}
               </option>
@@ -320,68 +443,78 @@ export function AdminPromotionsPage() {
         </div>
       </form>
 
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-slate-200 text-left text-slate-500">
-            <th className="py-2">Име</th>
-            <th className="py-2">Обхват</th>
-            <th className="py-2">Отстъпка</th>
-            <th className="py-2">Активна</th>
-            <th className="py-2" />
-          </tr>
-        </thead>
-        <tbody>
-          {promotions?.results.map((promo) => (
-            <tr key={promo.id} className="border-b border-slate-100">
-              <td className="py-2 pr-4">
-                {promo.name}
-                {promo.username && (
-                  <span
-                    className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
-                    title={`Видима само за ${promo.username} — проверявайте в анонимен/инкогнито прозорец, не докато сте влезли в неговия акаунт`}
-                  >
-                    🔒 Лично: {promo.username}
-                  </span>
-                )}
-              </td>
-              <td className="py-2 pr-4 text-slate-500">
-                {SCOPE_LABELS[promo.scope]}
-                {promo.scope === 'category' && promo.category_name && (
-                  <span className="block text-xs text-slate-700">{promo.category_name}</span>
-                )}
-                {promo.scope === 'product' && promo.product_name && (
-                  <span className="block text-xs text-slate-700">
-                    {promo.product_number && `№${promo.product_number} `}
-                    {promo.product_name}
-                  </span>
-                )}
-              </td>
-              <td className="py-2 pr-4">
-                {promo.discount_type === 'percent'
-                  ? `${promo.value}%`
-                  : `€${bgnToEur(promo.value)}`}
-              </td>
-              <td className="py-2 pr-4">{promo.active ? 'Да' : 'Не'}</td>
-              <td className="flex gap-3 py-2">
+      <div className="mb-4 flex gap-2 border-b border-slate-200">
+        <button
+          type="button"
+          onClick={() => setTab('global')}
+          className={
+            tab === 'global'
+              ? 'border-b-2 border-primary px-3 py-2 text-sm font-medium text-primary'
+              : 'border-b-2 border-transparent px-3 py-2 text-sm text-slate-500 hover:text-slate-700'
+          }
+        >
+          Общи промоции ({globalPromotions.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('clients')}
+          className={
+            tab === 'clients'
+              ? 'border-b-2 border-primary px-3 py-2 text-sm font-medium text-primary'
+              : 'border-b-2 border-transparent px-3 py-2 text-sm text-slate-500 hover:text-slate-700'
+          }
+        >
+          Промоции за клиенти ({clientPromotions.length})
+        </button>
+      </div>
+
+      {tab === 'global' && (
+        <PromotionsTable promotions={globalPromotions} onEdit={editPromotion} onDelete={handleDelete} />
+      )}
+
+      {tab === 'clients' && (
+        <div>
+          <div className="mb-4">
+            <label className="mb-1 block text-sm text-slate-700">Филтър по клиент</label>
+            <input
+              type="text"
+              placeholder="Изберете от списъка или потърсете по име/имейл..."
+              value={clientFilterSearch}
+              onChange={(event) => handleClientFilterSearch(event.target.value)}
+              onFocus={handleClientFilterFocus}
+              className="w-full rounded-ui border border-slate-300 px-3 py-2"
+            />
+            {clientFilterResults.length > 0 && (
+              <ul className="mt-1 max-h-40 divide-y divide-slate-100 overflow-y-auto rounded-ui border border-slate-200">
+                {clientFilterResults.map((user) => (
+                  <li key={user.id}>
+                    <button
+                      type="button"
+                      onClick={() => selectClientFilter(user)}
+                      className="w-full px-3 py-1.5 text-left text-sm hover:bg-primary/10"
+                    >
+                      {user.username} ({user.email})
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {clientFilterId && (
+              <p className="mt-1 text-sm text-primary">
+                Показани промоции само за: {clientFilterName}{' '}
                 <button
                   type="button"
-                  onClick={() => editPromotion(promo)}
-                  className="text-primary hover:underline"
+                  onClick={clearClientFilter}
+                  className="ml-1 text-slate-500 underline"
                 >
-                  Редактирай
+                  покажи всички клиенти
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(promo.id)}
-                  className="text-red-600 hover:underline"
-                >
-                  Изтрий
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              </p>
+            )}
+          </div>
+          <PromotionsTable promotions={clientPromotions} onEdit={editPromotion} onDelete={handleDelete} />
+        </div>
+      )}
     </div>
   )
 }
