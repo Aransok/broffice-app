@@ -1,5 +1,6 @@
 import base64
 import re
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
@@ -7,6 +8,7 @@ from django.core.files.base import ContentFile
 from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from accounts.models import Address
 from common.currency import eur_to_bgn, format_eur
@@ -885,6 +887,7 @@ def create_pigeon_express_shipment_for_order(order: Order) -> None:
         note=order.notes[:1000],
     )
     order.pigeon_express_reference_number = data["reference_number"]
+    order.pigeon_express_status = data.get("status") or ""
     if data.get("label_pdf"):
         pdf_bytes = base64.b64decode(data["label_pdf"])
         order.pigeon_express_label_pdf.save(
@@ -893,10 +896,77 @@ def create_pigeon_express_shipment_for_order(order: Order) -> None:
     order.save(
         update_fields=[
             "pigeon_express_reference_number",
+            "pigeon_express_status",
             "pigeon_express_label_pdf",
             "updated_at",
         ]
     )
+
+
+# Pigeon Express's bulk track endpoint takes at most 100 references.
+PIGEON_EXPRESS_TRACK_BATCH_SIZE = 100
+# Shipments stop being polled once delivered, cancelled, or this old —
+# anything still undelivered after that needs a human, not another poll.
+PIGEON_EXPRESS_TRACK_MAX_AGE_DAYS = 60
+PIGEON_EXPRESS_FINAL_STATUS_CODES = ("shipment_cancelled",)
+
+
+def _apply_pigeon_express_tracking(order: Order, info: dict) -> None:
+    order.pigeon_express_status = info.get("status") or ""
+    order.pigeon_express_status_code = info.get("status_code") or ""
+    order.pigeon_express_expected_delivery_at = parse_datetime(
+        info.get("expected_delivery_date") or ""
+    )
+    order.pigeon_express_delivered_at = parse_datetime(info.get("delivery_date") or "")
+    order.pigeon_express_tracking = [
+        {
+            "status": event.get("status") or "",
+            "status_code": event.get("status_code") or "",
+            "created_at": event.get("created_at") or "",
+        }
+        for event in info.get("tracking") or []
+    ]
+    order.pigeon_express_tracking_updated_at = timezone.now()
+    order.save(
+        update_fields=[
+            "pigeon_express_status",
+            "pigeon_express_status_code",
+            "pigeon_express_expected_delivery_at",
+            "pigeon_express_delivered_at",
+            "pigeon_express_tracking",
+            "pigeon_express_tracking_updated_at",
+            "updated_at",
+        ]
+    )
+
+
+def refresh_pigeon_express_tracking() -> int:
+    """Pulls the latest status for every still-in-transit Pigeon Express
+    shipment (bulk endpoint, 100 per request) and stores it on the order.
+    Returns how many orders were updated. Raises PigeonExpressAPIError on
+    failure; orders already updated in earlier batches stay updated."""
+    cutoff = timezone.now() - timedelta(days=PIGEON_EXPRESS_TRACK_MAX_AGE_DAYS)
+    orders_by_reference = {
+        order.pigeon_express_reference_number: order
+        for order in Order.objects.exclude(pigeon_express_reference_number="")
+        .filter(pigeon_express_delivered_at__isnull=True, created_at__gte=cutoff)
+        .exclude(pigeon_express_status_code__in=PIGEON_EXPRESS_FINAL_STATUS_CODES)
+    }
+    if not orders_by_reference:
+        return 0
+    client = get_pigeon_express_client()
+    references = list(orders_by_reference)
+    updated = 0
+    for start in range(0, len(references), PIGEON_EXPRESS_TRACK_BATCH_SIZE):
+        batch = references[start : start + PIGEON_EXPRESS_TRACK_BATCH_SIZE]
+        results = client.bulk_track_shipments(batch)
+        for reference, info in results.items():
+            order = orders_by_reference.get(reference)
+            if order is None or not info.get("found"):
+                continue
+            _apply_pigeon_express_tracking(order, info)
+            updated += 1
+    return updated
 
 
 @transaction.atomic

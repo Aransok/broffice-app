@@ -289,6 +289,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "products.tasks.sync_supplier_catalog_task",
         "schedule": crontab(hour=3, minute=0),
     },
+    # Pigeon Express has no webhooks — poll in-transit shipments' status
+    # (orders.services.refresh_pigeon_express_tracking).
+    "refresh-pigeon-express-tracking": {
+        "task": "orders.tasks.refresh_pigeon_express_tracking_task",
+        "schedule": 3600.0,
+    },
 }
 
 # Usernames allowed to see/trigger database restores (backups app) — a
