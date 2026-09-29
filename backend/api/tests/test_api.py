@@ -3206,6 +3206,29 @@ def test_refresh_pigeon_express_tracking_ignores_unknown_references(
     assert order.pigeon_express_status == ""
 
 
+@pytest.mark.django_db
+def test_invoice_pdf_shows_pigeon_express_delivery_method_and_address(
+    api_client, sample_product, settings
+):
+    import orders.pdf
+    from orders.models import Invoice
+
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    order = _create_pigeon_express_order(api_client, "777")
+    invoice = Invoice.objects.create(order=order, number="INV-TEST")
+
+    texts = []
+    real_paragraph = orders.pdf.Paragraph
+
+    def recording_paragraph(text, *args, **kwargs):
+        texts.append(text)
+        return real_paragraph(text, *args, **kwargs)
+
+    with patch("orders.pdf.Paragraph", recording_paragraph):
+        orders.pdf.generate_invoice_pdf(invoice)
+    assert "Доставка: До офис на Pigeon Express — Офис Пловдив" in texts
+
+
 def test_order_delivery_destination_display_for_pigeon_express_address():
     order = Order(
         shipping_method=Order.SHIPPING_PIGEON_EXPRESS_ADDRESS,
