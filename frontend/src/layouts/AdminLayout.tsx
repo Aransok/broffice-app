@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { to: '/admin/products', label: 'Продукти', helpKey: 'продукти' },
   { to: '/admin/promotions', label: 'Промоции', helpKey: 'промоции' },
   { to: '/admin/coupons', label: 'Купони', helpKey: 'купони' },
+  { to: '/admin/pigeon-express', label: 'Pigeon Express', helpKey: 'pigeon express' },
   { to: '/admin/chat', label: 'Чат', helpKey: 'помощ' },
 ]
 

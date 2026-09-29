@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from accounts.models import Address
 from common.currency import eur_to_bgn, format_eur
+from core.models import SiteSettings
 from coupons.services import (
     calculate_coupon_discount,
     check_min_order_amount,
@@ -690,21 +691,30 @@ def _get_or_save_address(
     )
 
 
+def get_pigeon_express_pickup_office_id() -> str:
+    # The office picked in the admin panel wins; the env var is only the
+    # fallback for before anyone has picked one.
+    site_settings = SiteSettings.objects.first()
+    if site_settings and site_settings.pigeon_express_pickup_office_id:
+        return site_settings.pigeon_express_pickup_office_id
+    return settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID
+
+
 def _pigeon_express_pickup_payload() -> dict:
-    if not settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID:
+    office_id = get_pigeon_express_pickup_office_id()
+    if not office_id:
         # PigeonExpressNotConfigured (a PigeonExpressAPIError) rather than a
         # bare ValueError - so this is caught by the same except
         # PigeonExpressAPIError handlers already in OrderCreateView.post and
         # PigeonExpressQuoteView, returning a clean 502/503 instead of an
         # unhandled 500 while PIGEON_EXPRESS_PICKUP_OFFICE_ID is still blank.
         raise PigeonExpressNotConfigured(
-            "PIGEON_EXPRESS_PICKUP_OFFICE_ID is not set — add it to .env "
-            "(get it from Pigeon Express support) before shipments can be "
-            "quoted or created."
+            "No Pigeon Express pickup office is set — pick one in the admin "
+            "panel (Pigeon Express) before shipments can be quoted or created."
         )
     return {
         "pickup_type": "office",
-        "pickup_office_id": settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID,
+        "pickup_office_id": office_id,
     }
 
 
