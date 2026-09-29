@@ -156,7 +156,7 @@ def render_order_email_html(
         else ""
     )
     shipping_row = (
-        f'<tr><td style="padding:4px 0;color:{MUTED};">Доставка</td>'
+        f'<tr><td style="padding:4px 0;color:{MUTED};">Доставка (с ДДС)</td>'
         f'<td style="padding:4px 0;text-align:right;">{_eur(order.shipping_cost_bgn)}</td></tr>'
         if order.shipping_cost_bgn
         else ""
@@ -221,10 +221,10 @@ def render_order_email_html(
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
                   <tr><td style="padding:4px 0;color:{MUTED};">Междинна сума</td>
                     <td style="padding:4px 0;text-align:right;">{_eur(order.subtotal_bgn)}</td></tr>
-                  {shipping_row}
                   {coupon_row}
                   <tr><td style="padding:4px 0;color:{MUTED};">ДДС ({order.vat_rate_percent}%)</td>
                     <td style="padding:4px 0;text-align:right;">{_eur(order.vat_amount_bgn)}</td></tr>
+                  {shipping_row}
                   <tr><td style="padding:8px 0;font-weight:700;color:#0f172a;border-top:1px solid {BORDER};">Общо</td>
                     <td style="padding:8px 0;text-align:right;font-weight:700;color:{BRAND_ORANGE};border-top:1px solid {BORDER};">{_eur(order.total_bgn)}</td></tr>
                   {total_profit_row_html}

@@ -889,14 +889,21 @@ export function CheckoutPage() {
               </span>
             </div>
           )}
+          {Number(shippingCost ?? 0) > 0 && (
+            <div className="mt-2 flex justify-between text-sm text-slate-700">
+              <span>Доставка (с ДДС)</span>
+              <span>€{bgnToEur(Number(shippingCost).toFixed(2))}</span>
+            </div>
+          )}
           <div className="mt-2 flex justify-between font-semibold text-slate-900">
             <span>Общо (с доставка)</span>
             <span>
               {(() => {
-                const totalBgn = displayPrice(
-                  (totalPrice - couponPreviewDiscount + Number(shippingCost ?? 0)).toFixed(2),
-                )
-                return `€${bgnToEur(totalBgn ?? '')}`
+                // Shipping is the courier's price incl. VAT — added as-is,
+                // never converted by the incl./excl. VAT display toggle.
+                const productsBgn = displayPrice((totalPrice - couponPreviewDiscount).toFixed(2))
+                const totalBgn = (Number(productsBgn ?? 0) + Number(shippingCost ?? 0)).toFixed(2)
+                return `€${bgnToEur(totalBgn)}`
               })()}
             </span>
           </div>

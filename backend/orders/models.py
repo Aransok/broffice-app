@@ -116,6 +116,8 @@ class Order(TimeStampedModel):
     delivery_post_code = models.CharField(max_length=16, blank=True, default="")
     speedy_office_id = models.CharField(max_length=64, blank=True, default="")
     speedy_office_name = models.CharField(max_length=255, blank=True, default="")
+    # Courier's price incl. VAT — added to the total as-is, not taxed again
+    # (see recalc_order_total).
     shipping_cost_bgn = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     # Pigeon Express delivery details — structured (not free text) because
     # their calculate/create-shipment APIs require real city_id/street_id,
