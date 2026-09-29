@@ -76,10 +76,14 @@ def _order_lines_text(order: Order) -> str:
         lines.append(
             f"Доставка чрез: {SHIPPING_METHOD_LABELS.get(order.shipping_method, order.shipping_method)}"
         )
-        if order.shipping_method == Order.SHIPPING_SPEEDY_OFFICE:
-            lines.append(f"Офис: {order.speedy_office_name}")
+        if order.shipping_method in (
+            Order.SHIPPING_SPEEDY_OFFICE,
+            Order.SHIPPING_PIGEON_EXPRESS_OFFICE,
+            Order.SHIPPING_PIGEON_EXPRESS_LOCKER,
+        ):
+            lines.append(f"Офис: {order.delivery_destination_display}")
         else:
-            lines.append(f"Адрес: {order.delivery_address_display}")
+            lines.append(f"Адрес: {order.delivery_destination_display}")
     lines.append(
         f"Плащане: {PAYMENT_METHOD_LABELS.get(order.payment_method, order.payment_method)}"
     )

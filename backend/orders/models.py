@@ -219,6 +219,28 @@ class Order(TimeStampedModel):
         return ", ".join(part for part in (self.delivery_address_line, place) if part)
 
     @property
+    def delivery_destination_display(self) -> str:
+        """Where the order goes — office name or address — for whichever
+        shipping method it uses. Shared by the order emails."""
+        if self.shipping_method == self.SHIPPING_SPEEDY_OFFICE:
+            return self.speedy_office_name
+        if self.shipping_method in (
+            self.SHIPPING_PIGEON_EXPRESS_OFFICE,
+            self.SHIPPING_PIGEON_EXPRESS_LOCKER,
+        ):
+            return self.pigeon_express_office_name
+        if self.shipping_method == self.SHIPPING_PIGEON_EXPRESS_ADDRESS:
+            street = (
+                f"{self.pigeon_express_street_name} "
+                f"{self.pigeon_express_street_number}".strip()
+                or self.pigeon_express_additional_info
+            )
+            return ", ".join(
+                part for part in (street, self.pigeon_express_city_name) if part
+            )
+        return self.delivery_address_display
+
+    @property
     def total_profit_bgn(self) -> Decimal | None:
         # None (not zero) when no line has a recorded cost — e.g. orders
         # placed before cost_price_bgn existed, or products with no

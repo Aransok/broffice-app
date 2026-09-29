@@ -21,11 +21,9 @@ from django.conf import settings
 from common.currency import format_eur as _eur
 from common.emails import BORDER, BRAND_BLUE, BRAND_ORANGE, MUTED, logo_header_html
 from common.media import resolve_media_path
+from orders.models import Order
 
-SHIPPING_METHOD_LABELS = {
-    "speedy_address": "Доставка до адрес",
-    "speedy_office": "До офис на Спиди",
-}
+SHIPPING_METHOD_LABELS = dict(Order.SHIPPING_METHOD_CHOICES)
 
 
 def _load_item_images(order) -> dict[str, MIMEImage]:
@@ -61,9 +59,8 @@ def _delivery_line(order) -> str:
     if not order.shipping_method:
         return ""
     label = SHIPPING_METHOD_LABELS.get(order.shipping_method, order.shipping_method)
-    if order.shipping_method == "speedy_office":
-        return f"{label} — {order.speedy_office_name}"
-    return f"{label} — {order.delivery_address_display}"
+    destination = order.delivery_destination_display
+    return f"{label} — {destination}" if destination else label
 
 
 def render_order_email_html(
