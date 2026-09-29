@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from accounts.models import Address
-from common.currency import eur_to_bgn, format_eur
+from common.currency import bgn_to_eur, eur_to_bgn, format_eur
 from core.models import SiteSettings
 from coupons.services import (
     calculate_coupon_discount,
@@ -1027,6 +1027,14 @@ def create_pigeon_express_shipment_for_order(order: Order) -> None:
         # The customer pays the courier for shipping on delivery — it isn't
         # part of the order total (see create_order).
         who_pays="receiver",
+        # "Наложен платеж": the courier also collects the order total for
+        # the products. In EUR — Bulgaria's currency since 2026, and the
+        # currency Pigeon quotes in (their docs don't name cod_amount's).
+        service_codes=(
+            {"cod_amount": float(bgn_to_eur(order.total_bgn))}
+            if order.payment_method == Order.PAYMENT_CASH_ON_DELIVERY
+            else None
+        ),
     )
     order.pigeon_express_reference_number = data["reference_number"]
     order.pigeon_express_status = data.get("status") or ""

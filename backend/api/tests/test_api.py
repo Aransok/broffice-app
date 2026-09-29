@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
 from categories.models import Category
+from common.currency import bgn_to_eur
 from core.models import SiteSettings
 from orders.models import Order
 from products.models import Product, ProductImage
@@ -2601,8 +2602,14 @@ def test_admin_order_confirm_creates_pigeon_express_shipment(
 
     assert confirm_resp.status_code == 200
     # Shipping isn't in the order total — Pigeon collects it from the customer.
-    assert client.create_shipment.call_args.kwargs["who_pays"] == "receiver"
+    shipment_kwargs = client.create_shipment.call_args.kwargs
+    assert shipment_kwargs["who_pays"] == "receiver"
     order = Order.objects.get(number=number)
+    # Cash on delivery (the default payment method): the courier also
+    # collects the order total, in EUR.
+    assert shipment_kwargs["service_codes"] == {
+        "cod_amount": float(bgn_to_eur(order.total_bgn))
+    }
     assert order.pigeon_express_reference_number == "459073686609"
     assert order.pigeon_express_label_pdf.name
     # Shipment is created before the customer email, so it carries the link.
