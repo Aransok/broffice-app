@@ -2578,6 +2578,11 @@ def test_admin_order_confirm_creates_pigeon_express_shipment(
     customer_email = next(m for m in mailoutbox if m.to == ["buyer@example.com"])
     tracking_url = "https://track.pigeonexpress.com/?tracking_number=459073686609"
     assert tracking_url in customer_email.body
+    # Real delivery method + office name, not the internal method code.
+    html = customer_email.alternatives[0][0]
+    assert "До офис на Pigeon Express — Офис Пловдив" in html
+    assert "pigeon_express_office" not in html
+    assert "Офис: Офис Пловдив" in customer_email.body
 
 
 @pytest.mark.django_db
@@ -3199,6 +3204,21 @@ def test_refresh_pigeon_express_tracking_ignores_unknown_references(
         assert refresh_pigeon_express_tracking() == 0
     order.refresh_from_db()
     assert order.pigeon_express_status == ""
+
+
+def test_order_delivery_destination_display_for_pigeon_express_address():
+    order = Order(
+        shipping_method=Order.SHIPPING_PIGEON_EXPRESS_ADDRESS,
+        pigeon_express_street_name="ЛУКА КАСЪРОВ",
+        pigeon_express_street_number="16",
+        pigeon_express_city_name="Пловдив",
+    )
+    assert order.delivery_destination_display == "ЛУКА КАСЪРОВ 16, Пловдив"
+    # No street picked — the free-text address details are used instead.
+    order.pigeon_express_street_name = ""
+    order.pigeon_express_street_number = ""
+    order.pigeon_express_additional_info = "бл. 229, вх. А"
+    assert order.delivery_destination_display == "бл. 229, вх. А, Пловдив"
 
 
 def _tracking_info(status_code, *codes, delivery_date=None):
