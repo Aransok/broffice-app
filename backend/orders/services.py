@@ -907,9 +907,16 @@ def calculate_pigeon_express_quote(data: dict) -> dict:
     # display-only, per the currency-board peg) — convert if the courier
     # quoted in EUR, pass through unchanged if they quoted in BGN.
     if quote.get("currency") == "EUR":
-        shipping_cost_bgn = eur_to_bgn(total_price)
+        price_incl_vat = eur_to_bgn(total_price)
     else:
-        shipping_cost_bgn = total_price.quantize(Decimal("0.01"))
+        price_incl_vat = total_price
+    # Pigeon quotes prices incl. VAT, but shipping_cost_bgn is a base (excl.
+    # VAT) amount like every other price here — recalc_order_total adds VAT
+    # on top. Stored as-is it was taxed twice (customer paid 20% more than
+    # Pigeon's price for shipping).
+    shipping_cost_bgn = (
+        price_incl_vat / (1 + settings.VAT_RATE_PERCENT / Decimal(100))
+    ).quantize(Decimal("0.01"))
     return {"shipping_cost_bgn": str(shipping_cost_bgn)}
 
 

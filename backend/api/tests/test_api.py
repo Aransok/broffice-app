@@ -1827,7 +1827,8 @@ def test_pigeon_express_quote(api_client, settings):
             },
         )
     assert resp.status_code == 200
-    assert resp.data["shipping_cost_bgn"] == "13.26"
+    # Pigeon's 13.26 includes VAT; stored excl. VAT (13.26 / 1.2).
+    assert resp.data["shipping_cost_bgn"] == "11.05"
 
 
 @pytest.mark.django_db
@@ -1844,7 +1845,8 @@ def test_pigeon_express_quote_converts_eur_to_bgn(api_client, settings):
             },
         )
     assert resp.status_code == 200
-    assert resp.data["shipping_cost_bgn"] == "19.56"
+    # 10 EUR = 19.56 BGN incl. VAT -> 16.30 excl. VAT.
+    assert resp.data["shipping_cost_bgn"] == "16.30"
 
 
 @pytest.mark.django_db
@@ -2383,8 +2385,12 @@ def test_order_checkout_pigeon_express_office(api_client, sample_product, settin
         )
     assert resp.status_code == 201
     assert resp.data["pigeon_express_office_name"] == "Офис Пловдив"
-    # Unlike Speedy (stubbed to 0), Pigeon Express is charged for real.
-    assert resp.data["shipping_cost_bgn"] == "5.00"
+    # Unlike Speedy (stubbed to 0), Pigeon Express is charged for real —
+    # stored excl. VAT (5.00 / 1.2), so with VAT added back the customer
+    # pays exactly Pigeon's 5.00 for shipping, not 6.00.
+    assert resp.data["shipping_cost_bgn"] == "4.17"
+    order = Order.objects.get(number=resp.data["number"])
+    assert order.total_bgn - order.subtotal_bgn * Decimal("1.2") == Decimal("5.00")
 
 
 @pytest.mark.django_db
