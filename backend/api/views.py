@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate, login, logout, update_session_auth
 from django.contrib.auth.models import User
 from django.core.files.storage import default_storage
 from django.core.mail import EmailMultiAlternatives
-from django.db.models import Count, F, Max, Q, Sum
+from django.db.models import Case, Count, F, IntegerField, Max, Q, Sum, Value, When
 from django.http import HttpResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
@@ -399,17 +399,43 @@ class SearchView(APIView):
         # searchable field — not just a literal substring of `name` (a query
         # like "офис стол" previously only matched if that exact phrase, in
         # that exact order, appeared in the name).
-        for word in q.split():
-            qs = qs.filter(
+        words = q.split()
+        primary = qs
+        for word in words:
+            primary = primary.filter(
                 Q(name__icontains=word)
-                | Q(description__icontains=word)
-                | Q(short_description__icontains=word)
                 | Q(supplier_id__icontains=word)
                 | Q(external_id__icontains=word)
                 | Q(item_number__icontains=word)
                 | Q(brand__name__icontains=word)
                 | Q(category__name__icontains=word)
             )
+        # Descriptions only as a fallback: a marker described as "за копирна
+        # хартия" must not show up in a search for копирна хартия when real
+        # paper products match by name/category.
+        if words and not primary.exists():
+            for word in words:
+                qs = qs.filter(
+                    Q(name__icontains=word)
+                    | Q(description__icontains=word)
+                    | Q(short_description__icontains=word)
+                    | Q(brand__name__icontains=word)
+                    | Q(category__name__icontains=word)
+                )
+        else:
+            qs = primary
+        if words:
+            all_words_in_name = Q()
+            for word in words:
+                all_words_in_name &= Q(name__icontains=word)
+            qs = qs.annotate(
+                relevance=Case(
+                    When(name__icontains=q, then=Value(2)),
+                    When(all_words_in_name, then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                )
+            ).order_by("-relevance", "name")
         page = self.paginate(qs[:100])
         active_promotions = get_active_promotions()
         serializer = ProductListSerializer(

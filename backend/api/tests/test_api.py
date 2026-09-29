@@ -1928,6 +1928,34 @@ def test_search_multi_word_any_order(api_client):
 
 
 @pytest.mark.django_db
+def test_search_ranks_name_matches_and_skips_description_only_matches(api_client):
+    paper = Category.objects.create(external_id="paper", slug="paper", name="хартии")
+    markers = Category.objects.create(external_id="mk", slug="mk", name="маркери")
+    Product.objects.create(
+        external_id="m1",
+        slug="marker",
+        name="текст маркер job",
+        description="подходящ за копирна хартия",
+        category=markers,
+    )
+    Product.objects.create(
+        external_id="w1", slug="words", name="хартия цветна копирна", category=paper
+    )
+    Product.objects.create(
+        external_id="e1", slug="exact", name="копирна хартия а4", category=paper
+    )
+
+    resp = api_client.get("/api/v1/search/", {"q": "копирна хартия"})
+    # Exact phrase in the name first, then all words in the name; the marker
+    # only mentions paper in its description, so it's left out.
+    assert [r["slug"] for r in resp.data["results"]] == ["exact", "words"]
+
+    # With no name/category match, descriptions are still searched.
+    resp = api_client.get("/api/v1/search/", {"q": "подходящ"})
+    assert [r["slug"] for r in resp.data["results"]] == ["marker"]
+
+
+@pytest.mark.django_db
 def test_search_matches_brand_and_category(api_client):
     from brands.models import Brand
 
