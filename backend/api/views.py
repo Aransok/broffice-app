@@ -672,6 +672,7 @@ class OrderCreateView(APIView):
                 company_vat_number=data.get("company_vat_number") or "",
                 company_address=data.get("company_address") or "",
                 company_mol=data.get("company_mol") or "",
+                prices_include_vat=data.get("prices_include_vat", True),
             )
         except CouponError as exc:
             return Response(

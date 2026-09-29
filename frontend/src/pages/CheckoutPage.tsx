@@ -316,7 +316,7 @@ const COURIERS: {
 
 export function CheckoutPage() {
   const { items, totalPrice, clear } = useCart()
-  const { displayPrice } = useVat()
+  const { displayPrice, showInclVat } = useVat()
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -573,6 +573,7 @@ export function CheckoutPage() {
         payment_method: paymentMethod,
         coupon_code: appliedCoupon?.code,
         is_company_order: isCompanyOrder,
+        prices_include_vat: showInclVat,
         ...(isCompanyOrder
           ? {
               company_name: companyName,
@@ -908,7 +909,9 @@ export function CheckoutPage() {
             </span>
           </div>
           <p className="mt-1 text-xs text-slate-400">
-            Крайната сума (вкл. ДДС) се потвърждава при завършване на поръчката.
+            {showInclVat
+              ? 'Поръчвате с цени с ДДС. Доставката е по цена на куриера (с ДДС).'
+              : 'Поръчвате с цени без ДДС. Доставката е по цена на куриера (с ДДС).'}
           </p>
         </section>
 

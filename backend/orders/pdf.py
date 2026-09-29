@@ -245,12 +245,14 @@ def generate_invoice_pdf(invoice, *, include_profit: bool = False) -> bytes:
                 ),
             ]
         )
-    totals_data.append(
-        [
-            f"ДДС ({order.vat_rate_percent}%):",
-            Paragraph(format_eur(order.vat_amount_bgn), totals_value_style),
-        ]
-    )
+    # Ordered "без ДДС" (vat_rate_percent 0) — no VAT row at all.
+    if order.vat_rate_percent:
+        totals_data.append(
+            [
+                f"ДДС ({order.vat_rate_percent}%):",
+                Paragraph(format_eur(order.vat_amount_bgn), totals_value_style),
+            ]
+        )
     # Courier's price incl. VAT, outside our VAT line (see recalc_order_total).
     # Speedy shipping isn't charged yet (0), so it gets no row.
     if order.shipping_cost_bgn:

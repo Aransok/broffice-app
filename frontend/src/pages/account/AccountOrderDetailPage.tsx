@@ -113,9 +113,11 @@ export function AccountOrderDetailPage() {
           </p>
         )}
         <p>Междинна сума: {formatEur(order.subtotal_bgn)}</p>
-        <p>
-          ДДС ({order.vat_rate_percent}%): {formatEur(order.vat_amount_bgn)}
-        </p>
+        {Number(order.vat_rate_percent) > 0 && (
+          <p>
+            ДДС ({order.vat_rate_percent}%): {formatEur(order.vat_amount_bgn)}
+          </p>
+        )}
         {Number(order.shipping_cost_bgn) > 0 && (
           <p>Доставка (с ДДС): {formatEur(order.shipping_cost_bgn)}</p>
         )}

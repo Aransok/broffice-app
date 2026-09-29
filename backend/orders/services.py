@@ -68,7 +68,10 @@ def _order_lines_text(order: Order) -> str:
         lines.append(
             f"Купон ({order.coupon_code}): -{format_eur(order.coupon_discount_bgn)}"
         )
-    lines.append(f"ДДС ({order.vat_rate_percent}%): {format_eur(order.vat_amount_bgn)}")
+    if order.vat_rate_percent:
+        lines.append(
+            f"ДДС ({order.vat_rate_percent}%): {format_eur(order.vat_amount_bgn)}"
+        )
     if order.shipping_cost_bgn:
         lines.append(f"Доставка (с ДДС): {format_eur(order.shipping_cost_bgn)}")
     lines.append(f"Общо: {format_eur(order.total_bgn)}")
@@ -1115,6 +1118,7 @@ def create_order(
     company_vat_number="",
     company_address="",
     company_mol="",
+    prices_include_vat=True,
 ) -> Order:
     is_authenticated = user is not None and user.is_authenticated
 
@@ -1226,7 +1230,9 @@ def create_order(
         shipping_cost_bgn=shipping_cost,
         # Snapshot now, frozen forever — later VAT_RATE_PERCENT changes never
         # touch existing orders (recalc_order_total reuses this, not settings).
-        vat_rate_percent=settings.VAT_RATE_PERCENT,
+        # The customer's "Цени без ДДС"/"Цени с ДДС" choice at checkout
+        # decides it: ordered without VAT → products carry no VAT (0%).
+        vat_rate_percent=settings.VAT_RATE_PERCENT if prices_include_vat else 0,
     )
 
     # Fetched once for the whole order, not once per line item — same N+1
