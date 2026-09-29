@@ -9,6 +9,7 @@ from .views import (
     AdminDashboardStatsView,
     AdminNotificationViewSet,
     AdminOrderViewSet,
+    AdminPigeonExpressPickupOfficeView,
     AdminPriceOverrideViewSet,
     AdminProductViewSet,
     AdminPromotionViewSet,
@@ -122,6 +123,11 @@ urlpatterns = [
         "shipping/pigeon-express/quote/",
         PigeonExpressQuoteView.as_view(),
         name="pigeon-express-quote",
+    ),
+    path(
+        "admin/pigeon-express/pickup-office/",
+        AdminPigeonExpressPickupOfficeView.as_view(),
+        name="admin-pigeon-express-pickup-office",
     ),
     path("admin/users/", AdminUserListView.as_view(), name="admin-users"),
     path(

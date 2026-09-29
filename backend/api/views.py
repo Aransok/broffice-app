@@ -45,6 +45,7 @@ from categories.models import Category
 from categories.services import get_descendant_category_ids
 from common.emails import BORDER, BRAND_BLUE, MUTED, logo_header_html
 from common.pagination import LargePageNumberPagination
+from core.models import SiteSettings
 from coupons.emails import send_coupon_email
 from coupons.models import Coupon
 from coupons.services import CouponError, check_min_order_amount, get_valid_coupon
@@ -60,6 +61,7 @@ from orders.services import (
     deactivate_used_item_promotions,
     get_admin_invoice_pdf_bytes,
     get_invoice_pdf_bytes,
+    get_pigeon_express_pickup_office_id,
     issue_invoice_for_order,
     remove_item_from_pending_order,
     reprice_pending_order,
@@ -1583,6 +1585,57 @@ class PigeonExpressQuoteView(APIView):
                 ),
             )
         return Response(quote)
+
+
+class AdminPigeonExpressPickupOfficeView(APIView):
+    """The Pigeon Express office we drop parcels off at, picked from the
+    admin panel instead of hand-copying an ID into .env."""
+
+    permission_classes = [IsAdminPortalUser]
+
+    def _response(self, site_settings):
+        return Response(
+            {
+                "office_id": get_pigeon_express_pickup_office_id(),
+                "office_name": (
+                    site_settings.pigeon_express_pickup_office_name
+                    if site_settings and site_settings.pigeon_express_pickup_office_id
+                    else ""
+                ),
+            }
+        )
+
+    def get(self, request):
+        return self._response(SiteSettings.objects.first())
+
+    def put(self, request):
+        office_id = str(request.data.get("office_id") or "").strip()
+        if not office_id:
+            return Response(
+                {"detail": "office_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Confirms the ID against Pigeon itself, so a typo can never be
+        # saved and silently break every checkout quote.
+        try:
+            office = get_pigeon_express_client().get_office(office_id)
+        except PigeonExpressAPIError as exc:
+            return Response(
+                {"detail": f"Pigeon Express: {exc.message}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        if office is None:
+            return Response(
+                {"detail": "Pigeon Express has no office with this ID."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        site_settings = SiteSettings.objects.first() or SiteSettings()
+        site_settings.pigeon_express_pickup_office_id = office_id
+        site_settings.pigeon_express_pickup_office_name = " — ".join(
+            part for part in (office.get("name"), office.get("address")) if part
+        )[:255]
+        site_settings.save()
+        return self._response(site_settings)
 
 
 class BackupListView(APIView):

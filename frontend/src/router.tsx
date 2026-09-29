@@ -17,6 +17,7 @@ import { AdminCustomerDetailPage } from './pages/admin/AdminCustomerDetailPage'
 import { AdminCustomersPage } from './pages/admin/AdminCustomersPage'
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
 import { AdminNotificationsPage } from './pages/admin/AdminNotificationsPage'
+import { AdminPigeonExpressPage } from './pages/admin/AdminPigeonExpressPage'
 import { AdminProductsPage } from './pages/admin/AdminProductsPage'
 import { AdminCouponsPage } from './pages/admin/AdminCouponsPage'
 import { AdminPromotionsPage } from './pages/admin/AdminPromotionsPage'
@@ -103,6 +104,7 @@ export const router = createBrowserRouter([
       { path: 'promotions', element: <AdminPromotionsPage /> },
       { path: 'coupons', element: <AdminCouponsPage /> },
       { path: 'chat', element: <AdminChatPage /> },
+      { path: 'pigeon-express', element: <AdminPigeonExpressPage /> },
       { path: 'backups', element: <AdminBackupsPage /> },
     ],
   },

@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
 from categories.models import Category
+from core.models import SiteSettings
 from orders.models import Order
 from products.models import Product, ProductImage
 
@@ -1844,6 +1845,61 @@ def test_pigeon_express_quote_converts_eur_to_bgn(api_client, settings):
         )
     assert resp.status_code == 200
     assert resp.data["shipping_cost_bgn"] == "19.56"
+
+
+@pytest.mark.django_db
+def test_admin_pigeon_express_pickup_office_set_and_used_for_quotes(
+    api_client, admin_user, settings
+):
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.get("/api/v1/admin/pigeon-express/pickup-office/")
+    assert resp.data == {"office_id": "1001", "office_name": ""}
+
+    with mock_pigeon_express_client(
+        get_office={"id": 77, "name": "Пловдив Тракия", "address": "бл. 200"}
+    ):
+        resp = api_client.put(
+            "/api/v1/admin/pigeon-express/pickup-office/",
+            {"office_id": "77"},
+            format="json",
+        )
+    assert resp.status_code == 200
+    assert resp.data == {"office_id": "77", "office_name": "Пловдив Тракия — бл. 200"}
+
+    with mock_pigeon_express_client(
+        calculate_shipping_cost={"total_price": "5.00", "currency": "BGN"}
+    ) as client:
+        api_client.post(
+            "/api/v1/shipping/pigeon-express/quote/",
+            {
+                "shipping_method": "pigeon_express_office",
+                "pigeon_express_office_id": "125",
+            },
+        )
+    assert client.calculate_shipping_cost.call_args.kwargs["pickup"] == {
+        "pickup_type": "office",
+        "pickup_office_id": "77",
+    }
+
+
+@pytest.mark.django_db
+def test_admin_pigeon_express_pickup_office_rejects_unknown_id(api_client, admin_user):
+    api_client.force_authenticate(user=admin_user)
+    with mock_pigeon_express_client(get_office=None):
+        resp = api_client.put(
+            "/api/v1/admin/pigeon-express/pickup-office/",
+            {"office_id": "999"},
+            format="json",
+        )
+    assert resp.status_code == 400
+    assert not SiteSettings.objects.exists()
+
+
+@pytest.mark.django_db
+def test_admin_pigeon_express_pickup_office_requires_admin(api_client):
+    resp = api_client.get("/api/v1/admin/pigeon-express/pickup-office/")
+    assert resp.status_code in (401, 403)
 
 
 @pytest.mark.django_db
