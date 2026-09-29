@@ -251,6 +251,18 @@ export function AdminNotificationsPage() {
                   Изтегли товарителница ({order.pigeon_express_reference_number})
                 </a>
               )}
+              {order.pigeon_express_reference_number && (
+                <a
+                  href={`https://track.pigeonexpress.com/?tracking_number=${order.pigeon_express_reference_number}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`mb-2 ml-3 inline-block text-xs hover:underline ${
+                    order.pigeon_express_delivered_at ? 'text-green-700' : 'text-primary'
+                  }`}
+                >
+                  {order.pigeon_express_status || 'Проследи пратката'}
+                </a>
+              )}
 
               <ul className="mb-2 divide-y divide-slate-100 text-sm">
                 {order.items.map((item) => {

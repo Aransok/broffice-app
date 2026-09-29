@@ -149,6 +149,17 @@ class Order(TimeStampedModel):
     pigeon_express_label_pdf = models.FileField(
         upload_to="pigeon-express-labels/", null=True, blank=True
     )
+    # Latest tracking snapshot from Pigeon Express. They have no webhooks,
+    # so refresh_pigeon_express_tracking (hourly Celery Beat task) polls for
+    # it. delivered_at is Pigeon's own delivery_date, the reliable
+    # "delivered" signal — their status codes aren't a closed documented list.
+    pigeon_express_status = models.CharField(max_length=255, blank=True, default="")
+    pigeon_express_status_code = models.CharField(max_length=64, blank=True, default="")
+    pigeon_express_expected_delivery_at = models.DateTimeField(null=True, blank=True)
+    pigeon_express_delivered_at = models.DateTimeField(null=True, blank=True)
+    # Status history: [{status, status_code, created_at}], oldest first.
+    pigeon_express_tracking = models.JSONField(default=list, blank=True)
+    pigeon_express_tracking_updated_at = models.DateTimeField(null=True, blank=True)
     # Package facts for the real shipment — null until an admin sets them
     # (see AdminOrderViewSet.pigeon_express_package); _pigeon_express_packages()
     # falls back to the PIGEON_EXPRESS_DEFAULT_PACKAGE_* settings per-field

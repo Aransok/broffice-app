@@ -923,11 +923,10 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
         order.save(update_fields=["status", "updated_at"])
         issue_invoice_for_order(order)
         deactivate_used_item_promotions(order)
-        send_customer_invoice_email(order)
-        send_admin_confirmation_email(order)
-        # Wrapped so a Pigeon Express outage never blocks the confirm itself
-        # (status/invoice/emails above already succeeded) — surfaced via a
-        # notification instead, for an admin to retry manually.
+        # Before the emails, so the customer's email can carry the tracking
+        # link. Wrapped so a Pigeon Express outage never blocks the confirm
+        # itself — surfaced via a notification instead, for an admin to
+        # retry manually; the emails still go out, just without the link.
         try:
             create_pigeon_express_shipment_for_order(order)
         except PigeonExpressAPIError as exc:
@@ -938,6 +937,8 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
                     f"поръчка {order.number} — {exc.message}"
                 ),
             )
+        send_customer_invoice_email(order)
+        send_admin_confirmation_email(order)
         return Response(OrderSerializer(order, context={"request": request}).data)
 
     @action(detail=True, methods=["post"])

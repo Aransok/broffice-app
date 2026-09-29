@@ -141,6 +141,12 @@ export interface PigeonExpressStreet {
   name: string
 }
 
+export interface PigeonExpressTrackingEvent {
+  status: string
+  status_code: string
+  created_at: string
+}
+
 export interface PigeonExpressOffice {
   id: string
   name: string
@@ -218,6 +224,13 @@ export interface Order {
   pigeon_express_office_id: string
   pigeon_express_office_name: string
   pigeon_express_reference_number: string
+  /** Latest status from Pigeon Express (Bulgarian), refreshed hourly. */
+  pigeon_express_status: string
+  pigeon_express_status_code: string
+  pigeon_express_expected_delivery_at: string | null
+  pigeon_express_delivered_at: string | null
+  pigeon_express_tracking: PigeonExpressTrackingEvent[]
+  pigeon_express_tracking_updated_at: string | null
   pigeon_express_label_pdf: string | null
   pigeon_express_package_weight_kg: string | null
   pigeon_express_package_length_cm: string | null

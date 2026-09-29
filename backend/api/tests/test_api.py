@@ -2531,7 +2531,7 @@ def test_admin_pigeon_express_package_frozen_after_shipment(
 
 @pytest.mark.django_db
 def test_admin_order_confirm_creates_pigeon_express_shipment(
-    api_client, admin_user, sample_product, settings
+    api_client, admin_user, sample_product, settings, mailoutbox
 ):
     settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
     with mock_pigeon_express_client(
@@ -2565,6 +2565,10 @@ def test_admin_order_confirm_creates_pigeon_express_shipment(
     order = Order.objects.get(number=number)
     assert order.pigeon_express_reference_number == "459073686609"
     assert order.pigeon_express_label_pdf.name
+    # Shipment is created before the customer email, so it carries the link.
+    customer_email = next(m for m in mailoutbox if m.to == ["buyer@example.com"])
+    tracking_url = "https://track.pigeonexpress.com/?tracking_number=459073686609"
+    assert tracking_url in customer_email.body
 
 
 @pytest.mark.django_db
@@ -3083,3 +3087,106 @@ def test_login_endpoint_is_rate_limited(api_client):
         "/api/v1/auth/login/", {"username": "nobody", "password": "wrong"}
     )
     assert resp.status_code == 429
+
+
+def _create_pigeon_express_order(api_client, reference_number):
+    with mock_pigeon_express_client(
+        get_office={"id": "125", "name": "Офис Пловдив"},
+        calculate_shipping_cost={"total_price": "5.00", "currency": "BGN"},
+    ):
+        resp = api_client.post(
+            "/api/v1/orders/",
+            {
+                "customer_email": "buyer@example.com",
+                "items": [{"product_external_id": "272", "quantity": 1}],
+                "shipping_method": "pigeon_express_office",
+                "pigeon_express_office_id": "125",
+            },
+            format="json",
+        )
+    Order.objects.filter(number=resp.data["number"]).update(
+        pigeon_express_reference_number=reference_number
+    )
+    return Order.objects.get(number=resp.data["number"])
+
+
+@pytest.mark.django_db
+def test_refresh_pigeon_express_tracking_stores_status_and_delivery(
+    api_client, sample_product, settings
+):
+    from api.serializers import OrderSerializer
+    from orders.services import refresh_pigeon_express_tracking
+
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    in_transit = _create_pigeon_express_order(api_client, "111")
+    delivered = _create_pigeon_express_order(api_client, "222")
+
+    with mock_pigeon_express_client(
+        bulk_track_shipments={
+            "111": {
+                "found": True,
+                "status": "В доставка",
+                "status_code": "shipment_in_delivery",
+                "expected_delivery_date": "2026-09-30T00:00:00+03:00",
+                "delivery_date": None,
+                "tracking": [
+                    {
+                        "status": "Регистрирана пратка",
+                        "status_code": "shipment_registered",
+                        "created_at": "2026-09-29T10:00:00+03:00",
+                    }
+                ],
+            },
+            "222": {
+                "found": True,
+                "status": "Доставена",
+                "status_code": "shipment_delivered",
+                "delivery_date": "2026-09-29T15:30:00+03:00",
+                "tracking": [],
+            },
+        }
+    ) as client:
+        assert refresh_pigeon_express_tracking() == 2
+    assert sorted(client.bulk_track_shipments.call_args.args[0]) == ["111", "222"]
+
+    in_transit.refresh_from_db()
+    assert in_transit.pigeon_express_status == "В доставка"
+    assert in_transit.pigeon_express_delivered_at is None
+    assert in_transit.pigeon_express_expected_delivery_at is not None
+    assert in_transit.pigeon_express_tracking[0]["status_code"] == "shipment_registered"
+    delivered.refresh_from_db()
+    assert delivered.pigeon_express_delivered_at is not None
+
+    # Delivered shipments are no longer polled.
+    with mock_pigeon_express_client(bulk_track_shipments={}) as client:
+        refresh_pigeon_express_tracking()
+    assert client.bulk_track_shipments.call_args.args[0] == ["111"]
+
+    data = OrderSerializer(in_transit).data
+    assert data["pigeon_express_status"] == "В доставка"
+    assert data["pigeon_express_tracking"][0]["status"] == "Регистрирана пратка"
+
+
+@pytest.mark.django_db
+def test_refresh_pigeon_express_tracking_skips_api_when_nothing_to_track(settings):
+    from orders.services import refresh_pigeon_express_tracking
+
+    settings.PIGEON_EXPRESS_BASE_URL = ""
+    # Would raise PigeonExpressNotConfigured if it built a client.
+    assert refresh_pigeon_express_tracking() == 0
+
+
+@pytest.mark.django_db
+def test_refresh_pigeon_express_tracking_ignores_unknown_references(
+    api_client, sample_product, settings
+):
+    from orders.services import refresh_pigeon_express_tracking
+
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    order = _create_pigeon_express_order(api_client, "333")
+    with mock_pigeon_express_client(
+        bulk_track_shipments={"333": {"found": False, "error": "Not found"}}
+    ):
+        assert refresh_pigeon_express_tracking() == 0
+    order.refresh_from_db()
+    assert order.pigeon_express_status == ""

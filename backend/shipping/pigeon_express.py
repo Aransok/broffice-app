@@ -8,9 +8,11 @@ settings-driven swap like Speedy's SHIPPING_SPEEDY_CLIENT — there's nothing
 else to swap to in production.
 
 Endpoints deliberately not implemented (out of scope for v1): GET
-/additional-services, POST /shipments/track/bulk, GET /shipments/{ref}/label
-(the base64 label from create_shipment is stored instead), GET
-/shipment-statuses, Courier Requests, Payments/COD payouts.
+/additional-services, GET /shipments/{ref}/label (the base64 label from
+create_shipment is stored instead), GET /shipment-statuses, Courier
+Requests, Payments/COD payouts.
+
+API reference: https://api-docs.pigeonexpress.com/ (openapi.yaml).
 """
 
 from __future__ import annotations
@@ -226,6 +228,14 @@ class PigeonExpressClient:
             if exc.status_code == 404:
                 return None
             raise
+
+    def bulk_track_shipments(self, reference_numbers: list[str]) -> dict:
+        """Up to 100 references per call. Returns a dict keyed by reference
+        number; each entry has `found`, plus status/status_code/
+        expected_delivery_date/delivery_date/tracking when found."""
+        return self._request(
+            "POST", "/shipments/track/bulk", json={"references": reference_numbers}
+        )["data"]
 
     def cancel_shipment(self, reference_number: str) -> dict:
         return self._request("POST", f"/shipments/{reference_number}/cancel")["data"]

@@ -4,6 +4,10 @@ import { getImageUrl } from '../../api/media'
 import { SHIPPING_LABELS } from '../../constants/shipping'
 import { formatEur } from '../../utils/currency'
 
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString('bg-BG', { dateStyle: 'short', timeStyle: 'short' })
+}
+
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Чакаща',
   confirmed: 'Потвърдена',
@@ -56,6 +60,37 @@ export function AccountOrderDetailPage() {
           )
         })}
       </ul>
+
+      {order.pigeon_express_status && (
+        <div className="mb-4 rounded-ui border border-slate-200 p-3 text-sm">
+          <p className="text-slate-600">
+            Статус на пратката:{' '}
+            <span className="font-medium text-slate-900">{order.pigeon_express_status}</span>
+          </p>
+          {order.pigeon_express_delivered_at ? (
+            <p className="text-green-700">
+              Доставена на {formatDateTime(order.pigeon_express_delivered_at)}
+            </p>
+          ) : (
+            order.pigeon_express_expected_delivery_at && (
+              <p className="text-slate-600">
+                Очаквана доставка:{' '}
+                {new Date(order.pigeon_express_expected_delivery_at).toLocaleDateString('bg-BG')}
+              </p>
+            )
+          )}
+          {order.pigeon_express_tracking.length > 0 && (
+            <ol className="mt-2 space-y-1 border-l border-slate-200 pl-3">
+              {[...order.pigeon_express_tracking].reverse().map((event, i) => (
+                <li key={`${event.created_at}-${i}`} className="text-slate-600">
+                  <span className="text-slate-400">{formatDateTime(event.created_at)}</span> —{' '}
+                  {event.status}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
 
       <div className="mb-4 space-y-1 text-sm text-slate-600">
         {order.shipping_method && (
