@@ -350,6 +350,54 @@ def send_customer_invoice_email(order: Order) -> EmailLog:
     )
 
 
+_SHIPPING_UPDATE_COPY = {
+    "shipped": (
+        "Поръчка {number} е изпратена",
+        "Пратката ви е изпратена",
+        "поръчка {number} е предадена на Pigeon Express.",
+    ),
+    "in_delivery": (
+        "Поръчка {number} пътува към вас",
+        "Пратката ви пътува към вас",
+        "поръчка {number} е в процес на доставка.",
+    ),
+    "delivered": (
+        "Поръчка {number} е доставена",
+        "Пратката е доставена",
+        "поръчка {number} е доставена. Благодарим ви, че пазарувахте при нас!",
+    ),
+}
+
+
+def send_customer_shipping_update_email(order: Order, stage: str) -> EmailLog:
+    subject, heading, message = (
+        text.format(number=order.number) for text in _SHIPPING_UPDATE_COPY[stage]
+    )
+    greeting = f"Здравейте{(' ' + order.customer_name) if order.customer_name else ''},"
+    details = []
+    if stage != "delivered" and order.pigeon_express_expected_delivery_at:
+        expected = timezone.localtime(order.pigeon_express_expected_delivery_at)
+        details.append(f"Очаквана доставка: {expected:%d.%m.%Y}.")
+    details.append(f"Проследете пратката: {pigeon_express_tracking_url(order)}")
+    intro = " ".join([greeting, message, *details])
+    body = (
+        f"{greeting}\n\n{message}\n\n"
+        + "\n".join(details)
+        + f"\n\nПоръчка:\n{_order_lines_text(order)}\n\n"
+        f"{settings.COMPANY_NAME}\n"
+        f"{settings.COMPANY_EMAIL} · {settings.COMPANY_PHONE}\n"
+    )
+    return _send_order_status_email(
+        order,
+        email_type=EmailLog.TYPE_CUSTOMER_SHIPPING_UPDATE,
+        to_address=order.customer_email,
+        subject=subject,
+        heading=heading,
+        intro=intro,
+        body=body,
+    )
+
+
 def send_admin_confirmation_email(order: Order) -> EmailLog:
     greeting = "Здравейте,"
     company_block = (
@@ -948,6 +996,12 @@ def _apply_pigeon_express_tracking(order: Order, info: dict) -> None:
         for event in info.get("tracking") or []
     ]
     order.pigeon_express_tracking_updated_at = timezone.now()
+    stage = _pigeon_express_stage(order)
+    notify = PIGEON_EXPRESS_NOTIFY_STAGES.index(
+        stage
+    ) > PIGEON_EXPRESS_NOTIFY_STAGES.index(order.pigeon_express_notified_stage)
+    if notify:
+        order.pigeon_express_notified_stage = stage
     order.save(
         update_fields=[
             "pigeon_express_status",
@@ -956,9 +1010,43 @@ def _apply_pigeon_express_tracking(order: Order, info: dict) -> None:
             "pigeon_express_delivered_at",
             "pigeon_express_tracking",
             "pigeon_express_tracking_updated_at",
+            "pigeon_express_notified_stage",
             "updated_at",
         ]
     )
+    # Only the latest stage reached is emailed — if a poll finds the parcel
+    # already delivered, the customer gets "delivered", not three emails.
+    if notify and order.customer_email:
+        send_customer_shipping_update_email(order, stage)
+
+
+# Customer email stages, in order. "" = nothing sent yet. Pigeon's docs
+# don't list every status code; these are the ones they document:
+# shipment_accepted_in_office = handed in at our drop-off office,
+# shipment_in_delivery = on its way to the customer. Delivered is taken
+# from delivery_date, not a code.
+PIGEON_EXPRESS_NOTIFY_STAGES = ("", "shipped", "in_delivery", "delivered")
+# Shipment went wrong (returned, cancelled, never collected) — no cheerful
+# "on its way" email; the admin sees the status on the orders page.
+PIGEON_EXPRESS_PROBLEM_STATUS_CODES = (
+    "shipment_cancelled",
+    "shipment_returning_to_sender",
+    "shipment_untracked",
+)
+
+
+def _pigeon_express_stage(order: Order) -> str:
+    if order.pigeon_express_delivered_at:
+        return "delivered"
+    if order.pigeon_express_status_code in PIGEON_EXPRESS_PROBLEM_STATUS_CODES:
+        return ""
+    codes = {event["status_code"] for event in order.pigeon_express_tracking}
+    codes.add(order.pigeon_express_status_code)
+    if "shipment_in_delivery" in codes:
+        return "in_delivery"
+    if "shipment_accepted_in_office" in codes:
+        return "shipped"
+    return ""
 
 
 def refresh_pigeon_express_tracking() -> int:
