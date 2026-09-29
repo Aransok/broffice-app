@@ -4,8 +4,9 @@ import { useAddresses } from '../api/addresses'
 import { type CouponDiscountType, validateCoupon } from '../api/coupons'
 import { createOrder } from '../api/orders'
 import {
-  fetchPigeonExpressQuote,
+  fetchPigeonExpressPriceTable,
   fetchSpeedyQuote,
+  type PigeonExpressPriceRow,
   usePigeonExpressCities,
   usePigeonExpressOffices,
   usePigeonExpressStreets,
@@ -354,6 +355,12 @@ export function CheckoutPage() {
   // a failed quote must never silently read as "free shipping" in the
   // totals below, and must block submission for the affected method.
   const [shippingQuoteError, setShippingQuoteError] = useState<string | null>(null)
+  // Pigeon's price per weight bracket to the chosen destination. Shown for
+  // information only: the real weight isn't known, so the customer pays the
+  // courier on delivery and shipping isn't added to the order total.
+  const [pigeonPriceTable, setPigeonPriceTable] = useState<PigeonExpressPriceRow[] | null>(
+    null,
+  )
   const [courier, setCourier] = useState<Courier>('broffice')
 
   // Picking a courier/option resets any stale quote state from the previous
@@ -362,6 +369,7 @@ export function CheckoutPage() {
     setShippingMethod(method)
     setShippingCost(null)
     setShippingQuoteError(null)
+    setPigeonPriceTable(null)
   }
 
   function selectCourier(next: Courier) {
@@ -456,7 +464,7 @@ export function CheckoutPage() {
       let cancelled = false
       const timeout = setTimeout(() => {
         setShippingQuoteError(null)
-        fetchPigeonExpressQuote({
+        fetchPigeonExpressPriceTable({
           shipping_method: shippingMethod,
           pigeon_express_city_id: pigeonExpressCity?.id,
           pigeon_express_street_id: pigeonExpressStreet?.id,
@@ -464,14 +472,16 @@ export function CheckoutPage() {
           pigeon_express_additional_info: pigeonExpressAdditionalInfo,
           pigeon_express_office_id: pigeonExpressOffice?.id,
         })
-          .then((quote) => {
+          .then((rows) => {
             if (cancelled) return
-            setShippingCost(quote.shipping_cost_bgn)
+            setShippingCost(null)
+            setPigeonPriceTable(rows)
             setShippingQuoteError(null)
           })
           .catch(() => {
             if (cancelled) return
             setShippingCost(null)
+            setPigeonPriceTable(null)
             setShippingQuoteError(
               'Доставката с Pigeon Express в момента не е достъпна. Моля, изберете BRoffice и "Доставка до адрес", за да завършите поръчката.',
             )
@@ -790,6 +800,31 @@ export function CheckoutPage() {
           {PIGEON_EXPRESS_METHODS.includes(shippingMethod) && shippingQuoteError && (
             <p className="mt-2 text-sm text-red-600">{shippingQuoteError}</p>
           )}
+
+          {PIGEON_EXPRESS_METHODS.includes(shippingMethod) && pigeonPriceTable && (
+            <div className="mt-3 rounded-ui border border-slate-200 p-3 text-sm">
+              <p className="font-medium text-slate-900">Цена на доставката според теглото</p>
+              <p className="mb-2 text-xs text-slate-500">
+                Заплаща се на куриера при получаване, с ДДС. Не е включена в сумата на поръчката.
+              </p>
+              <table className="w-full">
+                <tbody>
+                  {pigeonPriceTable.map((row) => (
+                    <tr key={row.to_kg} className="border-t border-slate-100">
+                      <td className="py-1 text-slate-600">
+                        {Number(row.from_kg) === 0
+                          ? `до ${row.to_kg} кг`
+                          : `${row.from_kg} – ${row.to_kg} кг`}
+                      </td>
+                      <td className="py-1 text-right font-medium text-slate-900">
+                        €{bgnToEur(row.price_bgn)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
         <section>
@@ -897,7 +932,9 @@ export function CheckoutPage() {
             </div>
           )}
           <div className="mt-2 flex justify-between font-semibold text-slate-900">
-            <span>Общо (с доставка)</span>
+            <span>
+              {PIGEON_EXPRESS_METHODS.includes(shippingMethod) ? 'Общо' : 'Общо (с доставка)'}
+            </span>
             <span>
               {(() => {
                 // Shipping is the courier's price incl. VAT — added as-is,
@@ -909,9 +946,10 @@ export function CheckoutPage() {
             </span>
           </div>
           <p className="mt-1 text-xs text-slate-400">
-            {showInclVat
-              ? 'Поръчвате с цени с ДДС. Доставката е по цена на куриера (с ДДС).'
-              : 'Поръчвате с цени без ДДС. Доставката е по цена на куриера (с ДДС).'}
+            {showInclVat ? 'Поръчвате с цени с ДДС. ' : 'Поръчвате с цени без ДДС. '}
+            {PIGEON_EXPRESS_METHODS.includes(shippingMethod)
+              ? 'Доставката се заплаща на куриера при получаване.'
+              : 'Доставката е по цена на куриера (с ДДС).'}
           </p>
         </section>
 

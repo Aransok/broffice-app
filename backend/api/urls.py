@@ -39,6 +39,7 @@ from .views import (
     PasswordResetRequestView,
     PigeonExpressCityListView,
     PigeonExpressOfficeListView,
+    PigeonExpressPriceTableView,
     PigeonExpressQuoteView,
     PigeonExpressStreetListView,
     ProductViewSet,
@@ -118,6 +119,11 @@ urlpatterns = [
         "shipping/pigeon-express/offices/",
         PigeonExpressOfficeListView.as_view(),
         name="pigeon-express-offices",
+    ),
+    path(
+        "shipping/pigeon-express/price-table/",
+        PigeonExpressPriceTableView.as_view(),
+        name="pigeon-express-price-table",
     ),
     path(
         "shipping/pigeon-express/quote/",

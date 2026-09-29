@@ -10,6 +10,7 @@ from categories.models import Category
 from core.models import SiteSettings
 from orders.models import Order
 from products.models import Product, ProductImage
+from shipping.pigeon_express import PigeonExpressAPIError
 
 
 @contextmanager
@@ -2413,17 +2414,15 @@ def test_order_checkout_pigeon_express_office(api_client, sample_product, settin
         )
     assert resp.status_code == 201
     assert resp.data["pigeon_express_office_name"] == "Офис Пловдив"
-    # Unlike Speedy (stubbed to 0), Pigeon Express is charged for real —
-    # exactly Pigeon's 5.00 (already incl. VAT); only the products get VAT
-    # (ordered "с ДДС" here).
-    assert resp.data["shipping_cost_bgn"] == "5.00"
+    # Shipping isn't charged: the customer pays Pigeon on delivery, so the
+    # total is just the products + their VAT (ordered "с ДДС" here).
+    assert resp.data["shipping_cost_bgn"] == "0.00"
     order = Order.objects.get(number=resp.data["number"])
+    assert order.shipping_paid_on_delivery
     assert order.vat_amount_bgn == (order.subtotal_bgn * Decimal("0.2")).quantize(
         Decimal("0.01")
     )
-    assert order.total_bgn == order.subtotal_bgn + order.vat_amount_bgn + Decimal(
-        "5.00"
-    )
+    assert order.total_bgn == order.subtotal_bgn + order.vat_amount_bgn
 
 
 @pytest.mark.django_db
@@ -2596,11 +2595,13 @@ def test_admin_order_confirm_creates_pigeon_express_shipment(
             "label_pdf": "SGVsbG8=",  # base64 "Hello"
             "label_content_type": "application/pdf",
         }
-    ):
+    ) as client:
         confirm_resp = api_client.post(f"/api/v1/admin/orders/{number}/confirm/")
     api_client.force_authenticate(user=None)
 
     assert confirm_resp.status_code == 200
+    # Shipping isn't in the order total — Pigeon collects it from the customer.
+    assert client.create_shipment.call_args.kwargs["who_pays"] == "receiver"
     order = Order.objects.get(number=number)
     assert order.pigeon_express_reference_number == "459073686609"
     assert order.pigeon_express_label_pdf.name
@@ -2613,6 +2614,55 @@ def test_admin_order_confirm_creates_pigeon_express_shipment(
     assert "До офис на Pigeon Express — Офис Пловдив" in html
     assert "pigeon_express_office" not in html
     assert "Офис: Офис Пловдив" in customer_email.body
+    assert "Доставката се заплаща на куриера при получаване." in html
+    assert "Доставката се заплаща на куриера при получаване." in customer_email.body
+
+
+@pytest.mark.django_db
+def test_pigeon_express_price_table(api_client, settings):
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    settings.PIGEON_EXPRESS_PRICE_TABLE_KG = ["1", "6", "10"]
+
+    def quote(*, pickup, delivery, packages):
+        weight = packages[0]["weight"]
+        if weight == 10:
+            raise PigeonExpressAPIError("Too heavy", status_code=422)
+        return {"total_price": str(weight + 3), "currency": "BGN"}
+
+    with mock_pigeon_express_client() as client:
+        client.calculate_shipping_cost.side_effect = quote
+        resp = api_client.post(
+            "/api/v1/shipping/pigeon-express/price-table/",
+            {
+                "shipping_method": "pigeon_express_office",
+                "pigeon_express_office_id": "1",
+            },
+            format="json",
+        )
+    assert resp.status_code == 200
+    # Each bracket priced at its upper weight; the one Pigeon rejects is left out.
+    assert resp.data["results"] == [
+        {"from_kg": "0", "to_kg": "1", "price_bgn": "4.00"},
+        {"from_kg": "1", "to_kg": "6", "price_bgn": "9.00"},
+    ]
+
+
+@pytest.mark.django_db
+def test_pigeon_express_price_table_all_brackets_fail(api_client, settings):
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    with mock_pigeon_express_client() as client:
+        client.calculate_shipping_cost.side_effect = PigeonExpressAPIError(
+            "Down", status_code=500
+        )
+        resp = api_client.post(
+            "/api/v1/shipping/pigeon-express/price-table/",
+            {
+                "shipping_method": "pigeon_express_office",
+                "pigeon_express_office_id": "1",
+            },
+            format="json",
+        )
+    assert resp.status_code == 502
 
 
 @pytest.mark.django_db
@@ -3155,10 +3205,11 @@ def test_order_placed_without_vat_charges_products_without_vat(
         )
     assert resp.status_code == 201
     order = Order.objects.get(number=resp.data["number"])
-    # "Цени без ДДС" at checkout: no VAT on products, shipping as quoted.
+    # "Цени без ДДС" at checkout: no VAT on products; shipping is paid to
+    # the courier, not part of the total.
     assert order.vat_rate_percent == 0
     assert order.vat_amount_bgn == 0
-    assert order.total_bgn == order.subtotal_bgn + Decimal("5.00")
+    assert order.total_bgn == order.subtotal_bgn
 
 
 @pytest.mark.django_db

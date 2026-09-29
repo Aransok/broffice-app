@@ -24,6 +24,7 @@ from common.media import resolve_media_path
 from orders.models import Order
 
 SHIPPING_METHOD_LABELS = dict(Order.SHIPPING_METHOD_CHOICES)
+SHIPPING_PAID_ON_DELIVERY_NOTE = "Доставката се заплаща на куриера при получаване."
 
 
 def _load_item_images(order) -> dict[str, MIMEImage]:
@@ -60,7 +61,10 @@ def _delivery_line(order) -> str:
         return ""
     label = SHIPPING_METHOD_LABELS.get(order.shipping_method, order.shipping_method)
     destination = order.delivery_destination_display
-    return f"{label} — {destination}" if destination else label
+    line = f"{label} — {destination}" if destination else label
+    if order.shipping_paid_on_delivery:
+        line += f". {SHIPPING_PAID_ON_DELIVERY_NOTE}"
+    return line
 
 
 def render_order_email_html(

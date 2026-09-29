@@ -55,6 +55,7 @@ from navigation.models import Menu
 from orders.models import Order, OrderItem, OrderNotification
 from orders.services import (
     add_item_to_pending_order,
+    calculate_pigeon_express_price_table,
     calculate_pigeon_express_quote,
     create_order,
     create_pigeon_express_shipment_for_order,
@@ -1615,6 +1616,29 @@ class PigeonExpressQuoteView(APIView):
                 ),
             )
         return Response(quote)
+
+
+class PigeonExpressPriceTableView(APIView):
+    """Pigeon's shipping price per weight bracket to the chosen destination —
+    the checkout shows this table; the customer pays the courier."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            rows = calculate_pigeon_express_price_table(request.data)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except PigeonExpressAPIError as exc:
+            return Response(
+                {"detail": exc.message, "errors": exc.errors},
+                status=(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY
+                    if exc.status_code == 422
+                    else status.HTTP_502_BAD_GATEWAY
+                ),
+            )
+        return Response({"results": rows})
 
 
 class AdminPigeonExpressPickupOfficeView(APIView):

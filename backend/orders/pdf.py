@@ -32,6 +32,7 @@ from common.currency import format_eur
 from common.emails import LOGO_PATH
 from common.fonts import FONT_PATH_CANDIDATES_BOLD, FONT_PATH_CANDIDATES_REGULAR
 from common.fonts import find_font_path as _find_font_path
+from orders.emails import SHIPPING_PAID_ON_DELIVERY_NOTE
 
 _fonts_registered = False
 FONT_REGULAR = "Helvetica"
@@ -156,6 +157,8 @@ def generate_invoice_pdf(invoice, *, include_profit: bool = False) -> bytes:
             if destination
             else f"Доставка: {method}"
         )
+        if order.shipping_paid_on_delivery:
+            customer_lines.append(SHIPPING_PAID_ON_DELIVERY_NOTE)
     for line in customer_lines:
         if line:
             elements.append(Paragraph(line, normal))

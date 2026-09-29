@@ -1,5 +1,6 @@
 import base64
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
@@ -19,7 +20,7 @@ from coupons.services import (
     get_valid_coupon,
     redeem_coupon,
 )
-from orders.emails import render_order_email_html
+from orders.emails import SHIPPING_PAID_ON_DELIVERY_NOTE, render_order_email_html
 from orders.models import EmailLog, Invoice, Order, OrderItem, OrderNotification
 from orders.pdf import generate_invoice_pdf
 from pricing.services import get_base_price, get_effective_price, get_user_overrides
@@ -30,6 +31,7 @@ from promotions.services import (
     get_active_promotions,
 )
 from shipping.pigeon_express import (
+    PigeonExpressAPIError,
     PigeonExpressNotConfigured,
     get_pigeon_express_client,
 )
@@ -87,6 +89,8 @@ def _order_lines_text(order: Order) -> str:
             lines.append(f"Офис: {order.delivery_destination_display}")
         else:
             lines.append(f"Адрес: {order.delivery_destination_display}")
+        if order.shipping_paid_on_delivery:
+            lines.append(SHIPPING_PAID_ON_DELIVERY_NOTE)
     lines.append(
         f"Плащане: {PAYMENT_METHOD_LABELS.get(order.payment_method, order.payment_method)}"
     )
@@ -798,7 +802,9 @@ def _pigeon_express_pickup_payload() -> dict:
     }
 
 
-def _pigeon_express_packages(order: Order | None = None) -> list[dict]:
+def _pigeon_express_packages(
+    order: Order | None = None, weight_kg: Decimal | None = None
+) -> list[dict]:
     # No per-product weight/dimension fields exist yet, so there's nothing
     # to compute this from at checkout time (order=None, no items priced
     # yet) — falls back to the flat PIGEON_EXPRESS_DEFAULT_PACKAGE_* settings.
@@ -808,8 +814,12 @@ def _pigeon_express_packages(order: Order | None = None) -> list[dict]:
     # doesn't require also specifying dimensions. Field names (weight/
     # length/width/height, not weight_kg) confirmed against the real
     # sandbox API's 422 response — not documented in the OpenAPI excerpt.
-    weight = (order.pigeon_express_package_weight_kg if order else None) or Decimal(
-        settings.PIGEON_EXPRESS_DEFAULT_PACKAGE_WEIGHT_KG
+    # weight_kg: an explicit weight to price (the checkout's per-bracket
+    # price table), overriding both of the above.
+    weight = (
+        weight_kg
+        or (order.pigeon_express_package_weight_kg if order else None)
+        or Decimal(settings.PIGEON_EXPRESS_DEFAULT_PACKAGE_WEIGHT_KG)
     )
     length = (order.pigeon_express_package_length_cm if order else None) or Decimal(
         settings.PIGEON_EXPRESS_DEFAULT_PACKAGE_LENGTH_CM
@@ -887,10 +897,7 @@ def _build_pigeon_express_delivery_payload(
     }
 
 
-def calculate_pigeon_express_quote(data: dict) -> dict:
-    """Shared by PigeonExpressQuoteView (the checkout-time quote) and
-    create_order below, so the price shown at checkout can never drift from
-    what actually gets charged."""
+def _pigeon_express_delivery_from_request(data: dict) -> dict:
     shipping_method = data.get("shipping_method")
     if shipping_method not in (
         Order.SHIPPING_PIGEON_EXPRESS_ADDRESS,
@@ -898,7 +905,7 @@ def calculate_pigeon_express_quote(data: dict) -> dict:
         Order.SHIPPING_PIGEON_EXPRESS_LOCKER,
     ):
         raise ValueError("shipping_method must be one of the pigeon_express_* methods")
-    delivery = _build_pigeon_express_delivery_payload(
+    return _build_pigeon_express_delivery_payload(
         shipping_method=shipping_method,
         pigeon_express_city_id=data.get("pigeon_express_city_id") or "",
         pigeon_express_street_id=data.get("pigeon_express_street_id") or "",
@@ -906,22 +913,74 @@ def calculate_pigeon_express_quote(data: dict) -> dict:
         pigeon_express_additional_info=data.get("pigeon_express_additional_info") or "",
         pigeon_express_office_id=data.get("pigeon_express_office_id") or "",
     )
+
+
+def _pigeon_express_price_bgn(quote: dict) -> Decimal:
+    # Everything in this app is stored/priced in BGN internally (EUR is
+    # display-only, per the currency-board peg) — convert if the courier
+    # quoted in EUR, pass through unchanged if they quoted in BGN. Pigeon's
+    # prices already include VAT.
+    total_price = Decimal(str(quote["total_price"]))
+    if quote.get("currency") == "EUR":
+        return eur_to_bgn(total_price)
+    return total_price.quantize(Decimal("0.01"))
+
+
+def calculate_pigeon_express_quote(data: dict) -> dict:
+    """Price for the default package weight — PigeonExpressQuoteView. The
+    checkout shows calculate_pigeon_express_price_table instead."""
+    # Validated first, so a bad shipping_method is a 400 before any Pigeon call.
+    delivery = _pigeon_express_delivery_from_request(data)
     quote = get_pigeon_express_client().calculate_shipping_cost(
         pickup=_pigeon_express_pickup_payload(),
         delivery=delivery,
         packages=_pigeon_express_packages(),
     )
-    total_price = Decimal(str(quote["total_price"]))
-    # Everything in this app is stored/priced in BGN internally (EUR is
-    # display-only, per the currency-board peg) — convert if the courier
-    # quoted in EUR, pass through unchanged if they quoted in BGN.
-    # Pigeon quotes prices incl. VAT — stored and charged exactly as quoted;
-    # recalc_order_total adds it to the total without taxing it again.
-    if quote.get("currency") == "EUR":
-        shipping_cost_bgn = eur_to_bgn(total_price)
-    else:
-        shipping_cost_bgn = total_price.quantize(Decimal("0.01"))
-    return {"shipping_cost_bgn": str(shipping_cost_bgn)}
+    return {"shipping_cost_bgn": str(_pigeon_express_price_bgn(quote))}
+
+
+def calculate_pigeon_express_price_table(data: dict) -> list[dict]:
+    """Pigeon's price to this destination for each weight bracket in
+    settings.PIGEON_EXPRESS_PRICE_TABLE_KG — shown at checkout, since real
+    order weights aren't known and the customer pays the courier on
+    delivery. Each bracket is priced at its upper weight. A bracket Pigeon
+    rejects (e.g. over a weight limit) is left out; raises
+    PigeonExpressAPIError only if every bracket fails."""
+    delivery = _pigeon_express_delivery_from_request(data)
+    # Resolved here, not in the worker threads — it reads the database.
+    pickup = _pigeon_express_pickup_payload()
+    weights = [Decimal(w) for w in settings.PIGEON_EXPRESS_PRICE_TABLE_KG]
+
+    def price_for(weight: Decimal):
+        try:
+            quote = get_pigeon_express_client().calculate_shipping_cost(
+                pickup=pickup,
+                delivery=delivery,
+                packages=_pigeon_express_packages(weight_kg=weight),
+            )
+        except PigeonExpressAPIError as exc:
+            return exc
+        return _pigeon_express_price_bgn(quote)
+
+    # In parallel: one Pigeon request per bracket, each ~0.3s.
+    with ThreadPoolExecutor(max_workers=len(weights)) as pool:
+        prices = list(pool.map(price_for, weights))
+
+    rows = []
+    previous = Decimal(0)
+    for weight, price in zip(weights, prices, strict=True):
+        if not isinstance(price, PigeonExpressAPIError):
+            rows.append(
+                {
+                    "from_kg": str(previous),
+                    "to_kg": str(weight),
+                    "price_bgn": str(price),
+                }
+            )
+        previous = weight
+    if not rows:
+        raise prices[0]
+    return rows
 
 
 def create_pigeon_express_shipment_for_order(order: Order) -> None:
@@ -965,6 +1024,9 @@ def create_pigeon_express_shipment_for_order(order: Order) -> None:
         ],
         external_reference=order.number,
         note=order.notes[:1000],
+        # The customer pays the courier for shipping on delivery — it isn't
+        # part of the order total (see create_order).
+        who_pays="receiver",
     )
     order.pigeon_express_reference_number = data["reference_number"]
     order.pigeon_express_status = data.get("status") or ""
@@ -1185,17 +1247,10 @@ def create_order(
         else:
             office = pe_client.get_office(pigeon_express_office_id)
             pigeon_express_office_name = office["name"] if office else ""
-        quote = calculate_pigeon_express_quote(
-            {
-                "shipping_method": shipping_method,
-                "pigeon_express_city_id": pigeon_express_city_id,
-                "pigeon_express_street_id": pigeon_express_street_id,
-                "pigeon_express_street_number": pigeon_express_street_number,
-                "pigeon_express_additional_info": pigeon_express_additional_info,
-                "pigeon_express_office_id": pigeon_express_office_id,
-            }
-        )
-        shipping_cost = Decimal(quote["shipping_cost_bgn"])
+        # No shipping_cost: the real weight isn't known at checkout, so the
+        # customer pays Pigeon directly on delivery (the shipment is created
+        # with who_pays="receiver"); checkout shows Pigeon's per-weight
+        # prices instead (calculate_pigeon_express_price_table).
 
     order = Order.objects.create(
         number=Order.generate_number(),
