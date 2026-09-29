@@ -2531,7 +2531,7 @@ def test_admin_pigeon_express_package_frozen_after_shipment(
 
 @pytest.mark.django_db
 def test_admin_order_confirm_creates_pigeon_express_shipment(
-    api_client, admin_user, sample_product, settings
+    api_client, admin_user, sample_product, settings, mailoutbox
 ):
     settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
     with mock_pigeon_express_client(
@@ -2565,6 +2565,10 @@ def test_admin_order_confirm_creates_pigeon_express_shipment(
     order = Order.objects.get(number=number)
     assert order.pigeon_express_reference_number == "459073686609"
     assert order.pigeon_express_label_pdf.name
+    # Shipment is created before the customer email, so it carries the link.
+    customer_email = next(m for m in mailoutbox if m.to == ["buyer@example.com"])
+    tracking_url = "https://track.pigeonexpress.com/?tracking_number=459073686609"
+    assert tracking_url in customer_email.body
 
 
 @pytest.mark.django_db

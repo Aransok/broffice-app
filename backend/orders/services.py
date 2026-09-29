@@ -301,6 +301,14 @@ def _send_order_status_email(
     return log
 
 
+def pigeon_express_tracking_url(order: Order) -> str:
+    # Pigeon's public tracking page — no API credentials, meant for customers.
+    return (
+        "https://track.pigeonexpress.com/?tracking_number="
+        f"{order.pigeon_express_reference_number}"
+    )
+
+
 def send_customer_invoice_email(order: Order) -> EmailLog:
     greeting = f"Здравейте{(' ' + order.customer_name) if order.customer_name else ''},"
     company_block = (
@@ -309,9 +317,15 @@ def send_customer_invoice_email(order: Order) -> EmailLog:
         f"ЕИК: {settings.COMPANY_EIK}\n"
         f"{settings.COMPANY_EMAIL} · {settings.COMPANY_PHONE}\n"
     )
+    tracking_line = (
+        f"Проследете пратката: {pigeon_express_tracking_url(order)}\n\n"
+        if order.pigeon_express_reference_number
+        else ""
+    )
     body = (
         f"{greeting}\n\n"
         f"Поръчка {order.number} е потвърдена.\n\n"
+        f"{tracking_line}"
         f"Заявка за поръчка:\n{_order_lines_text(order)}\n\n"
         f"{company_block}\n"
         f"Благодарим ви!\n"
@@ -322,7 +336,14 @@ def send_customer_invoice_email(order: Order) -> EmailLog:
         to_address=order.customer_email,
         subject=f"Заявка за поръчка {order.number} - потвърждение",
         heading="Поръчката е потвърдена",
-        intro=f"{greeting} приложена е заявката за поръчка {order.number}.",
+        intro=(
+            f"{greeting} приложена е заявката за поръчка {order.number}."
+            + (
+                f" Проследете пратката: {pigeon_express_tracking_url(order)}"
+                if order.pigeon_express_reference_number
+                else ""
+            )
+        ),
         body=body,
         promo_note=_build_customer_promo_note(order),
         attach_invoice=True,

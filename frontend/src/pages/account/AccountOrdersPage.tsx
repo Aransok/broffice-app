@@ -51,6 +51,12 @@ export function AccountOrdersPage() {
             </span>
             <span className="text-sm text-slate-500">
               {STATUS_LABELS[order.status] ?? order.status}
+              {order.pigeon_express_status && (
+                <span className={order.pigeon_express_delivered_at ? 'text-green-700' : ''}>
+                  {' · '}
+                  {order.pigeon_express_status}
+                </span>
+              )}
             </span>
             <span className="font-medium text-slate-900">
               {formatEur(order.total_bgn)}
