@@ -219,6 +219,20 @@ class Order(TimeStampedModel):
         return ", ".join(part for part in (self.delivery_address_line, place) if part)
 
     @property
+    def shipping_paid_on_delivery(self) -> bool:
+        # Pigeon orders placed since shipping stopped being charged at
+        # checkout — the customer pays the courier (older ones carry a cost).
+        return (
+            self.shipping_method
+            in (
+                self.SHIPPING_PIGEON_EXPRESS_ADDRESS,
+                self.SHIPPING_PIGEON_EXPRESS_OFFICE,
+                self.SHIPPING_PIGEON_EXPRESS_LOCKER,
+            )
+            and not self.shipping_cost_bgn
+        )
+
+    @property
     def delivery_destination_display(self) -> str:
         """Where the order goes — office name or address — for whichever
         shipping method it uses. Shared by the order emails."""

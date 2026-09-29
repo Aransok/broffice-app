@@ -407,6 +407,13 @@ PIGEON_EXPRESS_DEFAULT_PACKAGE_WIDTH_CM = os.getenv(
 PIGEON_EXPRESS_DEFAULT_PACKAGE_HEIGHT_CM = os.getenv(
     "PIGEON_EXPRESS_DEFAULT_PACKAGE_HEIGHT_CM", "10"
 )
+# Weight brackets (upper limit of each, kg) for the shipping price table
+# shown at checkout (orders.services.calculate_pigeon_express_price_table).
+PIGEON_EXPRESS_PRICE_TABLE_KG = [
+    w.strip()
+    for w in os.getenv("PIGEON_EXPRESS_PRICE_TABLE_KG", "1,3,6,10,15,20,30").split(",")
+    if w.strip()
+]
 
 KNOWLEDGE_DIR = PROJECT_ROOT / "knowledge"
 _httrack_root = (os.getenv("HTTRACK_ROOT") or "").strip()

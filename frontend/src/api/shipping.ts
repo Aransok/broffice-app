@@ -87,6 +87,29 @@ export function usePigeonExpressOffices(
   })
 }
 
+export interface PigeonExpressPriceRow {
+  from_kg: string
+  to_kg: string
+  /** Pigeon's price incl. VAT — paid to the courier on delivery. */
+  price_bgn: string
+}
+
+export function fetchPigeonExpressPriceTable(payload: {
+  shipping_method: ShippingMethod
+  pigeon_express_city_id?: string
+  pigeon_express_street_id?: string
+  pigeon_express_street_number?: string
+  pigeon_express_additional_info?: string
+  pigeon_express_office_id?: string
+}) {
+  return apiClient
+    .post<{ results: PigeonExpressPriceRow[] }>(
+      '/shipping/pigeon-express/price-table/',
+      payload,
+    )
+    .then((res) => res.data.results)
+}
+
 export function fetchPigeonExpressQuote(payload: {
   shipping_method: ShippingMethod
   pigeon_express_city_id?: string

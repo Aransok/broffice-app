@@ -118,8 +118,12 @@ export function AccountOrderDetailPage() {
             ДДС ({order.vat_rate_percent}%): {formatEur(order.vat_amount_bgn)}
           </p>
         )}
-        {Number(order.shipping_cost_bgn) > 0 && (
+        {Number(order.shipping_cost_bgn) > 0 ? (
           <p>Доставка (с ДДС): {formatEur(order.shipping_cost_bgn)}</p>
+        ) : (
+          order.shipping_method.startsWith('pigeon_express') && (
+            <p>Доставка: заплаща се на куриера при получаване</p>
+          )
         )}
         <p className="font-semibold text-slate-900">
           Общо: {formatEur(order.total_bgn)}
