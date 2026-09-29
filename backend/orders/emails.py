@@ -158,6 +158,13 @@ def render_order_email_html(
         if order.shipping_cost_bgn
         else ""
     )
+    # Ordered "без ДДС" (vat_rate_percent 0) — no VAT line at all.
+    vat_row = (
+        f'<tr><td style="padding:4px 0;color:{MUTED};">ДДС ({order.vat_rate_percent}%)</td>'
+        f'<td style="padding:4px 0;text-align:right;">{_eur(order.vat_amount_bgn)}</td></tr>'
+        if order.vat_rate_percent
+        else ""
+    )
     coupon_row = (
         f'<tr><td style="padding:4px 0;color:{BRAND_ORANGE};">Купон ({order.coupon_code})</td>'
         f'<td style="padding:4px 0;text-align:right;color:{BRAND_ORANGE};">'
@@ -219,8 +226,7 @@ def render_order_email_html(
                   <tr><td style="padding:4px 0;color:{MUTED};">Междинна сума</td>
                     <td style="padding:4px 0;text-align:right;">{_eur(order.subtotal_bgn)}</td></tr>
                   {coupon_row}
-                  <tr><td style="padding:4px 0;color:{MUTED};">ДДС ({order.vat_rate_percent}%)</td>
-                    <td style="padding:4px 0;text-align:right;">{_eur(order.vat_amount_bgn)}</td></tr>
+                  {vat_row}
                   {shipping_row}
                   <tr><td style="padding:8px 0;font-weight:700;color:#0f172a;border-top:1px solid {BORDER};">Общо</td>
                     <td style="padding:8px 0;text-align:right;font-weight:700;color:{BRAND_ORANGE};border-top:1px solid {BORDER};">{_eur(order.total_bgn)}</td></tr>

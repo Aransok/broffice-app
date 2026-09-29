@@ -282,4 +282,7 @@ export interface OrderCreatePayload {
   company_vat_number?: string
   company_address?: string
   company_mol?: string
+  /** The "Цени без ДДС"/"Цени с ДДС" choice at checkout — false orders the
+   * products without VAT. Shipping is charged as quoted either way. */
+  prices_include_vat?: boolean
 }

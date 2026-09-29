@@ -3103,6 +3103,34 @@ def test_login_endpoint_is_rate_limited(api_client):
     assert resp.status_code == 429
 
 
+@pytest.mark.django_db
+def test_order_placed_without_vat_charges_products_without_vat(
+    api_client, sample_product, settings
+):
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    with mock_pigeon_express_client(
+        get_office={"id": "125", "name": "Офис Пловдив"},
+        calculate_shipping_cost={"total_price": "5.00", "currency": "BGN"},
+    ):
+        resp = api_client.post(
+            "/api/v1/orders/",
+            {
+                "customer_email": "buyer@example.com",
+                "items": [{"product_external_id": "272", "quantity": 1}],
+                "shipping_method": "pigeon_express_office",
+                "pigeon_express_office_id": "125",
+                "prices_include_vat": False,
+            },
+            format="json",
+        )
+    assert resp.status_code == 201
+    order = Order.objects.get(number=resp.data["number"])
+    # "Цени без ДДС" at checkout: no VAT on products, shipping as quoted.
+    assert order.vat_rate_percent == 0
+    assert order.vat_amount_bgn == 0
+    assert order.total_bgn == order.subtotal_bgn + Decimal("5.00")
+
+
 def _create_pigeon_express_order(api_client, reference_number):
     with mock_pigeon_express_client(
         get_office={"id": "125", "name": "Офис Пловдив"},
