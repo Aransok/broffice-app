@@ -232,8 +232,11 @@ function PigeonExpressOfficePicker({
   onSelect: (office: PigeonExpressOffice) => void
 }) {
   const [city, setCity] = useState<PigeonExpressCity | null>(null)
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(selected?.name ?? '')
   const { data: offices, isFetching } = usePigeonExpressOffices(type, city?.id ?? '', query)
+  // Same as PigeonExpressCityPicker: once an office is picked its name fills
+  // the search box and the list closes; editing the text reopens it.
+  const showResults = !selected || selected.name !== query
 
   return (
     <div className="mt-3 flex flex-col gap-2">
@@ -245,19 +248,18 @@ function PigeonExpressOfficePicker({
         onChange={(event) => setQuery(event.target.value)}
         className="rounded-ui border border-slate-300 px-3 py-2"
       />
-      {isFetching && <p className="text-sm text-slate-500">Търсене...</p>}
-      {offices && offices.length > 0 && (
+      {showResults && isFetching && <p className="text-sm text-slate-500">Търсене...</p>}
+      {showResults && offices && offices.length > 0 && (
         <ul className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-ui border border-slate-200">
           {offices.map((office) => (
             <li key={office.id}>
               <button
                 type="button"
-                onClick={() => onSelect(office)}
-                className={
-                  selected?.id === office.id
-                    ? 'w-full bg-primary/10 px-3 py-2 text-left text-sm'
-                    : 'w-full px-3 py-2 text-left text-sm hover:bg-primary/10'
-                }
+                onClick={() => {
+                  onSelect(office)
+                  setQuery(office.name)
+                }}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-primary/10"
               >
                 <div className="font-medium text-slate-800">{office.name}</div>
                 <div className="text-slate-500">{office.address}</div>
@@ -266,7 +268,7 @@ function PigeonExpressOfficePicker({
           ))}
         </ul>
       )}
-      {offices && offices.length === 0 && (
+      {showResults && offices && offices.length === 0 && (
         <p className="text-sm text-slate-500">
           {type === 'locker' ? 'Няма намерени автомати.' : 'Няма намерени офиси.'}
         </p>
