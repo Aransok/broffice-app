@@ -2379,13 +2379,15 @@ def test_order_checkout_pigeon_express_office(api_client, sample_product, settin
                 "items": [{"product_external_id": "272", "quantity": 1}],
                 "shipping_method": "pigeon_express_office",
                 "pigeon_express_office_id": "125",
+                "prices_include_vat": True,
             },
             format="json",
         )
     assert resp.status_code == 201
     assert resp.data["pigeon_express_office_name"] == "Офис Пловдив"
     # Unlike Speedy (stubbed to 0), Pigeon Express is charged for real —
-    # exactly Pigeon's 5.00 (already incl. VAT); only the products get VAT.
+    # exactly Pigeon's 5.00 (already incl. VAT); only the products get VAT
+    # (ordered "с ДДС" here).
     assert resp.data["shipping_cost_bgn"] == "5.00"
     order = Order.objects.get(number=resp.data["number"])
     assert order.vat_amount_bgn == (order.subtotal_bgn * Decimal("0.2")).quantize(
@@ -3129,6 +3131,27 @@ def test_order_placed_without_vat_charges_products_without_vat(
     assert order.vat_rate_percent == 0
     assert order.vat_amount_bgn == 0
     assert order.total_bgn == order.subtotal_bgn + Decimal("5.00")
+
+
+@pytest.mark.django_db
+def test_order_without_vat_choice_follows_site_default(
+    api_client, sample_product, settings
+):
+    # A checkout tab still running an older build sends no choice — it gets
+    # the site's default display mode, not VAT by surprise.
+    for default, expected_rate in ((False, 0), (True, settings.VAT_RATE_PERCENT)):
+        settings.PRICES_INCLUDE_VAT = default
+        resp = api_client.post(
+            "/api/v1/orders/",
+            {
+                "customer_email": "buyer@example.com",
+                "items": [{"product_external_id": "272", "quantity": 1}],
+            },
+            format="json",
+        )
+        assert resp.status_code == 201
+        order = Order.objects.get(number=resp.data["number"])
+        assert order.vat_rate_percent == expected_rate
 
 
 def _create_pigeon_express_order(api_client, reference_number):

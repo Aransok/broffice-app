@@ -628,9 +628,10 @@ class OrderCreateSerializer(serializers.Serializer):
         required=False, allow_blank=True, default=""
     )
     # The checkout's "Цени без ДДС"/"Цени с ДДС" choice — False orders the
-    # products without VAT (see create_order). Defaults to True so a client
-    # that doesn't send it keeps being charged VAT as before.
-    prices_include_vat = serializers.BooleanField(required=False, default=True)
+    # products without VAT (see create_order). When a client doesn't send it
+    # (e.g. a checkout tab still running an older build), OrderCreateView
+    # falls back to the site's default display mode, settings.PRICES_INCLUDE_VAT.
+    prices_include_vat = serializers.BooleanField(required=False)
     delivery_city = serializers.CharField(required=False, allow_blank=True, default="")
     delivery_post_code = serializers.CharField(
         required=False, allow_blank=True, default=""
