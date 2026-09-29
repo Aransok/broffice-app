@@ -160,6 +160,11 @@ class Order(TimeStampedModel):
     # Status history: [{status, status_code, created_at}], oldest first.
     pigeon_express_tracking = models.JSONField(default=list, blank=True)
     pigeon_express_tracking_updated_at = models.DateTimeField(null=True, blank=True)
+    # Last shipping-update email sent to the customer ("shipped",
+    # "in_delivery" or "delivered") — so each one goes out exactly once.
+    pigeon_express_notified_stage = models.CharField(
+        max_length=16, blank=True, default=""
+    )
     # Package facts for the real shipment — null until an admin sets them
     # (see AdminOrderViewSet.pigeon_express_package); _pigeon_express_packages()
     # falls back to the PIGEON_EXPRESS_DEFAULT_PACKAGE_* settings per-field
@@ -344,11 +349,13 @@ class EmailLog(TimeStampedModel):
     TYPE_CUSTOMER_INVOICE = "customer_invoice"
     TYPE_ADMIN_CONFIRMATION = "admin_confirmation"
     TYPE_CUSTOMER_REJECTION = "customer_rejection"
+    TYPE_CUSTOMER_SHIPPING_UPDATE = "customer_shipping_update"
     TYPE_CHOICES = [
         (TYPE_ADMIN_ORDER, "Admin order"),
         (TYPE_CUSTOMER_INVOICE, "Customer invoice"),
         (TYPE_ADMIN_CONFIRMATION, "Admin confirmation"),
         (TYPE_CUSTOMER_REJECTION, "Customer rejection"),
+        (TYPE_CUSTOMER_SHIPPING_UPDATE, "Customer shipping update"),
     ]
 
     STATUS_SENT = "sent"

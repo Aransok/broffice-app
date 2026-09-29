@@ -3190,3 +3190,92 @@ def test_refresh_pigeon_express_tracking_ignores_unknown_references(
         assert refresh_pigeon_express_tracking() == 0
     order.refresh_from_db()
     assert order.pigeon_express_status == ""
+
+
+def _tracking_info(status_code, *codes, delivery_date=None):
+    return {
+        "found": True,
+        "status": status_code,
+        "status_code": status_code,
+        "delivery_date": delivery_date,
+        "tracking": [
+            {"status": code, "status_code": code, "created_at": ""} for code in codes
+        ],
+    }
+
+
+@pytest.mark.django_db
+def test_pigeon_express_shipping_update_emails_sent_once_per_stage(
+    api_client, sample_product, settings, mailoutbox
+):
+    from orders.services import refresh_pigeon_express_tracking
+
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    order = _create_pigeon_express_order(api_client, "444")
+    mailoutbox.clear()
+
+    def poll(info):
+        with mock_pigeon_express_client(bulk_track_shipments={"444": info}):
+            refresh_pigeon_express_tracking()
+
+    # Only registered: nothing to tell the customer yet.
+    poll(_tracking_info("shipment_registered", "shipment_registered"))
+    assert mailoutbox == []
+
+    accepted = ("shipment_registered", "shipment_accepted_in_office")
+    poll(_tracking_info("shipment_accepted_in_office", *accepted))
+    poll(_tracking_info("shipment_accepted_in_office", *accepted))
+    assert [m.subject for m in mailoutbox] == [f"Поръчка {order.number} е изпратена"]
+    assert mailoutbox[0].to == ["buyer@example.com"]
+    assert "tracking_number=444" in mailoutbox[0].body
+
+    in_delivery = (*accepted, "shipment_in_delivery")
+    poll(_tracking_info("shipment_in_delivery", *in_delivery))
+    poll(
+        _tracking_info(
+            "shipment_delivered",
+            *in_delivery,
+            delivery_date="2026-09-30T12:00:00+03:00",
+        )
+    )
+    assert [m.subject for m in mailoutbox[1:]] == [
+        f"Поръчка {order.number} пътува към вас",
+        f"Поръчка {order.number} е доставена",
+    ]
+
+
+@pytest.mark.django_db
+def test_pigeon_express_shipping_update_skips_to_latest_stage_and_ignores_problems(
+    api_client, sample_product, settings, mailoutbox
+):
+    from orders.services import refresh_pigeon_express_tracking
+
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    delivered = _create_pigeon_express_order(api_client, "555")
+    returned = _create_pigeon_express_order(api_client, "666")
+    mailoutbox.clear()
+
+    with mock_pigeon_express_client(
+        bulk_track_shipments={
+            "555": _tracking_info(
+                "shipment_delivered",
+                "shipment_accepted_in_office",
+                "shipment_in_delivery",
+                delivery_date="2026-09-30T12:00:00+03:00",
+            ),
+            "666": _tracking_info(
+                "shipment_returning_to_sender",
+                "shipment_accepted_in_office",
+                "shipment_in_delivery",
+                "shipment_returning_to_sender",
+            ),
+        }
+    ):
+        refresh_pigeon_express_tracking()
+
+    # One "delivered" email, not three; nothing for the returned parcel.
+    assert [m.subject for m in mailoutbox] == [
+        f"Поръчка {delivered.number} е доставена"
+    ]
+    returned.refresh_from_db()
+    assert returned.pigeon_express_notified_stage == ""
