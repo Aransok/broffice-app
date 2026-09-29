@@ -64,13 +64,13 @@ def _order_lines_text(order: Order) -> str:
             f"{format_eur(item.line_total)}"
         )
     lines.append(f"Междинна сума: {format_eur(order.subtotal_bgn)}")
-    if order.shipping_cost_bgn:
-        lines.append(f"Доставка: {format_eur(order.shipping_cost_bgn)}")
     if order.coupon_discount_bgn:
         lines.append(
             f"Купон ({order.coupon_code}): -{format_eur(order.coupon_discount_bgn)}"
         )
     lines.append(f"ДДС ({order.vat_rate_percent}%): {format_eur(order.vat_amount_bgn)}")
+    if order.shipping_cost_bgn:
+        lines.append(f"Доставка (с ДДС): {format_eur(order.shipping_cost_bgn)}")
     lines.append(f"Общо: {format_eur(order.total_bgn)}")
     if order.shipping_method:
         lines.append(
@@ -470,12 +470,14 @@ def recalc_order_total(order: Order) -> Decimal:
     # Coupon discounts the taxable base (same as an item-level discount
     # would already be baked into subtotal) — VAT is charged on what the
     # customer actually pays, not the pre-discount amount.
-    taxable = subtotal + order.shipping_cost_bgn - order.coupon_discount_bgn
+    taxable = subtotal - order.coupon_discount_bgn
     taxable = max(taxable, Decimal(0))
     vat_amount = (taxable * order.vat_rate_percent / Decimal(100)).quantize(
         Decimal("0.01")
     )
-    total = taxable + vat_amount
+    # Shipping is the courier's own price, already incl. VAT — passed
+    # through to the customer as-is, never taxed again by us.
+    total = taxable + vat_amount + order.shipping_cost_bgn
     order.subtotal_bgn = subtotal
     order.vat_amount_bgn = vat_amount
     order.total_bgn = total
@@ -906,17 +908,12 @@ def calculate_pigeon_express_quote(data: dict) -> dict:
     # Everything in this app is stored/priced in BGN internally (EUR is
     # display-only, per the currency-board peg) — convert if the courier
     # quoted in EUR, pass through unchanged if they quoted in BGN.
+    # Pigeon quotes prices incl. VAT — stored and charged exactly as quoted;
+    # recalc_order_total adds it to the total without taxing it again.
     if quote.get("currency") == "EUR":
-        price_incl_vat = eur_to_bgn(total_price)
+        shipping_cost_bgn = eur_to_bgn(total_price)
     else:
-        price_incl_vat = total_price
-    # Pigeon quotes prices incl. VAT, but shipping_cost_bgn is a base (excl.
-    # VAT) amount like every other price here — recalc_order_total adds VAT
-    # on top. Stored as-is it was taxed twice (customer paid 20% more than
-    # Pigeon's price for shipping).
-    shipping_cost_bgn = (
-        price_incl_vat / (1 + settings.VAT_RATE_PERCENT / Decimal(100))
-    ).quantize(Decimal("0.01"))
+        shipping_cost_bgn = total_price.quantize(Decimal("0.01"))
     return {"shipping_cost_bgn": str(shipping_cost_bgn)}
 
 

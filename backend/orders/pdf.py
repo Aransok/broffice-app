@@ -242,9 +242,6 @@ def generate_invoice_pdf(invoice, *, include_profit: bool = False) -> bytes:
             Paragraph(format_eur(order.subtotal_bgn), totals_value_style),
         ],
     ]
-    # Speedy shipping isn't charged for right now (not wired up yet) - no
-    # shipping row here on purpose, matching the checkout confirmation
-    # screen (see CheckoutPage.tsx/OrderConfirmationPage.tsx).
     if order.coupon_discount_bgn:
         totals_data.append(
             [
@@ -261,6 +258,15 @@ def generate_invoice_pdf(invoice, *, include_profit: bool = False) -> bytes:
             Paragraph(format_eur(order.vat_amount_bgn), totals_value_style),
         ]
     )
+    # Courier's price incl. VAT, outside our VAT line (see recalc_order_total).
+    # Speedy shipping isn't charged yet (0), so it gets no row.
+    if order.shipping_cost_bgn:
+        totals_data.append(
+            [
+                "Доставка (с ДДС):",
+                Paragraph(format_eur(order.shipping_cost_bgn), totals_value_style),
+            ]
+        )
     totals_data.append(
         [
             "Общо за плащане:",
