@@ -889,6 +889,16 @@ class AdminNotificationViewSet(
         "order", "order__user"
     ).prefetch_related("order__items__product__images")
 
+    def get_queryset(self):
+        # ?status=pending|confirmed|rejected — the admin orders page's
+        # filter buttons, so an old still-pending order can't drop out of
+        # sight behind newer ones on later pages.
+        qs = super().get_queryset()
+        order_status = self.request.query_params.get("status")
+        if order_status in dict(Order.STATUS_CHOICES):
+            qs = qs.filter(order__status=order_status)
+        return qs
+
     @action(detail=True, methods=["post"])
     def mark_read(self, request, pk=None):
         note = self.get_object()
