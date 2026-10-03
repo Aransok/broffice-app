@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   addCustomerCartItem,
   deleteAdminCustomer,
+  getCustomerPdfUrl,
   removeCustomerCartItem,
   updateCustomerCartItem,
   useAdminCustomer,
@@ -113,6 +114,15 @@ export function AdminCustomerDetailPage() {
           </button>
         ))}
       </div>
+
+      {(tab === 'pricing' || tab === 'promotions') && (
+        <a
+          href={getCustomerPdfUrl(customerId, tab === 'pricing' ? 'prices' : 'promotions')}
+          className="mb-4 inline-block rounded-ui border border-primary px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10"
+        >
+          {tab === 'pricing' ? 'Изтегли PDF с индивидуалните цени' : 'Изтегли PDF с промоциите'}
+        </a>
+      )}
 
       {tab === 'cart' && <CartTab customerId={customerId} />}
       {tab === 'orders' && <OrdersTab customerId={customerId} />}

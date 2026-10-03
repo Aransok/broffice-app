@@ -121,3 +121,8 @@ export function useCustomerActivity(id: number) {
     queryFn: () => fetchCustomerActivity(id),
   })
 }
+
+/** Client-facing PDF of a customer's individual prices or promotions. */
+export function getCustomerPdfUrl(customerId: number, kind: 'prices' | 'promotions') {
+  return `${apiClient.defaults.baseURL}/admin/customers/${customerId}/${kind}-pdf/`
+}

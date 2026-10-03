@@ -384,13 +384,22 @@ export function AdminNotificationsPage() {
                     {order.shipping_method === 'speedy_office'
                       ? ` — ${order.speedy_office_name}`
                       : order.shipping_method === 'pigeon_express_address'
-                        ? ` — ${order.pigeon_express_street_name} ${order.pigeon_express_street_number}, ${order.pigeon_express_city_name}`
+                        ? ` — ${[
+                            `${order.pigeon_express_street_name} ${order.pigeon_express_street_number}`.trim(),
+                            order.pigeon_express_city_name,
+                          ]
+                            .filter(Boolean)
+                            .join(', ')}`
                         : order.shipping_method === 'pigeon_express_office' ||
                             order.shipping_method === 'pigeon_express_locker'
                           ? ` — ${order.pigeon_express_office_name}`
                           : ` — ${[order.delivery_address_line, `${order.delivery_city} ${order.delivery_post_code}`.trim()].filter(Boolean).join(', ')}`}
                   </p>
                 )}
+                {order.shipping_method === 'pigeon_express_address' &&
+                  order.pigeon_express_additional_info && (
+                    <p>Допълнителна информация: {order.pigeon_express_additional_info}</p>
+                  )}
                 <p>Телефон: {order.customer_phone || '-'}</p>
                 {order.is_company_order && (
                   <>

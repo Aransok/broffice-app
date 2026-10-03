@@ -247,10 +247,15 @@ class Order(TimeStampedModel):
             street = (
                 f"{self.pigeon_express_street_name} "
                 f"{self.pigeon_express_street_number}".strip()
-                or self.pigeon_express_additional_info
             )
             return ", ".join(
-                part for part in (street, self.pigeon_express_city_name) if part
+                part
+                for part in (
+                    street,
+                    self.pigeon_express_additional_info,
+                    self.pigeon_express_city_name,
+                )
+                if part
             )
         return self.delivery_address_display
 
