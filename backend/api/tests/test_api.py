@@ -2811,6 +2811,8 @@ def test_admin_dashboard_stats(api_client, admin_user, sample_product):
 def test_admin_customer_activity_visible_to_admin(
     api_client, admin_user, sample_product
 ):
+    sample_product.supplier_id = "13037"
+    sample_product.save(update_fields=["supplier_id"])
     user = User.objects.create_user(username="viewer3", password="viewerpass")
     api_client.force_authenticate(user=user)
     api_client.post("/api/v1/activity/track/", {"product_id": sample_product.id})
@@ -2820,6 +2822,7 @@ def test_admin_customer_activity_visible_to_admin(
     assert resp.status_code == 200
     assert len(resp.data) == 1
     assert resp.data[0]["product_name"] == sample_product.name
+    assert resp.data[0]["product_number"] == "13037"
 
 
 @pytest.mark.django_db
