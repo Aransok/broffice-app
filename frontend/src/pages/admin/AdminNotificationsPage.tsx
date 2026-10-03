@@ -142,6 +142,16 @@ export function AdminNotificationsPage() {
     }
   }
 
+  async function handleMarkRead(number: string, notificationId: string) {
+    setBusyOrder(number)
+    try {
+      await markNotificationRead(notificationId)
+      await refetch()
+    } finally {
+      setBusyOrder(null)
+    }
+  }
+
   async function handleReprice(number: string) {
     setBusyOrder(number)
     try {
@@ -573,6 +583,18 @@ export function AdminNotificationsPage() {
                     Откажи
                   </button>
                 </div>
+              )}
+              {/* A handled order has no confirm/reject buttons — this keeps an
+                  unread entry (e.g. a Pigeon Express warning) from being stuck. */}
+              {order.status !== 'pending' && !notification.is_read && (
+                <button
+                  type="button"
+                  disabled={busyOrder === order.number}
+                  onClick={() => handleMarkRead(order.number, notification.id)}
+                  className="rounded-ui border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 disabled:opacity-50"
+                >
+                  Маркирай като прочетено
+                </button>
               )}
             </div>
           )

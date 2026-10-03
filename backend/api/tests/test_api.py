@@ -3600,3 +3600,89 @@ def test_admin_notifications_filter_by_order_status(
     assert {n["order"]["number"] for n in confirmed.data["results"]} == {numbers[0]}
     everything = api_client.get("/api/v1/admin/notifications/")
     assert {n["order"]["number"] for n in everything.data["results"]} == set(numbers)
+
+
+@pytest.mark.django_db
+def test_confirm_and_reject_mark_order_notifications_read(
+    api_client, admin_user, sample_product, settings
+):
+    from orders.models import OrderNotification
+
+    numbers = []
+    for _ in range(2):
+        resp = api_client.post(
+            "/api/v1/orders/",
+            {
+                "customer_email": "buyer@example.com",
+                "items": [{"product_external_id": "272", "quantity": 1}],
+            },
+            format="json",
+        )
+        numbers.append(resp.data["number"])
+    api_client.force_authenticate(user=admin_user)
+    api_client.post(f"/api/v1/admin/orders/{numbers[0]}/reject/", {"reason": "x"})
+    api_client.post(f"/api/v1/admin/orders/{numbers[1]}/confirm/")
+
+    # No separate "mark read" request needed — the server does it.
+    assert not OrderNotification.objects.filter(is_read=False).exists()
+
+
+@pytest.mark.django_db
+def test_confirm_keeps_pigeon_failure_warning_unread(
+    api_client, admin_user, sample_product, settings
+):
+    from orders.models import OrderNotification
+
+    settings.PIGEON_EXPRESS_PICKUP_OFFICE_ID = "1001"
+    order = _create_pigeon_express_order(api_client, "")
+    api_client.force_authenticate(user=admin_user)
+    with mock_pigeon_express_client() as client:
+        client.create_shipment.side_effect = PigeonExpressAPIError(
+            "Down", status_code=500
+        )
+        api_client.post(f"/api/v1/admin/orders/{order.number}/confirm/")
+    unread = OrderNotification.objects.filter(order=order, is_read=False)
+    assert [n.message[:1] for n in unread] == ["⚠"]
+
+
+@pytest.mark.django_db
+def test_migration_clears_stuck_notifications_on_handled_orders(
+    api_client, sample_product
+):
+    from importlib import import_module
+
+    from django.apps import apps
+
+    from orders.models import OrderNotification
+
+    numbers = []
+    for _ in range(2):
+        resp = api_client.post(
+            "/api/v1/orders/",
+            {
+                "customer_email": "buyer@example.com",
+                "items": [{"product_external_id": "272", "quantity": 1}],
+            },
+            format="json",
+        )
+        numbers.append(resp.data["number"])
+    # Order 0 rejected without its notification being marked read (the bug).
+    Order.objects.filter(number=numbers[0]).update(status=Order.STATUS_REJECTED)
+    rejected = Order.objects.get(number=numbers[0])
+    OrderNotification.objects.create(order=rejected, message="⚠ Pigeon Express: x")
+
+    migration = import_module(
+        "orders.migrations.0017_mark_handled_order_notifications_read"
+    )
+    migration.mark_handled_notifications_read(apps, None)
+
+    unread = set(
+        OrderNotification.objects.filter(is_read=False).values_list(
+            "order__number", "message"
+        )
+    )
+    # The pending order and the Pigeon warning stay; the stuck one is cleared.
+    assert unread == {
+        (numbers[1], f"Нова поръчка {numbers[1]}"),
+        (numbers[0], "⚠ Pigeon Express: x"),
+    }

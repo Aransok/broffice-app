@@ -973,6 +973,10 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
             )
         order.status = Order.STATUS_CONFIRMED
         order.save(update_fields=["status", "updated_at"])
+        # Handled — done here, not in a separate request from the browser
+        # that could be lost and leave it unread forever. Before the Pigeon
+        # step below, so a shipment-failure warning stays unread.
+        order.notifications.update(is_read=True)
         issue_invoice_for_order(order)
         deactivate_used_item_promotions(order)
         # Before the emails, so the customer's email can carry the tracking
@@ -1055,6 +1059,7 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
         order.status = Order.STATUS_REJECTED
         order.reject_reason = reason
         order.save(update_fields=["status", "reject_reason", "updated_at"])
+        order.notifications.update(is_read=True)
         deactivate_used_item_promotions(order)
         send_customer_rejection_email(order)
         return Response(OrderSerializer(order, context={"request": request}).data)
