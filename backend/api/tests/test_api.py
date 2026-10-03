@@ -3574,3 +3574,29 @@ def test_admin_customer_promotions_pdf_lists_only_current_client_promotions(
     api_client.force_authenticate(user=None)
     assert resp.status_code == 200
     assert resp["Content-Type"] == "application/pdf"
+
+
+@pytest.mark.django_db
+def test_admin_notifications_filter_by_order_status(
+    api_client, admin_user, sample_product
+):
+    numbers = []
+    for _ in range(2):
+        resp = api_client.post(
+            "/api/v1/orders/",
+            {
+                "customer_email": "buyer@example.com",
+                "items": [{"product_external_id": "272", "quantity": 1}],
+            },
+            format="json",
+        )
+        numbers.append(resp.data["number"])
+    api_client.force_authenticate(user=admin_user)
+    api_client.post(f"/api/v1/admin/orders/{numbers[0]}/confirm/")
+
+    pending = api_client.get("/api/v1/admin/notifications/", {"status": "pending"})
+    assert [n["order"]["number"] for n in pending.data["results"]] == [numbers[1]]
+    confirmed = api_client.get("/api/v1/admin/notifications/", {"status": "confirmed"})
+    assert {n["order"]["number"] for n in confirmed.data["results"]} == {numbers[0]}
+    everything = api_client.get("/api/v1/admin/notifications/")
+    assert {n["order"]["number"] for n in everything.data["results"]} == set(numbers)

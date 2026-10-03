@@ -10,9 +10,13 @@ export interface OrderNotification {
   created_at: string
 }
 
-export function fetchNotifications() {
+export type OrderStatusFilter = '' | 'pending' | 'confirmed' | 'rejected'
+
+export function fetchNotifications(params: { status?: OrderStatusFilter; page?: number } = {}) {
   return apiClient
-    .get<Paginated<OrderNotification>>('/admin/notifications/')
+    .get<Paginated<OrderNotification>>('/admin/notifications/', {
+      params: { status: params.status || undefined, page: params.page ?? 1 },
+    })
     .then((res) => res.data)
 }
 
@@ -64,9 +68,9 @@ export function removeOrderItem(number: string, itemId: string) {
     .then((res) => res.data)
 }
 
-export function useNotifications() {
+export function useNotifications(params: { status?: OrderStatusFilter; page?: number } = {}) {
   return useQuery({
-    queryKey: ['admin-notifications'],
-    queryFn: fetchNotifications,
+    queryKey: ['admin-notifications', params],
+    queryFn: () => fetchNotifications(params),
   })
 }

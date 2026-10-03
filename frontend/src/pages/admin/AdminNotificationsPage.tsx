@@ -7,6 +7,7 @@ import {
   rejectOrder,
   removeOrderItem,
   repriceOrder,
+  type OrderStatusFilter,
   useNotifications,
 } from '../../api/adminNotifications'
 import {
@@ -49,8 +50,19 @@ function supplierProductUrl(externalId: string): string | null {
   return id ? `https://officecenter-bg.com/product/${id}/x` : null
 }
 
+const STATUS_FILTERS: { value: OrderStatusFilter; label: string }[] = [
+  { value: '', label: 'Всички' },
+  { value: 'pending', label: 'Чакащи' },
+  { value: 'confirmed', label: 'Потвърдени' },
+  { value: 'rejected', label: 'Отказани' },
+]
+
 export function AdminNotificationsPage() {
-  const { data, refetch, isLoading } = useNotifications()
+  // Filter + paging: the list is 24 per page, newest first, so an older
+  // still-pending order used to drop out of sight with no way to reach it.
+  const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('')
+  const [page, setPage] = useState(1)
+  const { data, refetch, isLoading } = useNotifications({ status: statusFilter, page })
   const [busyOrder, setBusyOrder] = useState<string | null>(null)
   // Deep-link target from the "Прегледай поръчката" button in the admin
   // new-order email (?order=<number>) — scrolls to and highlights the
@@ -167,6 +179,26 @@ export function AdminNotificationsPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <h1 className="mb-6 text-xl font-semibold text-slate-900">Поръчки (админ)</h1>
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        {STATUS_FILTERS.map((filter) => (
+          <button
+            key={filter.value}
+            type="button"
+            onClick={() => {
+              setStatusFilter(filter.value)
+              setPage(1)
+            }}
+            className={`rounded-ui border px-3 py-1.5 text-sm font-medium ${
+              statusFilter === filter.value
+                ? 'border-primary bg-primary text-white'
+                : 'border-slate-300 text-slate-700 hover:border-primary'
+            }`}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
 
       {isLoading && <p className="text-slate-500">Зареждане...</p>}
       {data && data.results.length === 0 && <p className="text-slate-500">Няма поръчки.</p>}
@@ -546,6 +578,30 @@ export function AdminNotificationsPage() {
           )
         })}
       </div>
+
+      {data && (data.previous || data.next) && (
+        <div className="mt-6 flex items-center justify-between text-sm">
+          <button
+            type="button"
+            disabled={!data.previous}
+            onClick={() => setPage((p) => p - 1)}
+            className="rounded-ui border border-slate-300 px-3 py-1.5 font-medium text-slate-700 disabled:opacity-40"
+          >
+            ← По-нови
+          </button>
+          <span className="text-slate-500">
+            Страница {page} от {Math.max(1, Math.ceil(data.count / 24))}
+          </span>
+          <button
+            type="button"
+            disabled={!data.next}
+            onClick={() => setPage((p) => p + 1)}
+            className="rounded-ui border border-slate-300 px-3 py-1.5 font-medium text-slate-700 disabled:opacity-40"
+          >
+            По-стари →
+          </button>
+        </div>
+      )}
     </div>
   )
 }
