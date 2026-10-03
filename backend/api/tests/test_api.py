@@ -1,13 +1,14 @@
 from contextlib import contextmanager
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
+from urllib.parse import unquote
 
 import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
 from categories.models import Category
-from common.currency import bgn_to_eur
+from common.currency import bgn_to_eur, format_eur
 from core.models import SiteSettings
 from orders.models import Order
 from products.models import Product, ProductImage
@@ -2094,6 +2095,10 @@ def test_invoice_pdf_download_customer_and_admin(
     customer_resp = api_client.get(f"/api/v1/my-orders/{number}/invoice/")
     assert customer_resp.status_code == 200
     assert customer_resp.content[:4] == b"%PDF"
+    # Named after the order ("Поръчка 45.pdf"), not the internal INV number.
+    disposition = unquote(customer_resp["Content-Disposition"])
+    assert f"Поръчка {number}.pdf" in disposition
+    assert "INV-" not in disposition
 
 
 @pytest.mark.django_db
@@ -3374,6 +3379,11 @@ def test_order_delivery_destination_display_for_pigeon_express_address():
         pigeon_express_city_name="Пловдив",
     )
     assert order.delivery_destination_display == "ЛУКА КАСЪРОВ 16, Пловдив"
+    # Additional info (block, entrance, floor…) is shown with the street too.
+    order.pigeon_express_additional_info = "вх. Б, ет. 3"
+    assert (
+        order.delivery_destination_display == "ЛУКА КАСЪРОВ 16, вх. Б, ет. 3, Пловдив"
+    )
     # No street picked — the free-text address details are used instead.
     order.pigeon_express_street_name = ""
     order.pigeon_express_street_number = ""
@@ -3468,3 +3478,99 @@ def test_pigeon_express_shipping_update_skips_to_latest_stage_and_ignores_proble
     ]
     returned.refresh_from_db()
     assert returned.pigeon_express_notified_stage == ""
+
+
+def _pdf_texts(generate, *args):
+    """Runs a PDF generator, recording the text of every Paragraph in it."""
+    import orders.pdf  # noqa: F401 — pricing.pdf reuses its fonts
+    import pricing.pdf
+
+    texts = []
+    real_paragraph = pricing.pdf.Paragraph
+
+    def recording_paragraph(text, *a, **kw):
+        texts.append(text)
+        return real_paragraph(text, *a, **kw)
+
+    with patch("pricing.pdf.Paragraph", recording_paragraph):
+        pdf = generate(*args)
+    assert pdf.startswith(b"%PDF")
+    return texts
+
+
+@pytest.mark.django_db
+def test_admin_customer_prices_pdf(api_client, admin_user, sample_product):
+    from accounts.models import Profile
+    from pricing.models import AdminPriceOverride
+    from pricing.pdf import generate_customer_prices_pdf
+
+    customer = User.objects.create_user(username="client", email="c@example.com")
+    Profile.objects.create(user=customer, company="Фирма & Ко")
+    # Below the reseller cost (admin_price 1.00) — the PDF shows the floored
+    # price the client is actually charged.
+    AdminPriceOverride.objects.create(
+        product=sample_product, user=customer, client_price="0.80"
+    )
+
+    texts = _pdf_texts(generate_customer_prices_pdf, customer)
+    assert "Индивидуални цени" in texts
+    assert any("Фирма &amp; Ко" in t for t in texts)
+    assert "Test Product" in texts
+    assert format_eur(Decimal("1.35")) in texts
+    assert format_eur(Decimal("1.00")) in texts
+
+    resp = api_client.get(f"/api/v1/admin/customers/{customer.id}/prices-pdf/")
+    assert resp.status_code in (401, 403)
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.get(f"/api/v1/admin/customers/{customer.id}/prices-pdf/")
+    api_client.force_authenticate(user=None)
+    assert resp.status_code == 200
+    assert resp["Content-Type"] == "application/pdf"
+
+
+@pytest.mark.django_db
+def test_admin_customer_promotions_pdf_lists_only_current_client_promotions(
+    api_client, admin_user, sample_product
+):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from pricing.pdf import generate_customer_promotions_pdf
+    from promotions.models import Promotion
+
+    customer = User.objects.create_user(username="client", email="c@example.com")
+    other = User.objects.create_user(username="other", email="o@example.com")
+    Promotion.objects.create(
+        name="Хартия -10%",
+        discount_type=Promotion.TYPE_PERCENT,
+        value="10",
+        scope=Promotion.SCOPE_PRODUCT,
+        product=sample_product,
+        user=customer,
+        max_quantity=20,
+    )
+    Promotion.objects.create(
+        name="Изтекла",
+        value="5",
+        scope=Promotion.SCOPE_GLOBAL,
+        user=customer,
+        ends_at=timezone.now() - timedelta(days=1),
+    )
+    Promotion.objects.create(
+        name="Чужда", value="5", scope=Promotion.SCOPE_GLOBAL, user=other
+    )
+
+    texts = _pdf_texts(generate_customer_promotions_pdf, customer)
+    assert "Хартия -10%" in texts
+    assert "-10% (до 20 бр.)" in texts
+    # 1.35 - 10% = 1.215, floored at the reseller cost 1.00 → 1.22.
+    assert format_eur(Decimal("1.22")) in texts
+    assert "Изтекла" not in texts
+    assert "Чужда" not in texts
+
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.get(f"/api/v1/admin/customers/{customer.id}/promotions-pdf/")
+    api_client.force_authenticate(user=None)
+    assert resp.status_code == 200
+    assert resp["Content-Type"] == "application/pdf"

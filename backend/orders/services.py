@@ -300,7 +300,7 @@ def _send_order_status_email(
                 if show_profit
                 else get_invoice_pdf_bytes(invoice)
             )
-            message.attach(f"{invoice.number}.pdf", pdf_bytes, "application/pdf")
+            message.attach(f"Поръчка {order.number}.pdf", pdf_bytes, "application/pdf")
         message.send(fail_silently=False)
         log.status = EmailLog.STATUS_SENT
         log.sent_at = timezone.now()

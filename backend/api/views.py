@@ -11,6 +11,7 @@ from django.http import HttpResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.http import content_disposition_header
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -72,6 +73,7 @@ from orders.services import (
 )
 from pages.models import Page as PageModel
 from pricing.models import AdminPriceOverride
+from pricing.pdf import generate_customer_prices_pdf, generate_customer_promotions_pdf
 from pricing.services import get_user_overrides
 from products.management.commands.sync_supplier_catalog import (
     Command as SyncSupplierCatalogCommand,
@@ -475,7 +477,17 @@ def _invoice_pdf_response(order: Order, *, include_profit: bool = False):
         else get_invoice_pdf_bytes(invoice)
     )
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="{invoice.number}.pdf"'
+    # Named after the order the customer knows ("Поръчка 45"), not the
+    # internal INV-… number; content_disposition_header encodes the Cyrillic.
+    response["Content-Disposition"] = content_disposition_header(
+        True, f"Поръчка {order.number}.pdf"
+    )
+    return response
+
+
+def _customer_pdf_response(pdf_bytes: bytes, name: str, customer_id) -> HttpResponse:
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{name}-{customer_id}.pdf"'
     return response
 
 
@@ -1172,6 +1184,20 @@ class AdminCustomerViewSet(mixins.DestroyModelMixin, viewsets.ReadOnlyModelViewS
         if q:
             qs = qs.filter(Q(username__icontains=q) | Q(email__icontains=q))
         return qs.order_by("-date_joined")
+
+    @action(detail=True, methods=["get"], url_path="prices-pdf")
+    def prices_pdf(self, request, pk=None):
+        # Client-facing: the customer's individual prices, to hand to them.
+        return _customer_pdf_response(
+            generate_customer_prices_pdf(self.get_object()), "individualni-ceni", pk
+        )
+
+    @action(detail=True, methods=["get"], url_path="promotions-pdf")
+    def promotions_pdf(self, request, pk=None):
+        # Client-facing: the customer's current and upcoming promotions.
+        return _customer_pdf_response(
+            generate_customer_promotions_pdf(self.get_object()), "promocii", pk
+        )
 
     @action(detail=True, methods=["get"], url_path="cart")
     def cart(self, request, pk=None):

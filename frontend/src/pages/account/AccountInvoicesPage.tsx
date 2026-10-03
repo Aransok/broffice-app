@@ -17,13 +17,14 @@ export function AccountInvoicesPage() {
             className="flex flex-wrap items-center justify-between gap-2 rounded-ui border border-slate-200 p-3"
           >
             <div>
-              <p className="font-semibold text-slate-900">{order.invoice!.number}</p>
+              <Link
+                to={`/account/orders/${order.number}`}
+                className="font-semibold text-slate-900 hover:text-primary"
+              >
+                Поръчка № {order.number}
+              </Link>
               <p className="text-sm text-slate-500">
-                Поръчка{' '}
-                <Link to={`/account/orders/${order.number}`} className="text-primary hover:underline">
-                  {order.number}
-                </Link>{' '}
-                · {new Date(order.invoice!.issued_at).toLocaleDateString('bg-BG')}
+                {new Date(order.invoice!.issued_at).toLocaleDateString('bg-BG')}
               </p>
             </div>
             <span className="font-medium text-slate-900">
