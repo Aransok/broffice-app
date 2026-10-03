@@ -907,6 +907,7 @@ function ActivityTab({ customerId }: { customerId: number }) {
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-slate-500">
+                <th className="py-2 pr-4">Код</th>
                 <th className="py-2 pr-4">Продукт</th>
                 <th className="py-2 pr-4">Категория</th>
                 <th className="py-2 pr-4">Цена</th>
@@ -920,6 +921,9 @@ function ActivityTab({ customerId }: { customerId: number }) {
                 const onPromo = row.price_source && row.effective_price_bgn !== row.price_bgn
                 return (
                   <tr key={row.id} className="border-b border-slate-100">
+                    <td className="whitespace-nowrap py-2 pr-4 font-mono text-slate-600">
+                      {row.product_number ? `№${row.product_number}` : '—'}
+                    </td>
                     <td className="py-2 pr-4">
                       <div className="flex items-center gap-2">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-ui border border-slate-200 bg-slate-50">
