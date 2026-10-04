@@ -387,6 +387,7 @@ class ProductViewSerializer(serializers.ModelSerializer):
     price_bgn = serializers.SerializerMethodField()
     effective_price_bgn = serializers.SerializerMethodField()
     price_source = serializers.SerializerMethodField()
+    product_number = serializers.SerializerMethodField()
 
     def get_product_image(self, obj):
         images = list(obj.product.images.all()[:1])
@@ -413,12 +414,17 @@ class ProductViewSerializer(serializers.ModelSerializer):
         result = self._effective(obj)
         return result.label if result and result.source != "base" else None
 
+    def get_product_number(self, obj):
+        # Same code the admin cart tab shows (carts/services.py).
+        return obj.product.supplier_id or str(obj.product.item_number or "")
+
     class Meta:
         model = ProductView
         fields = (
             "id",
             "product",
             "product_name",
+            "product_number",
             "product_slug",
             "product_image",
             "category",

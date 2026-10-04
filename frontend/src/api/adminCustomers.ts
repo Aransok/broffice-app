@@ -38,6 +38,8 @@ export interface AdminActivityRow {
   id: string
   product: string
   product_name: string
+  /** Supplier code, or the shop's own item number when there is none. */
+  product_number: string
   product_slug: string
   product_image: string | null
   category: string | null
