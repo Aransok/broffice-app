@@ -64,7 +64,11 @@ def apply_children(Category, parent, nodes):
 
 def apply_menu(apps, schema_editor):
     Category = apps.get_model("categories", "Category")
-    roots = json.loads(SNAPSHOT.read_text(encoding="utf-8"))
+    # Fills out an existing catalog only; an empty database (fresh install,
+    # test runs) gets its categories from the import/sync as before.
+    if not Category.objects.exists():
+        return
+    roots =json.loads(SNAPSHOT.read_text(encoding="utf-8"))
     for root in roots:
         category = get_or_create(Category, root, None)
         apply_children(Category, category, root["children"])
