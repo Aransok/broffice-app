@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import { PRESET_OPTIONS, useTheme } from '../../context/ThemeContext'
 import { useVat } from '../../context/VatContext'
+import { getPreviewUser } from '../../preview'
 import { playNotificationSound } from '../../utils/notificationSound'
 import { CategoriesMegaMenu } from './CategoriesMegaMenu'
 
@@ -198,7 +199,7 @@ export function Header() {
           >
             Каталози
           </NavLink>
-          {user?.is_admin_portal && (
+          {user?.is_admin_portal && !getPreviewUser() && (
             <Link
               to="/admin"
               className="relative text-sm font-semibold text-primary hover:underline"
