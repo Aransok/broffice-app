@@ -295,10 +295,17 @@ class ProductListSerializer(serializers.ModelSerializer):
         # Reseller-only pricing — must never reach a non-admin response, even
         # though this serializer is otherwise shared with the public endpoints.
         # str() to match every other decimal field's serialized shape.
-        request = self.context.get("request")
-        if request and is_admin_user(request.user) and obj.admin_price is not None:
+        if is_admin_user(self._viewer()) and obj.admin_price is not None:
             return str(obj.admin_price)
         return None
+
+    def _viewer(self):
+        # The client an admin is previewing the shop as, if any (see
+        # api.views.get_pricing_user), else whoever is making the request.
+        if "pricing_user" in self.context:
+            return self.context["pricing_user"]
+        request = self.context.get("request")
+        return getattr(request, "user", None) if request else None
 
     def get_promo_price_bgn(self, obj):
         # `active_promotions`/`user_overrides`/`category_descendant_map` are
@@ -308,11 +315,9 @@ class ProductListSerializer(serializers.ModelSerializer):
         promotions = self.context.get("active_promotions")
         overrides = self.context.get("user_overrides")
         category_descendant_map = self.context.get("category_descendant_map")
-        request = self.context.get("request")
-        user = getattr(request, "user", None) if request else None
         result = get_effective_price(
             obj,
-            user,
+            self._viewer(),
             promotions if promotions is not None else [],
             overrides if overrides is not None else {},
             category_descendant_map,

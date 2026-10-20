@@ -18,6 +18,7 @@ import {
 } from '../../api/adminPriceOverrides'
 import { orderedCategoryOptions, useCategories } from '../../api/categories'
 import { getImageUrl } from '../../api/media'
+import { previewUrl } from '../../preview'
 import {
   createPromotion,
   deletePromotion,
@@ -81,14 +82,26 @@ export function AdminCustomerDetailPage() {
           {customer?.username ?? `Клиент #${customerId}`}
         </h1>
         {customer && (
-          <button
-            type="button"
-            onClick={handleDeleteCustomer}
-            disabled={deleting}
-            className="rounded-ui border border-red-300 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
-          >
-            {deleting ? 'Изтриване...' : 'Изтрий акаунта'}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Opens the shop in a new tab as this client: their prices and
+                their promotions, exactly as they see them (src/preview.ts). */}
+            <a
+              href={previewUrl(customerId, customer.username)}
+              target="_blank"
+              rel="noopener"
+              className="rounded-ui bg-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+            >
+              Преглед като клиента
+            </a>
+            <button
+              type="button"
+              onClick={handleDeleteCustomer}
+              disabled={deleting}
+              className="rounded-ui border border-red-300 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+            >
+              {deleting ? 'Изтриване...' : 'Изтрий акаунта'}
+            </button>
+          </div>
         )}
       </div>
       {customer && (
@@ -378,11 +391,7 @@ function OrdersTab({ customerId }: { customerId: number }) {
                         <li key={item.id} className="flex items-center gap-3 py-2">
                           <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-ui border border-slate-200 bg-slate-50">
                             {imageUrl ? (
-                              <img
-                                src={imageUrl}
-                                alt=""
-                                className="h-full w-full object-contain"
-                              />
+                              <img src={imageUrl} alt="" className="h-full w-full object-contain" />
                             ) : (
                               <span className="text-center text-[8px] text-slate-400">
                                 Без снимка
@@ -534,9 +543,7 @@ function PricingTab({ customerId }: { customerId: number }) {
           </button>
         </div>
         {computedBgn && (
-          <p className="mt-2 text-xs text-slate-500">
-            Крайна цена: €{bgnToEur(computedBgn)}
-          </p>
+          <p className="mt-2 text-xs text-slate-500">Крайна цена: €{bgnToEur(computedBgn)}</p>
         )}
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       </div>
@@ -583,13 +590,7 @@ function PricingTab({ customerId }: { customerId: number }) {
   )
 }
 
-function PromotionsTab({
-  customerId,
-  customerName,
-}: {
-  customerId: number
-  customerName: string
-}) {
+function PromotionsTab({ customerId, customerName }: { customerId: number; customerName: string }) {
   const { data, refetch } = usePromotions({ user: customerId })
   const { data: categories } = useCategories()
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -644,9 +645,7 @@ function PromotionsTab({
     try {
       const productId = selectedProduct ? selectedProduct.id : editingProductId
       const payload = {
-        name:
-          name ||
-          `Индивидуална отстъпка${selectedProduct ? ` — ${selectedProduct.name}` : ''}`,
+        name: name || `Индивидуална отстъпка${selectedProduct ? ` — ${selectedProduct.name}` : ''}`,
         discount_type: discountType,
         value: discountType === 'flat' ? eurToBgn(value) : value,
         max_quantity: maxQuantity ? Number(maxQuantity) : null,
@@ -698,9 +697,9 @@ function PromotionsTab({
           е тук, ако трябва промоция за целия сайт (за всички клиенти).
         </p>
         <p className="mb-2 text-xs text-slate-500">
-          🔒 Всяка промоция тук е видима само за {customerName} — за да проверите, че НЕ е
-          видима за други клиенти, проверявайте в анонимен/инкогнито прозорец, а не докато сте
-          влезли в неговия акаунт.
+          🔒 Всяка промоция тук е видима само за {customerName} — за да проверите, че НЕ е видима за
+          други клиенти, проверявайте в анонимен/инкогнито прозорец, а не докато сте влезли в
+          неговия акаунт.
         </p>
 
         <input

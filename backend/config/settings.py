@@ -8,6 +8,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from celery.schedules import crontab
+from corsheaders.defaults import default_headers
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
@@ -223,6 +224,9 @@ CORS_ALLOWED_ORIGINS = [
     if o.strip()
 ]
 CORS_ALLOW_CREDENTIALS = True
+# X-Preview-As-User: admin "preview the shop as this client" (api/views.py
+# get_pricing_user); dev runs the SPA cross-origin, so it must be allowed.
+CORS_ALLOW_HEADERS = (*default_headers, "x-preview-as-user")
 
 # CSRF: the React SPA (localhost:5173) is cross-port from Django (localhost:8000).
 # Django requires the SPA's origin to be trusted, and the csrftoken cookie must

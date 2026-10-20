@@ -10,10 +10,12 @@ import { CartProvider } from './context/CartContext'
 import { CookieConsentProvider } from './context/CookieConsentContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { VatProvider } from './context/VatContext'
+import { initPreviewFromUrl } from './preview'
 import { router } from './router'
 
 const queryClient = new QueryClient()
 
+initPreviewFromUrl()
 void primeCsrfCookie()
 
 createRoot(document.getElementById('root')!).render(

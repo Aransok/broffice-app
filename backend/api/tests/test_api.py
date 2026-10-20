@@ -3689,3 +3689,78 @@ def test_migration_clears_stuck_notifications_on_handled_orders(
         (numbers[1], f"Нова поръчка {numbers[1]}"),
         (numbers[0], "⚠ Pigeon Express: x"),
     }
+
+
+@pytest.mark.django_db
+def test_admin_can_preview_shop_as_client(api_client, admin_user):
+    """Admin "Преглед като клиента": with X-Preview-As-User an admin sees
+    the client's own personal promotions and prices, and none of the
+    admin-only fields - exactly what the client sees."""
+    from promotions.models import Promotion
+
+    category = Category.objects.create(
+        external_id="pv-cat", slug="pv-cat", name="Preview Category"
+    )
+    Product.objects.create(
+        external_id="pv-product",
+        slug="pv-product",
+        name="Preview Product",
+        category=category,
+        client_price="50.00",
+        admin_price="30.00",
+    )
+    client = User.objects.create_user(username="pv-client", password="pass12345")
+    Promotion.objects.create(
+        name="Personal",
+        discount_type="percent",
+        value="20.00",
+        scope="category",
+        category=category,
+        user=client,
+    )
+    url = "/api/v1/products/?on_promotion=1"
+
+    api_client.force_authenticate(user=admin_user)
+    assert api_client.get(url).data["results"] == []
+
+    rows = api_client.get(url, HTTP_X_PREVIEW_AS_USER=str(client.pk)).data["results"]
+    assert [row["external_id"] for row in rows] == ["pv-product"]
+    assert rows[0]["promo_price_bgn"] == "40.00"
+    assert rows[0]["admin_price"] is None
+
+    home = api_client.get(
+        "/api/v1/home-sections/", HTTP_X_PREVIEW_AS_USER=str(client.pk)
+    )
+    assert [row["external_id"] for row in home.data["promotions"]] == ["pv-product"]
+
+
+@pytest.mark.django_db
+def test_non_admin_cannot_preview_as_another_client(api_client):
+    from promotions.models import Promotion
+
+    category = Category.objects.create(
+        external_id="pv2-cat", slug="pv2-cat", name="Preview Category 2"
+    )
+    Product.objects.create(
+        external_id="pv2-product",
+        slug="pv2-product",
+        name="Preview Product 2",
+        category=category,
+        client_price="50.00",
+    )
+    target = User.objects.create_user(username="pv2-target", password="pass12345")
+    snoop = User.objects.create_user(username="pv2-snoop", password="pass12345")
+    Promotion.objects.create(
+        name="Personal",
+        discount_type="percent",
+        value="20.00",
+        scope="category",
+        category=category,
+        user=target,
+    )
+
+    api_client.force_authenticate(user=snoop)
+    rows = api_client.get(
+        "/api/v1/products/?on_promotion=1", HTTP_X_PREVIEW_AS_USER=str(target.pk)
+    ).data["results"]
+    assert rows == []

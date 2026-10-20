@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { updateProductPricing } from '../../api/adminProducts'
+import { getPreviewUser } from '../../preview'
 import { usePromotions } from '../../api/promotions'
 import type { ProductDetail } from '../../api/types'
 import { useAuth } from '../../context/AuthContext'
@@ -24,7 +25,8 @@ export function AdminPriceEditor({
     product: product.id,
   })
 
-  if (!user?.is_admin_portal) return null
+  // Hidden while previewing the shop as a client, like it is for them.
+  if (!user?.is_admin_portal || getPreviewUser()) return null
 
   // user === null: the "for everyone" promo on this product, not a
   // different client's own product-targeted discount (both can now coexist

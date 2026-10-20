@@ -138,6 +138,27 @@ class IsAdminPortalUser(BasePermission):
         return is_admin_user(request.user)
 
 
+PREVIEW_AS_USER_HEADER = "X-Preview-As-User"
+
+
+def get_pricing_user(request):
+    """Whose prices/promotions a storefront read is computed for. Normally
+    the visitor themselves; an admin can send X-Preview-As-User: <client id>
+    ("Преглед като клиента" in the admin customer page) to see the shop
+    exactly as that client does - their individual prices, their personal
+    promotions, no admin-only fields. Ignored for anyone who isn't an admin,
+    so a client can never read another client's prices with it."""
+    cached = getattr(request, "_pricing_user", None)
+    if cached is not None:
+        return cached
+    user = request.user
+    raw = request.headers.get(PREVIEW_AS_USER_HEADER, "")
+    if raw.isdigit() and is_admin_user(user):
+        user = User.objects.filter(pk=int(raw), is_active=True).first() or user
+    request._pricing_user = user
+    return user
+
+
 class IsDeveloperUser(BasePermission):
     """Gates the backups endpoints — deliberately narrower than
     IsAdminPortalUser. Any admin can manage products/orders, but restoring
@@ -220,7 +241,9 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
                 return qs.none()
             qs = qs.filter(category_id__in=get_descendant_category_ids(category))
         if self.request.query_params.get("on_promotion"):
-            promo_q = promoted_products_q(get_active_promotions(), self.request.user)
+            promo_q = promoted_products_q(
+                get_active_promotions(), get_pricing_user(self.request)
+            )
             qs = qs.filter(promo_q).distinct() if promo_q is not None else qs.none()
         return qs
 
@@ -235,8 +258,10 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         context["category_descendant_map"] = build_promo_category_descendant_map(
             context["active_promotions"]
         )
-        context["user_overrides"] = get_user_overrides(self.request.user)
-        context["favorite_product_ids"] = get_favorited_product_ids(self.request.user)
+        pricing_user = get_pricing_user(self.request)
+        context["pricing_user"] = pricing_user
+        context["user_overrides"] = get_user_overrides(pricing_user)
+        context["favorite_product_ids"] = get_favorited_product_ids(pricing_user)
         return context
 
     @action(detail=True, methods=["get"])
@@ -253,7 +278,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     def recommended(self, request, slug=None):
         product = self.get_object()
         products = get_recommended_products(
-            request.user, exclude_product_id=product.id, limit=8
+            get_pricing_user(request), exclude_product_id=product.id, limit=8
         )
         return Response(
             ProductListSerializer(
@@ -446,12 +471,15 @@ class SearchView(APIView):
             many=True,
             context={
                 "request": request,
+                "pricing_user": get_pricing_user(request),
                 "active_promotions": active_promotions,
                 "category_descendant_map": build_promo_category_descendant_map(
                     active_promotions
                 ),
-                "user_overrides": get_user_overrides(request.user),
-                "favorite_product_ids": get_favorited_product_ids(request.user),
+                "user_overrides": get_user_overrides(get_pricing_user(request)),
+                "favorite_product_ids": get_favorited_product_ids(
+                    get_pricing_user(request)
+                ),
             },
         )
         return Response({"results": serializer.data, "query": q})
@@ -598,14 +626,16 @@ class HomeSectionsView(APIView):
 
     def get(self, request):
         active_promotions = get_active_promotions()
+        pricing_user = get_pricing_user(request)
         context = {
             "request": request,
+            "pricing_user": pricing_user,
             "active_promotions": active_promotions,
             "category_descendant_map": build_promo_category_descendant_map(
                 active_promotions
             ),
-            "user_overrides": get_user_overrides(request.user),
-            "favorite_product_ids": get_favorited_product_ids(request.user),
+            "user_overrides": get_user_overrides(pricing_user),
+            "favorite_product_ids": get_favorited_product_ids(pricing_user),
         }
 
         best_seller_ids = (
@@ -633,7 +663,7 @@ class HomeSectionsView(APIView):
             .order_by("-created_at")[: self.SECTION_SIZE]
         )
 
-        promo_q = promoted_products_q(context["active_promotions"], request.user)
+        promo_q = promoted_products_q(context["active_promotions"], pricing_user)
         promo_qs = Product.objects.filter(
             status=Product.STATUS_PUBLISHED
         ).select_related("category", "brand")
@@ -650,7 +680,7 @@ class HomeSectionsView(APIView):
         # section entirely then, same as it already does for Best
         # Sellers/Promotions when those come back empty.
         recommended = list(
-            get_recommended_products(request.user, limit=self.SECTION_SIZE)
+            get_recommended_products(pricing_user, limit=self.SECTION_SIZE)
         )
 
         return Response(
