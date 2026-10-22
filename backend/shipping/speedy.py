@@ -144,7 +144,7 @@ class SpeedyRestClient(SpeedyClient):
             },
             # The customer pays Speedy for delivery, same as Pigeon.
             payment={"courierServicePayer": "RECIPIENT"},
-            ref1=order.number,
+            ref1=order.number[:30],
         )
         waybill = data["id"]
         label = self._post(
