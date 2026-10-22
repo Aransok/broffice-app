@@ -10,6 +10,10 @@ export function getAdminPigeonExpressLabelDownloadUrl(orderNumber: string) {
   return `${apiClient.defaults.baseURL}/admin/orders/${orderNumber}/pigeon-express-label/`
 }
 
+export function getAdminSpeedyLabelDownloadUrl(orderNumber: string) {
+  return `${apiClient.defaults.baseURL}/admin/orders/${orderNumber}/speedy-label/`
+}
+
 export function updatePigeonExpressPackage(
   orderNumber: string,
   payload: {

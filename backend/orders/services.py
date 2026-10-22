@@ -1053,6 +1053,32 @@ def create_pigeon_express_shipment_for_order(order: Order) -> None:
     )
 
 
+def create_speedy_shipment_for_order(order: Order) -> None:
+    """Registers the Speedy waybill on order confirm. No-op for non-Speedy
+    orders, already-shipped orders and the mock client (dev/test). Raises
+    SpeedyAPIError on failure — AdminOrderViewSet.confirm reports it as a
+    notification instead of blocking the confirmation."""
+    if order.shipping_method != Order.SHIPPING_SPEEDY_OFFICE:
+        return
+    if order.speedy_waybill_number:
+        return
+    try:
+        data = get_speedy_client().create_shipment(
+            order,
+            weight_kg=order.pigeon_express_package_weight_kg
+            or Decimal(settings.PIGEON_EXPRESS_DEFAULT_PACKAGE_WEIGHT_KG),
+        )
+    except NotImplementedError:
+        return
+    order.speedy_waybill_number = data["waybill"]
+    order.speedy_label_pdf.save(
+        f"{data['waybill']}.pdf", ContentFile(data["label_pdf"]), save=False
+    )
+    order.save(
+        update_fields=["speedy_waybill_number", "speedy_label_pdf", "updated_at"]
+    )
+
+
 # Pigeon Express's bulk track endpoint takes at most 100 references.
 PIGEON_EXPRESS_TRACK_BATCH_SIZE = 100
 # Shipments stop being polled once delivered, cancelled, or this old —
@@ -1217,25 +1243,13 @@ def create_order(
     if coupon_code:
         coupon = get_valid_coupon(coupon_code, user)
 
-    # Speedy isn't actually wired up for real yet, so shipping isn't charged
-    # right now (confirmed with the client - "we havent still added speedy
-    # and there is no reason to charge"). shipping_cost stays 0 regardless
-    # of method; office/city lookup still runs below since that's needed
-    # for delivery logistics either way, and calculate_price is still
-    # called (result discarded) so the integration point stays exercised
-    # for when real pricing is turned back on.
+    # Speedy shipping isn't charged at checkout (the customer pays the
+    # courier on delivery), so shipping_cost stays 0 for every speedy_* method.
     speedy_office_name = ""
     shipping_cost = Decimal(0)
     if shipping_method == Order.SHIPPING_SPEEDY_OFFICE:
-        client = get_speedy_client()
-        office = client.get_office(speedy_office_id)
-        office_city = office.city if office else delivery_city
+        office = get_speedy_client().get_office(speedy_office_id)
         speedy_office_name = office.name if office else ""
-        client.calculate_price(shipping_method=shipping_method, city=office_city)
-    elif shipping_method == Order.SHIPPING_SPEEDY_ADDRESS:
-        get_speedy_client().calculate_price(
-            shipping_method=shipping_method, city=delivery_city
-        )
 
     # Pigeon Express IS wired up for real — unlike Speedy above, this
     # actually charges the courier's real quoted price. city_name/

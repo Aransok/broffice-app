@@ -215,6 +215,8 @@ export interface Order {
   delivery_post_code: string
   speedy_office_id: string
   speedy_office_name: string
+  speedy_waybill_number: string
+  speedy_label_pdf: string | null
   pigeon_express_city_id: string
   pigeon_express_city_name: string
   pigeon_express_street_id: string

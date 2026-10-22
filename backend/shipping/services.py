@@ -32,9 +32,9 @@ class SpeedyClient(ABC):
     ) -> Decimal:
         raise NotImplementedError
 
-    def create_shipment(self, order) -> dict:
-        """Register a shipment with the courier. Not wired up anywhere yet —
-        there is no real API access to build or test this against."""
+    def create_shipment(self, order, *, weight_kg: Decimal) -> dict:
+        """Register a shipment with the courier: {"waybill", "label_pdf"}.
+        Only the real client (shipping.speedy) implements it."""
         raise NotImplementedError("create_shipment requires a real Speedy API client")
 
 

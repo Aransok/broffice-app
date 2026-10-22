@@ -287,9 +287,8 @@ const PIGEON_EXPRESS_METHODS: ShippingMethod[] = [
 type Courier = 'broffice' | 'speedy' | 'pigeon_express'
 
 // "Broffice" delivery is the store's own shipping - internally the
-// speedy_* methods (no real courier API behind them). The real Speedy
-// integration isn't available yet, hence disabled. Pigeon lockers are
-// intentionally not offered.
+// speedy_address method (no courier API behind it); the real Speedy courier
+// is speedy_office only. Pigeon lockers are intentionally not offered.
 const COURIERS: {
   id: Courier
   name: string
@@ -303,7 +302,12 @@ const COURIERS: {
     logo: brofficeLogo,
     options: [{ method: 'speedy_address', label: 'Доставка до адрес' }],
   },
-  { id: 'speedy', name: 'Speedy', logo: speedyLogo, disabled: true, options: [] },
+  {
+    id: 'speedy',
+    name: 'Speedy',
+    logo: speedyLogo,
+    options: [{ method: 'speedy_office', label: 'До офис на Speedy' }],
+  },
   {
     id: 'pigeon_express',
     name: 'Pigeon Express',

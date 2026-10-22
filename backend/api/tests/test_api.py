@@ -2698,6 +2698,59 @@ def test_admin_pigeon_express_label_download_404_before_shipment(
 
 
 @pytest.mark.django_db
+def test_admin_order_confirm_creates_speedy_shipment(
+    api_client, admin_user, sample_product, settings
+):
+    from unittest import mock
+
+    from shipping.models import SpeedyOffice
+
+    settings.SHIPPING_SPEEDY_CLIENT = "shipping.speedy.SpeedyRestClient"
+    settings.SPEEDY_USERNAME = "u"
+    settings.SPEEDY_PASSWORD = "p"
+    SpeedyOffice.objects.create(
+        external_id="77", name="Офис Тест", city="Пловдив", address="ул. 1"
+    )
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "customer_phone": "0888123456",
+            "items": [{"product_external_id": "272", "quantity": 1}],
+            "shipping_method": "speedy_office",
+            "speedy_office_id": "77",
+        },
+        format="json",
+    )
+    assert resp.status_code == 201
+    number = resp.data["number"]
+
+    def fake_post(url, json, timeout):
+        reply = mock.Mock(ok=True)
+        if url.endswith("/print/"):
+            reply.headers = {"content-type": "application/pdf"}
+            reply.content = b"%PDF-1.5"
+        else:
+            reply.headers = {"content-type": "application/json"}
+            reply.json.return_value = {"id": "63791513102"}
+        return reply
+
+    api_client.force_authenticate(user=admin_user)
+    with mock.patch("shipping.speedy.requests.post", side_effect=fake_post) as post:
+        confirm_resp = api_client.post(f"/api/v1/admin/orders/{number}/confirm/")
+        label_resp = api_client.get(f"/api/v1/admin/orders/{number}/speedy-label/")
+    api_client.force_authenticate(user=None)
+
+    assert confirm_resp.status_code == 200
+    shipment = post.call_args_list[0].kwargs["json"]
+    assert shipment["recipient"]["pickupOfficeId"] == 77
+    assert shipment["ref1"] == number
+    assert Order.objects.get(number=number).speedy_waybill_number == "63791513102"
+    assert label_resp.status_code == 200
+    assert label_resp.content == b"%PDF-1.5"
+
+
+@pytest.mark.django_db
 def test_favorites_require_auth(api_client, sample_product):
     resp = api_client.post("/api/v1/favorites/", {"product_id": sample_product.id})
     assert resp.status_code in (401, 403)

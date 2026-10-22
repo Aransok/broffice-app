@@ -805,6 +805,8 @@ class OrderSerializer(serializers.ModelSerializer):
             "delivery_post_code",
             "speedy_office_id",
             "speedy_office_name",
+            "speedy_waybill_number",
+            "speedy_label_pdf",
             "pigeon_express_city_id",
             "pigeon_express_city_name",
             "pigeon_express_street_id",

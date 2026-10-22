@@ -13,6 +13,7 @@ import {
 import {
   getAdminInvoiceDownloadUrl,
   getAdminPigeonExpressLabelDownloadUrl,
+  getAdminSpeedyLabelDownloadUrl,
   updatePigeonExpressPackage,
 } from '../../api/adminOrders'
 import { getImageUrl } from '../../api/media'
@@ -291,6 +292,14 @@ export function AdminNotificationsPage() {
                   className="mb-2 ml-3 inline-block text-xs text-primary hover:underline"
                 >
                   Изтегли товарителница ({order.pigeon_express_reference_number})
+                </a>
+              )}
+              {order.speedy_waybill_number && (
+                <a
+                  href={getAdminSpeedyLabelDownloadUrl(order.number)}
+                  className="mb-2 ml-3 inline-block text-xs text-primary hover:underline"
+                >
+                  Изтегли товарителница Speedy ({order.speedy_waybill_number})
                 </a>
               )}
               {order.pigeon_express_reference_number && (

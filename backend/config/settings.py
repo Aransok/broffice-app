@@ -356,11 +356,16 @@ COMPANY_EMAIL = os.getenv("COMPANY_EMAIL", "broffice.bg@gmail.com")
 COMPANY_PHONE = os.getenv("COMPANY_PHONE", "0878 188 288")
 COMPANY_WORKING_HOURS = os.getenv("COMPANY_WORKING_HOURS", "Пон-Пет 08:30-17:30")
 
-# Speedy shipping: no real API credentials available (docs/issues/speedy-api-shape.md).
-# Swap SHIPPING_SPEEDY_CLIENT to a real client's dotted path once they exist.
+# Speedy shipping: set SHIPPING_SPEEDY_CLIENT=shipping.speedy.SpeedyRestClient
+# plus the credentials below to use the real API; the mock needs none.
 SHIPPING_SPEEDY_CLIENT = os.getenv(
     "SHIPPING_SPEEDY_CLIENT", "shipping.services.MockSpeedyClient"
 )
+SPEEDY_BASE_URL = os.getenv("SPEEDY_BASE_URL", "https://api.speedy.bg/v1")
+SPEEDY_USERNAME = os.getenv("SPEEDY_USERNAME", "")
+SPEEDY_PASSWORD = os.getenv("SPEEDY_PASSWORD", "")
+# 505 = Speedy's standard domestic service (from their API examples).
+SPEEDY_SERVICE_ID = int(os.getenv("SPEEDY_SERVICE_ID", "505"))
 
 # VAT: Bulgaria's standard rate is 20% — this is public tax law, not a
 # company-specific fact, so it's a safe default (not an invented figure).

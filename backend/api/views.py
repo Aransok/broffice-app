@@ -60,6 +60,7 @@ from orders.services import (
     calculate_pigeon_express_quote,
     create_order,
     create_pigeon_express_shipment_for_order,
+    create_speedy_shipment_for_order,
     deactivate_used_item_promotions,
     get_admin_invoice_pdf_bytes,
     get_invoice_pdf_bytes,
@@ -87,6 +88,7 @@ from promotions.services import (
 )
 from shipping.pigeon_express import PigeonExpressAPIError, get_pigeon_express_client
 from shipping.services import get_speedy_client
+from shipping.speedy import SpeedyAPIError
 
 from .serializers import (
     AddressSerializer,
@@ -950,6 +952,21 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
     def invoice(self, request, number=None):
         return _invoice_pdf_response(self.get_object(), include_profit=True)
 
+    @action(detail=True, methods=["get"], url_path="speedy-label")
+    def speedy_label(self, request, number=None):
+        order = self.get_object()
+        if not order.speedy_label_pdf:
+            return Response(
+                {"detail": "This order has no Speedy label yet."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        with order.speedy_label_pdf.open("rb") as f:
+            response = HttpResponse(f.read(), content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="{order.speedy_waybill_number}.pdf"'
+        )
+        return response
+
     @action(detail=True, methods=["get"], url_path="pigeon-express-label")
     def pigeon_express_label(self, request, number=None):
         return _pigeon_express_label_response(self.get_object())
@@ -1020,6 +1037,16 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
                 order=order,
                 message=(
                     f"⚠ Pigeon Express: неуспешно създаване на пратка за "
+                    f"поръчка {order.number} — {exc.message}"
+                ),
+            )
+        try:
+            create_speedy_shipment_for_order(order)
+        except SpeedyAPIError as exc:
+            OrderNotification.objects.create(
+                order=order,
+                message=(
+                    f"⚠ Speedy: неуспешно създаване на пратка за "
                     f"поръчка {order.number} — {exc.message}"
                 ),
             )
@@ -1575,7 +1602,10 @@ class SpeedyOfficeListView(APIView):
     def get(self, request):
         city = request.query_params.get("city") or ""
         query = request.query_params.get("q") or ""
-        offices = get_speedy_client().search_offices(city, query)
+        try:
+            offices = get_speedy_client().search_offices(city, query)
+        except SpeedyAPIError as exc:
+            return Response({"detail": exc.message}, status=status.HTTP_502_BAD_GATEWAY)
         return Response(SpeedyOfficeSerializer(offices, many=True).data)
 
 
@@ -1589,14 +1619,7 @@ class SpeedyQuoteView(APIView):
                 {"detail": "shipping_method must be speedy_address or speedy_office"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        city = request.data.get("city") or ""
-        # Not actually charged right now (Speedy isn't wired up for real
-        # yet - confirmed with the client) - calculate_price is still
-        # called so the integration point stays exercised, but the
-        # quoted amount is discarded rather than returned, so this can
-        # never show a different number than what create_order actually
-        # charges (0).
-        get_speedy_client().calculate_price(shipping_method=shipping_method, city=city)
+        # Never charged at checkout - the customer pays the courier.
         return Response({"shipping_cost_bgn": "0.00"})
 
 

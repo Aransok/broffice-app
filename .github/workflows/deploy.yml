@@ -127,6 +127,42 @@ jobs:
 
           Set-Content -Path $EnvPath -Value $lines -Encoding utf8
           Write-Host "Pigeon Express credentials synced into .env"
+      # Same idea for Speedy. SHIPPING_SPEEDY_CLIENT is only switched to the
+      # real client once a username secret exists, so without secrets the
+      # mock stays active.
+      - name: Sync Speedy credentials into .env
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+        env:
+          SPEEDY_USERNAME: ${{ secrets.SPEEDY_USERNAME }}
+          SPEEDY_PASSWORD: ${{ secrets.SPEEDY_PASSWORD }}
+        run: |
+          if (-not $env:SPEEDY_USERNAME) { Write-Host "No Speedy secrets, skipping"; exit 0 }
+          $EnvPath = ".env"
+          $lines = @(Get-Content -Path $EnvPath -ErrorAction SilentlyContinue)
+
+          function Set-EnvLine {
+              param([string[]]$Lines, [string]$Key, [string]$Value)
+              $prefix = "$Key="
+              $found = $false
+              $result = foreach ($line in $Lines) {
+                  if ($line -like "$prefix*") {
+                      $found = $true
+                      "$Key=$Value"
+                  } else {
+                      $line
+                  }
+              }
+              $result = @($result)
+              if (-not $found) { $result += "$Key=$Value" }
+              return $result
+          }
+
+          $lines = Set-EnvLine -Lines $lines -Key "SHIPPING_SPEEDY_CLIENT" -Value "shipping.speedy.SpeedyRestClient"
+          $lines = Set-EnvLine -Lines $lines -Key "SPEEDY_USERNAME" -Value $env:SPEEDY_USERNAME
+          $lines = Set-EnvLine -Lines $lines -Key "SPEEDY_PASSWORD" -Value $env:SPEEDY_PASSWORD
+
+          Set-Content -Path $EnvPath -Value $lines -Encoding utf8
+          Write-Host "Speedy credentials synced into .env"
       - name: Redeploy
         # Explicit shell override needed: this machine's default Windows
         # PowerShell execution policy blocks running scripts at all (the

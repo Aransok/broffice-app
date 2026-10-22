@@ -116,6 +116,14 @@ class Order(TimeStampedModel):
     delivery_post_code = models.CharField(max_length=16, blank=True, default="")
     speedy_office_id = models.CharField(max_length=64, blank=True, default="")
     speedy_office_name = models.CharField(max_length=255, blank=True, default="")
+    # Set on confirm for speedy_office orders once the real waybill exists
+    # (see create_speedy_shipment_for_order).
+    speedy_waybill_number = models.CharField(
+        max_length=64, blank=True, default="", db_index=True
+    )
+    speedy_label_pdf = models.FileField(
+        upload_to="speedy-labels/", null=True, blank=True
+    )
     # Courier's price incl. VAT — added to the total as-is, not taxed again
     # (see recalc_order_total).
     shipping_cost_bgn = models.DecimalField(max_digits=12, decimal_places=2, default=0)
