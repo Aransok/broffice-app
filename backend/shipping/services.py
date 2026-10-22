@@ -19,8 +19,13 @@ from .models import SpeedyOffice
 
 class SpeedyClient(ABC):
     @abstractmethod
-    def search_offices(self, city: str, query: str = "") -> list[SpeedyOffice]:
+    def search_offices(
+        self, city: str, query: str = "", site_id: str = ""
+    ) -> list[SpeedyOffice]:
         raise NotImplementedError
+
+    def search_cities(self, query: str) -> list[dict]:
+        return []
 
     @abstractmethod
     def get_office(self, external_id: str) -> SpeedyOffice | None:
@@ -39,7 +44,9 @@ class SpeedyClient(ABC):
 
 
 class MockSpeedyClient(SpeedyClient):
-    def search_offices(self, city: str, query: str = "") -> list[SpeedyOffice]:
+    def search_offices(
+        self, city: str, query: str = "", site_id: str = ""
+    ) -> list[SpeedyOffice]:
         qs = SpeedyOffice.objects.filter(is_active=True)
         if city:
             qs = qs.filter(city__icontains=city)

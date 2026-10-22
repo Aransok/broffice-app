@@ -1602,11 +1602,25 @@ class SpeedyOfficeListView(APIView):
     def get(self, request):
         city = request.query_params.get("city") or ""
         query = request.query_params.get("q") or ""
+        site_id = request.query_params.get("site_id") or ""
         try:
-            offices = get_speedy_client().search_offices(city, query)
+            offices = get_speedy_client().search_offices(city, query, site_id)
         except SpeedyAPIError as exc:
             return Response({"detail": exc.message}, status=status.HTTP_502_BAD_GATEWAY)
         return Response(SpeedyOfficeSerializer(offices, many=True).data)
+
+
+class SpeedyCityListView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        try:
+            cities = get_speedy_client().search_cities(
+                request.query_params.get("q") or ""
+            )
+        except SpeedyAPIError as exc:
+            return Response({"detail": exc.message}, status=status.HTTP_502_BAD_GATEWAY)
+        return Response(cities)
 
 
 class SpeedyQuoteView(APIView):

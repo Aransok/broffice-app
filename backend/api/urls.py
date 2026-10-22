@@ -46,6 +46,7 @@ from .views import (
     PublicConfigView,
     RegisterView,
     SearchView,
+    SpeedyCityListView,
     SpeedyOfficeListView,
     SpeedyQuoteView,
     TrackProductViewView,
@@ -104,6 +105,7 @@ urlpatterns = [
         SpeedyOfficeListView.as_view(),
         name="speedy-offices",
     ),
+    path("shipping/speedy/cities/", SpeedyCityListView.as_view(), name="speedy-cities"),
     path("shipping/speedy/quote/", SpeedyQuoteView.as_view(), name="speedy-quote"),
     path(
         "shipping/pigeon-express/cities/",

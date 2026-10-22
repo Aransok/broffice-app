@@ -5,20 +5,33 @@ import type {
   PigeonExpressOffice,
   PigeonExpressStreet,
   ShippingMethod,
+  SpeedyCity,
   SpeedyOffice,
 } from './types'
 
-export function fetchSpeedyOffices(city: string, q: string) {
+export function fetchSpeedyOffices(siteId: string, q: string) {
   return apiClient
-    .get<SpeedyOffice[]>('/shipping/speedy/offices/', { params: { city, q } })
+    .get<SpeedyOffice[]>('/shipping/speedy/offices/', { params: { site_id: siteId, q } })
     .then((res) => res.data)
 }
 
-export function useSpeedyOffices(city: string, q: string) {
+export function useSpeedyCities(q: string) {
   return useQuery({
-    queryKey: ['speedy-offices', city, q],
-    queryFn: () => fetchSpeedyOffices(city, q),
-    enabled: city.trim().length > 0,
+    queryKey: ['speedy-cities', q],
+    queryFn: () =>
+      apiClient
+        .get<SpeedyCity[]>('/shipping/speedy/cities/', { params: { q } })
+        .then((res) => res.data),
+    enabled: q.trim().length >= 2,
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useSpeedyOffices(siteId: string, q: string) {
+  return useQuery({
+    queryKey: ['speedy-offices', siteId, q],
+    queryFn: () => fetchSpeedyOffices(siteId, q),
+    enabled: siteId.length > 0,
     placeholderData: keepPreviousData,
   })
 }
@@ -50,10 +63,9 @@ export function usePigeonExpressCities(name: string) {
 
 export function fetchPigeonExpressStreets(cityId: string, name: string) {
   return apiClient
-    .get<{ results: PigeonExpressStreet[] }>(
-      `/shipping/pigeon-express/cities/${cityId}/streets/`,
-      { params: { name } },
-    )
+    .get<{ results: PigeonExpressStreet[] }>(`/shipping/pigeon-express/cities/${cityId}/streets/`, {
+      params: { name },
+    })
     .then((res) => res.data.results)
 }
 
@@ -65,11 +77,7 @@ export function usePigeonExpressStreets(cityId: string, name: string) {
   })
 }
 
-export function fetchPigeonExpressOffices(
-  type: 'office' | 'locker',
-  cityId: string,
-  name: string,
-) {
+export function fetchPigeonExpressOffices(type: 'office' | 'locker', cityId: string, name: string) {
   return apiClient
     .get<{ results: PigeonExpressOffice[] }>('/shipping/pigeon-express/offices/', {
       params: { type, city_id: cityId, name },
@@ -77,11 +85,7 @@ export function fetchPigeonExpressOffices(
     .then((res) => res.data.results)
 }
 
-export function usePigeonExpressOffices(
-  type: 'office' | 'locker',
-  cityId: string,
-  name: string,
-) {
+export function usePigeonExpressOffices(type: 'office' | 'locker', cityId: string, name: string) {
   return useQuery({
     queryKey: ['pigeon-express-offices', type, cityId, name],
     queryFn: () => fetchPigeonExpressOffices(type, cityId, name),
@@ -104,10 +108,7 @@ export function fetchPigeonExpressPriceTable(payload: {
   pigeon_express_office_id?: string
 }) {
   return apiClient
-    .post<{ results: PigeonExpressPriceRow[] }>(
-      '/shipping/pigeon-express/price-table/',
-      payload,
-    )
+    .post<{ results: PigeonExpressPriceRow[] }>('/shipping/pigeon-express/price-table/', payload)
     .then((res) => res.data.results)
 }
 

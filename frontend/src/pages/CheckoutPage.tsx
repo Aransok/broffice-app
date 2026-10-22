@@ -10,6 +10,7 @@ import {
   usePigeonExpressCities,
   usePigeonExpressOffices,
   usePigeonExpressStreets,
+  useSpeedyCities,
   useSpeedyOffices,
 } from '../api/shipping'
 import type {
@@ -18,6 +19,7 @@ import type {
   PigeonExpressOffice,
   PigeonExpressStreet,
   ShippingMethod,
+  SpeedyCity,
   SpeedyOffice,
 } from '../api/types'
 import { Seo } from '../components/Seo'
@@ -45,12 +47,17 @@ function SpeedyOfficePicker({
   onSelect: (office: SpeedyOffice | null) => void
   selected: SpeedyOffice | null
 }) {
-  const [city, setCity] = useState('')
+  const [cityText, setCityText] = useState('')
+  const [city, setCity] = useState<SpeedyCity | null>(null)
   const [query, setQuery] = useState('')
-  const { data: offices, isFetching, isError } = useSpeedyOffices(
-    useDebounced(city),
-    useDebounced(query),
+  const { data: cities, isFetching: citiesFetching } = useSpeedyCities(
+    useDebounced(city ? '' : cityText),
   )
+  const {
+    data: offices,
+    isFetching,
+    isError,
+  } = useSpeedyOffices(city?.id ?? '', useDebounced(query))
 
   if (selected) {
     return (
@@ -74,22 +81,47 @@ function SpeedyOfficePicker({
 
   return (
     <div className="mt-3 flex flex-col gap-2">
-      <div className="flex gap-2">
-        <input
-          type="text"
-          placeholder="Град"
-          value={city}
-          onChange={(event) => setCity(event.target.value)}
-          className="flex-1 rounded-ui border border-slate-300 px-3 py-2"
-        />
+      <input
+        type="text"
+        placeholder="Град"
+        value={cityText}
+        onChange={(event) => {
+          setCityText(event.target.value)
+          setCity(null)
+        }}
+        className="rounded-ui border border-slate-300 px-3 py-2"
+      />
+      {!city && cityText.trim().length >= 2 && cities && cities.length > 0 && (
+        <ul className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-ui border border-slate-200">
+          {cities.map((item) => (
+            <li key={item.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  setCity(item)
+                  setCityText(item.name)
+                }}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-primary/10"
+              >
+                {item.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!city && citiesFetching && <p className="text-sm text-slate-500">Търсене...</p>}
+      {!city && cities && cities.length === 0 && cityText.trim().length >= 2 && !citiesFetching && (
+        <p className="text-sm text-slate-500">Няма намерени градове.</p>
+      )}
+      {city && (
         <input
           type="text"
           placeholder="Търси офис по име"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          className="flex-1 rounded-ui border border-slate-300 px-3 py-2"
+          className="rounded-ui border border-slate-300 px-3 py-2"
         />
-      </div>
+      )}
       {isFetching && <p className="text-sm text-slate-500">Търсене...</p>}
       {isError && (
         <p className="text-sm text-red-600">Офисите не могат да се заредят. Опитайте пак.</p>
@@ -110,7 +142,7 @@ function SpeedyOfficePicker({
           ))}
         </ul>
       )}
-      {offices && offices.length === 0 && city && !isFetching && (
+      {city && offices && offices.length === 0 && !isFetching && (
         <p className="text-sm text-slate-500">Няма намерени офиси.</p>
       )}
     </div>
@@ -184,8 +216,7 @@ function PigeonExpressCityStreetPicker({
 }) {
   const [streetQuery, setStreetQuery] = useState(street?.name ?? '')
   const { data: streets, isFetching } = usePigeonExpressStreets(city?.id ?? '', streetQuery)
-  const showResults =
-    streetQuery.trim().length >= 2 && (!street || street.name !== streetQuery)
+  const showResults = streetQuery.trim().length >= 2 && (!street || street.name !== streetQuery)
 
   return (
     <div className="mt-3 flex flex-col gap-3">
@@ -207,9 +238,7 @@ function PigeonExpressCityStreetPicker({
               onChange={(event) => setStreetQuery(event.target.value)}
               className="rounded-ui border border-slate-300 px-3 py-2"
             />
-            {showResults && isFetching && (
-              <p className="text-sm text-slate-500">Търсене...</p>
-            )}
+            {showResults && isFetching && <p className="text-sm text-slate-500">Търсене...</p>}
             {showResults && streets && streets.length > 0 && (
               <ul className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-ui border border-slate-200">
                 {streets.map((s) => (
@@ -377,14 +406,10 @@ export function CheckoutPage() {
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('speedy_address')
   const [selectedOffice, setSelectedOffice] = useState<SpeedyOffice | null>(null)
   const [pigeonExpressCity, setPigeonExpressCity] = useState<PigeonExpressCity | null>(null)
-  const [pigeonExpressStreet, setPigeonExpressStreet] = useState<PigeonExpressStreet | null>(
-    null,
-  )
+  const [pigeonExpressStreet, setPigeonExpressStreet] = useState<PigeonExpressStreet | null>(null)
   const [pigeonExpressStreetNumber, setPigeonExpressStreetNumber] = useState('')
   const [pigeonExpressAdditionalInfo, setPigeonExpressAdditionalInfo] = useState('')
-  const [pigeonExpressOffice, setPigeonExpressOffice] = useState<PigeonExpressOffice | null>(
-    null,
-  )
+  const [pigeonExpressOffice, setPigeonExpressOffice] = useState<PigeonExpressOffice | null>(null)
   const [shippingCost, setShippingCost] = useState<string | null>(null)
   // Distinct from shippingCost being merely unset (not yet quoted) —
   // a failed quote must never silently read as "free shipping" in the
@@ -393,9 +418,7 @@ export function CheckoutPage() {
   // Pigeon's price per weight bracket to the chosen destination. Shown for
   // information only: the real weight isn't known, so the customer pays the
   // courier on delivery and shipping isn't added to the order total.
-  const [pigeonPriceTable, setPigeonPriceTable] = useState<PigeonExpressPriceRow[] | null>(
-    null,
-  )
+  const [pigeonPriceTable, setPigeonPriceTable] = useState<PigeonExpressPriceRow[] | null>(null)
   const [courier, setCourier] = useState<Courier>('broffice')
 
   // Picking a courier/option resets any stale quote state from the previous
@@ -780,15 +803,15 @@ export function CheckoutPage() {
           <div className="mt-3 flex flex-wrap gap-4">
             {(COURIERS.find((c) => c.id === courier)?.options ?? []).length > 1 &&
               COURIERS.find((c) => c.id === courier)?.options.map((option) => (
-              <label key={option.method} className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  checked={shippingMethod === option.method}
-                  onChange={() => selectShippingMethod(option.method)}
-                />
-                {option.label}
-              </label>
-            ))}
+                <label key={option.method} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    checked={shippingMethod === option.method}
+                    onChange={() => selectShippingMethod(option.method)}
+                  />
+                  {option.label}
+                </label>
+              ))}
           </div>
 
           {shippingMethod === 'speedy_address' && (

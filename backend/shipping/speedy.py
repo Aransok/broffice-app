@@ -65,17 +65,38 @@ class SpeedyRestClient(SpeedyClient):
             raise SpeedyAPIError(data["error"].get("message") or "Speedy error")
         return data
 
-    def search_offices(self, city: str, query: str = "") -> list[SpeedyOffice]:
-        if not city:
+    def search_cities(self, query: str) -> list[dict]:
+        if len(query.strip()) < 2:
             return []
-        sites = self._post("location/site/", countryId=SPEEDY_COUNTRY_BG, name=city)[
-            "sites"
+        sites = self._post(
+            "location/site/", countryId=SPEEDY_COUNTRY_BG, name=query.strip()
+        )["sites"]
+        return [
+            {
+                "id": str(site["id"]),
+                "name": site["name"],
+                "label": f"{site['type']} {site['name']}, общ. {site['municipality']}, обл. {site['region']}",
+            }
+            for site in sites[:20]
         ]
+
+    def search_offices(
+        self, city: str, query: str = "", site_id: str = ""
+    ) -> list[SpeedyOffice]:
+        if site_id:
+            site_ids = [site_id]
+        elif city:
+            # A short city name matches many villages; the first few hits are
+            # the best matches and keep this to a handful of API calls.
+            sites = self._post(
+                "location/site/", countryId=SPEEDY_COUNTRY_BG, name=city
+            )["sites"]
+            site_ids = [site["id"] for site in sites[:3]]
+        else:
+            return []
         offices = []
-        # A short city name matches many villages; the first few hits are the
-        # best matches and keep this to a handful of API calls.
-        for site in sites[:3]:
-            body = {"siteId": site["id"]}
+        for sid in site_ids:
+            body = {"siteId": sid}
             if query:
                 body["name"] = query
             for office in self._post("location/office/", **body).get("offices", []):

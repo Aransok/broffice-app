@@ -3825,3 +3825,39 @@ def test_speedy_phone_normalisation():
     assert _speedy_phone("+359 (88) 944-5566") == "+359889445566"
     assert _speedy_phone("00359889445566") == "+359889445566"
     assert _speedy_phone("0889 445 566") == "0889445566"
+
+
+def test_speedy_cities_and_offices_by_site(db, client, settings):
+    from unittest.mock import patch
+
+    settings.SHIPPING_SPEEDY_CLIENT = "shipping.speedy.SpeedyRestClient"
+    settings.SPEEDY_USERNAME = settings.SPEEDY_PASSWORD = "x"
+    sites = {
+        "sites": [
+            {
+                "id": 10135,
+                "type": "гр.",
+                "name": "Варна",
+                "municipality": "Варна",
+                "region": "Варна",
+            }
+        ]
+    }
+    offices = {
+        "offices": [
+            {
+                "id": 4,
+                "name": "ВАРНА - СКЛАД",
+                "address": {"siteName": "Варна", "fullAddressString": "ул. 1"},
+            }
+        ]
+    }
+
+    def fake_post(self, path, **body):
+        return sites if path == "location/site/" else offices
+
+    with patch("shipping.speedy.SpeedyRestClient._post", fake_post):
+        cities = client.get("/api/v1/shipping/speedy/cities/?q=Вар").json()
+        found = client.get("/api/v1/shipping/speedy/offices/?site_id=10135").json()
+    assert cities[0]["id"] == "10135" and "Варна" in cities[0]["label"]
+    assert found[0]["external_id"] == "4"

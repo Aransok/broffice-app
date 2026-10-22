@@ -121,6 +121,12 @@ export interface Address {
   company_mol: string
 }
 
+export interface SpeedyCity {
+  id: string
+  name: string
+  label: string
+}
+
 export interface SpeedyOffice {
   id: string
   external_id: string
