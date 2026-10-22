@@ -3817,3 +3817,11 @@ def test_non_admin_cannot_preview_as_another_client(api_client):
         "/api/v1/products/?on_promotion=1", HTTP_X_PREVIEW_AS_USER=str(target.pk)
     ).data["results"]
     assert rows == []
+
+
+def test_speedy_phone_normalisation():
+    from shipping.speedy import _speedy_phone
+
+    assert _speedy_phone("+359 (88) 944-5566") == "+359889445566"
+    assert _speedy_phone("00359889445566") == "+359889445566"
+    assert _speedy_phone("0889 445 566") == "0889445566"

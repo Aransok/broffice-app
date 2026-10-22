@@ -6,6 +6,7 @@ Selected by SHIPPING_SPEEDY_CLIENT; the mock stays the default so dev/test
 need no credentials.
 """
 
+import re
 from decimal import Decimal
 
 import requests
@@ -17,6 +18,16 @@ from .models import SpeedyOffice
 from .services import SpeedyClient
 
 SPEEDY_COUNTRY_BG = 100
+
+
+def _speedy_phone(raw: str) -> str:
+    """Speedy wants digits with an optional leading + and a leading 0 or +."""
+    digits = re.sub(r"\D", "", raw)
+    if digits.startswith("00"):
+        return "+" + digits[2:]
+    if digits.startswith("359"):
+        return "+" + digits
+    return digits
 
 
 class SpeedyAPIError(Exception):
@@ -93,13 +104,18 @@ class SpeedyRestClient(SpeedyClient):
 
     def create_shipment(self, order, *, weight_kg: Decimal) -> dict:
         """Returns {"waybill": str, "label_pdf": bytes}."""
+        person = order.customer_name or order.customer_email
         recipient = {
-            "phone1": {"number": order.customer_phone},
+            "phone1": {"number": _speedy_phone(order.customer_phone)},
             "privatePerson": not order.is_company_order,
-            "clientName": order.customer_name or order.customer_email,
+            "clientName": (
+                (order.company_name or person) if order.is_company_order else person
+            )[:60],
             "email": order.customer_email,
             "pickupOfficeId": int(order.speedy_office_id),
         }
+        if order.is_company_order:
+            recipient["contactName"] = person[:60]  # required for companies
         service = {
             "autoAdjustPickupDate": True,
             "serviceId": settings.SPEEDY_SERVICE_ID,
@@ -108,6 +124,7 @@ class SpeedyRestClient(SpeedyClient):
             service["additionalServices"] = {
                 "cod": {
                     "amount": float(bgn_to_eur(order.total_bgn)),
+                    "currencyCode": "EUR",
                     "processingType": "CASH",
                 }
             }
