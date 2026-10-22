@@ -29,16 +29,48 @@ import pigeonLogo from '../assets/couriers/pigeon.svg'
 import speedyLogo from '../assets/couriers/speedy.png'
 import { bgnToEur } from '../utils/currency'
 
+function useDebounced(value: string, delay = 400) {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(timer)
+  }, [value, delay])
+  return debounced
+}
+
 function SpeedyOfficePicker({
   onSelect,
   selected,
 }: {
-  onSelect: (office: SpeedyOffice) => void
+  onSelect: (office: SpeedyOffice | null) => void
   selected: SpeedyOffice | null
 }) {
   const [city, setCity] = useState('')
   const [query, setQuery] = useState('')
-  const { data: offices, isFetching } = useSpeedyOffices(city, query)
+  const { data: offices, isFetching, isError } = useSpeedyOffices(
+    useDebounced(city),
+    useDebounced(query),
+  )
+
+  if (selected) {
+    return (
+      <div className="mt-3 flex items-start justify-between gap-3 rounded-ui border border-primary bg-primary/10 px-3 py-2 text-sm">
+        <div>
+          <div className="font-medium text-slate-800">Избран офис: {selected.name}</div>
+          <div className="text-slate-500">
+            {selected.city}, {selected.address}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => onSelect(null)}
+          className="shrink-0 text-primary hover:underline"
+        >
+          Промени
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="mt-3 flex flex-col gap-2">
@@ -59,6 +91,9 @@ function SpeedyOfficePicker({
         />
       </div>
       {isFetching && <p className="text-sm text-slate-500">Търсене...</p>}
+      {isError && (
+        <p className="text-sm text-red-600">Офисите не могат да се заредят. Опитайте пак.</p>
+      )}
       {offices && offices.length > 0 && (
         <ul className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-ui border border-slate-200">
           {offices.map((office) => (
@@ -66,11 +101,7 @@ function SpeedyOfficePicker({
               <button
                 type="button"
                 onClick={() => onSelect(office)}
-                className={
-                  selected?.id === office.id
-                    ? 'w-full bg-primary/10 px-3 py-2 text-left text-sm'
-                    : 'w-full px-3 py-2 text-left text-sm hover:bg-primary/10'
-                }
+                className="w-full px-3 py-2 text-left text-sm hover:bg-primary/10"
               >
                 <div className="font-medium text-slate-800">{office.name}</div>
                 <div className="text-slate-500">{office.address}</div>
@@ -79,7 +110,7 @@ function SpeedyOfficePicker({
           ))}
         </ul>
       )}
-      {offices && offices.length === 0 && city && (
+      {offices && offices.length === 0 && city && !isFetching && (
         <p className="text-sm text-slate-500">Няма намерени офиси.</p>
       )}
     </div>

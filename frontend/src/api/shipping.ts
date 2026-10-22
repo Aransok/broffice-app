@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { apiClient } from './client'
 import type {
   PigeonExpressCity,
@@ -19,6 +19,7 @@ export function useSpeedyOffices(city: string, q: string) {
     queryKey: ['speedy-offices', city, q],
     queryFn: () => fetchSpeedyOffices(city, q),
     enabled: city.trim().length > 0,
+    placeholderData: keepPreviousData,
   })
 }
 
