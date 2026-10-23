@@ -58,6 +58,7 @@ from orders.services import (
     add_item_to_pending_order,
     calculate_pigeon_express_price_table,
     calculate_pigeon_express_quote,
+    calculate_speedy_price_table,
     create_order,
     create_pigeon_express_shipment_for_order,
     create_speedy_shipment_for_order,
@@ -724,6 +725,12 @@ class OrderCreateView(APIView):
                 delivery_city=data.get("delivery_city") or "",
                 delivery_post_code=data.get("delivery_post_code") or "",
                 speedy_office_id=data.get("speedy_office_id") or "",
+                speedy_site_id=data.get("speedy_site_id") or "",
+                speedy_site_name=data.get("speedy_site_name") or "",
+                speedy_street_id=data.get("speedy_street_id") or "",
+                speedy_street_name=data.get("speedy_street_name") or "",
+                speedy_street_number=data.get("speedy_street_number") or "",
+                speedy_additional_info=data.get("speedy_additional_info") or "",
                 pigeon_express_city_id=data.get("pigeon_express_city_id") or "",
                 pigeon_express_street_id=data.get("pigeon_express_street_id") or "",
                 pigeon_express_street_name=data.get("pigeon_express_street_name") or "",
@@ -1623,14 +1630,48 @@ class SpeedyCityListView(APIView):
         return Response(cities)
 
 
+class SpeedyStreetListView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        try:
+            streets = get_speedy_client().search_streets(
+                request.query_params.get("site_id") or "",
+                request.query_params.get("q") or "",
+            )
+        except SpeedyAPIError as exc:
+            return Response({"detail": exc.message}, status=status.HTTP_502_BAD_GATEWAY)
+        return Response(streets)
+
+
+class SpeedyPriceTableView(APIView):
+    """Speedy's price per weight bracket to the chosen office/city — the
+    checkout shows this table; the customer pays the courier."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            rows = calculate_speedy_price_table(request.data)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except SpeedyAPIError as exc:
+            return Response({"detail": exc.message}, status=status.HTTP_502_BAD_GATEWAY)
+        return Response({"results": rows})
+
+
 class SpeedyQuoteView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         shipping_method = request.data.get("shipping_method") or ""
-        if shipping_method not in ("speedy_address", "speedy_office"):
+        if shipping_method not in (
+            "speedy_address",
+            "speedy_office",
+            "speedy_courier_address",
+        ):
             return Response(
-                {"detail": "shipping_method must be speedy_address or speedy_office"},
+                {"detail": "shipping_method must be a speedy_* method"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         # Never charged at checkout - the customer pays the courier.

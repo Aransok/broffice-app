@@ -7,6 +7,7 @@ import type {
   ShippingMethod,
   SpeedyCity,
   SpeedyOffice,
+  SpeedyStreet,
 } from './types'
 
 export function fetchSpeedyOffices(siteId: string, q: string) {
@@ -25,6 +26,27 @@ export function useSpeedyCities(q: string) {
     enabled: q.trim().length >= 2,
     placeholderData: keepPreviousData,
   })
+}
+
+export function useSpeedyStreets(siteId: string, q: string) {
+  return useQuery({
+    queryKey: ['speedy-streets', siteId, q],
+    queryFn: () =>
+      apiClient
+        .get<SpeedyStreet[]>('/shipping/speedy/streets/', { params: { site_id: siteId, q } })
+        .then((res) => res.data),
+    enabled: Boolean(siteId) && q.trim().length >= 2,
+  })
+}
+
+export function fetchSpeedyPriceTable(payload: {
+  shipping_method: ShippingMethod
+  speedy_site_id?: string
+  speedy_office_id?: string
+}) {
+  return apiClient
+    .post<{ results: PigeonExpressPriceRow[] }>('/shipping/speedy/price-table/', payload)
+    .then((res) => res.data.results)
 }
 
 export function useSpeedyOffices(siteId: string, q: string) {

@@ -31,10 +31,15 @@ class SpeedyClient(ABC):
     def get_office(self, external_id: str) -> SpeedyOffice | None:
         raise NotImplementedError
 
+    def search_streets(self, site_id: str, query: str) -> list[dict]:
+        return []
+
     @abstractmethod
     def calculate_price(
-        self, *, shipping_method: str, city: str, weight_kg: Decimal | None = None
+        self, *, weight_kg: Decimal, site_id: str = "", office_id: str = ""
     ) -> Decimal:
+        """Delivery price in BGN, VAT included — to an office, or to an
+        address in the site."""
         raise NotImplementedError
 
     def create_shipment(self, order, *, weight_kg: Decimal) -> dict:
@@ -60,7 +65,7 @@ class MockSpeedyClient(SpeedyClient):
         ).first()
 
     def calculate_price(
-        self, *, shipping_method: str, city: str, weight_kg: Decimal | None = None
+        self, *, weight_kg: Decimal, site_id: str = "", office_id: str = ""
     ) -> Decimal:
         return Decimal(str(settings.SPEEDY_MOCK_FLAT_RATE_BGN))
 

@@ -347,9 +347,7 @@ export function AdminNotificationsPage() {
                             ) : (
                               item.product_name
                             )}
-                            {supplierId && (
-                              <span className="text-slate-400"> · №{supplierId}</span>
-                            )}{' '}
+                            {supplierId && <span className="text-slate-400"> · №{supplierId}</span>}{' '}
                             x{item.quantity}
                           </span>
                           {order.user && item.product && (
@@ -392,9 +390,7 @@ export function AdminNotificationsPage() {
                           type="number"
                           min={1}
                           value={addQuantity}
-                          onChange={(event) =>
-                            setAddQuantity(Number(event.target.value) || 1)
-                          }
+                          onChange={(event) => setAddQuantity(Number(event.target.value) || 1)}
                           className="ml-1 w-16 rounded-ui border border-slate-300 px-2 py-1 text-sm"
                         />
                       </label>
@@ -434,17 +430,25 @@ export function AdminNotificationsPage() {
                     Доставка: {SHIPPING_LABELS[order.shipping_method] ?? order.shipping_method}
                     {order.shipping_method === 'speedy_office'
                       ? ` — ${order.speedy_office_name}`
-                      : order.shipping_method === 'pigeon_express_address'
+                      : order.shipping_method === 'speedy_courier_address'
                         ? ` — ${[
-                            `${order.pigeon_express_street_name} ${order.pigeon_express_street_number}`.trim(),
-                            order.pigeon_express_city_name,
+                            `${order.speedy_street_name} ${order.speedy_street_number}`.trim(),
+                            order.speedy_additional_info,
+                            order.speedy_site_name,
                           ]
                             .filter(Boolean)
                             .join(', ')}`
-                        : order.shipping_method === 'pigeon_express_office' ||
-                            order.shipping_method === 'pigeon_express_locker'
-                          ? ` — ${order.pigeon_express_office_name}`
-                          : ` — ${[order.delivery_address_line, `${order.delivery_city} ${order.delivery_post_code}`.trim()].filter(Boolean).join(', ')}`}
+                        : order.shipping_method === 'pigeon_express_address'
+                          ? ` — ${[
+                              `${order.pigeon_express_street_name} ${order.pigeon_express_street_number}`.trim(),
+                              order.pigeon_express_city_name,
+                            ]
+                              .filter(Boolean)
+                              .join(', ')}`
+                          : order.shipping_method === 'pigeon_express_office' ||
+                              order.shipping_method === 'pigeon_express_locker'
+                            ? ` — ${order.pigeon_express_office_name}`
+                            : ` — ${[order.delivery_address_line, `${order.delivery_city} ${order.delivery_post_code}`.trim()].filter(Boolean).join(', ')}`}
                   </p>
                 )}
                 {order.shipping_method === 'pigeon_express_address' &&
@@ -463,9 +467,7 @@ export function AdminNotificationsPage() {
                   </>
                 )}
                 <p>Плащане: {PAYMENT_LABELS[order.payment_method] ?? order.payment_method}</p>
-                <p className="font-medium text-slate-900">
-                  Общо: {formatEur(order.total_bgn)}
-                </p>
+                <p className="font-medium text-slate-900">Общо: {formatEur(order.total_bgn)}</p>
                 {order.total_profit_bgn !== null && (
                   <p className="font-medium text-green-700">
                     Печалба: {formatEur(order.total_profit_bgn)}
@@ -524,12 +526,13 @@ export function AdminNotificationsPage() {
                         />
                       </label>
                     </div>
-                    {order.pigeon_express_suggested_weight_kg && !order.pigeon_express_package_weight_kg && (
-                      <p className="mb-2 text-xs text-slate-500">
-                        Предложено тегло по продуктови данни:{' '}
-                        {order.pigeon_express_suggested_weight_kg} кг — проверете преди запис.
-                      </p>
-                    )}
+                    {order.pigeon_express_suggested_weight_kg &&
+                      !order.pigeon_express_package_weight_kg && (
+                        <p className="mb-2 text-xs text-slate-500">
+                          Предложено тегло по продуктови данни:{' '}
+                          {order.pigeon_express_suggested_weight_kg} кг — проверете преди запис.
+                        </p>
+                      )}
                     <div className="flex gap-2">
                       <button
                         type="button"

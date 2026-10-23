@@ -3861,3 +3861,83 @@ def test_speedy_cities_and_offices_by_site(db, client, settings):
         found = client.get("/api/v1/shipping/speedy/offices/?site_id=10135").json()
     assert cities[0]["id"] == "10135" and "Варна" in cities[0]["label"]
     assert found[0]["external_id"] == "4"
+
+
+def test_speedy_courier_address_streets_price_table_and_order(
+    api_client, admin_user, sample_product, settings
+):
+    from unittest import mock
+
+    settings.SHIPPING_SPEEDY_CLIENT = "shipping.speedy.SpeedyRestClient"
+    settings.SPEEDY_USERNAME = settings.SPEEDY_PASSWORD = "x"
+    settings.PIGEON_EXPRESS_PRICE_TABLE_KG = ["1", "3"]
+    bodies = []
+
+    def fake_post(url, json, timeout):
+        bodies.append((url, json))
+        reply = mock.Mock(ok=True)
+        reply.headers = {"content-type": "application/json"}
+        if url.endswith("/location/street/"):
+            reply.json.return_value = {
+                "streets": [{"id": 12795, "type": "ул.", "name": "Ген. Гурко"}]
+            }
+        elif url.endswith("/calculate/"):
+            reply.json.return_value = {"calculations": [{"price": {"total": 1.95583}}]}
+        elif url.endswith("/print/"):
+            reply.headers = {"content-type": "application/pdf"}
+            reply.content = b"%PDF-1.5"
+        else:
+            reply.json.return_value = {"id": "63791513102"}
+        return reply
+
+    with mock.patch("shipping.speedy.requests.post", side_effect=fake_post):
+        streets = api_client.get(
+            "/api/v1/shipping/speedy/streets/?site_id=10135&q=Гурко"
+        ).json()
+        table = api_client.post(
+            "/api/v1/shipping/speedy/price-table/",
+            {"shipping_method": "speedy_courier_address", "speedy_site_id": "10135"},
+            format="json",
+        ).json()
+        bad = api_client.post(
+            "/api/v1/shipping/speedy/price-table/",
+            {"shipping_method": "speedy_courier_address"},
+            format="json",
+        )
+        order_resp = api_client.post(
+            "/api/v1/orders/",
+            {
+                "customer_email": "buyer@example.com",
+                "customer_phone": "0888123456",
+                "items": [{"product_external_id": "272", "quantity": 1}],
+                "shipping_method": "speedy_courier_address",
+                "speedy_site_id": "10135",
+                "speedy_site_name": "Варна",
+                "speedy_street_id": "12795",
+                "speedy_street_name": "ул. Ген. Гурко",
+                "speedy_street_number": "5",
+                "speedy_additional_info": "ет.2",
+            },
+            format="json",
+        )
+        number = order_resp.data["number"]
+        api_client.force_authenticate(user=admin_user)
+        confirm = api_client.post(f"/api/v1/admin/orders/{number}/confirm/")
+        api_client.force_authenticate(user=None)
+
+    assert streets == [{"id": "12795", "name": "ул. Ген. Гурко"}]
+    assert [(r["from_kg"], r["to_kg"], r["price_bgn"]) for r in table["results"]] == [
+        ("0", "1", "3.83"),
+        ("1", "3", "3.83"),
+    ]
+    assert bad.status_code == 400
+    assert order_resp.status_code == 201
+    assert confirm.status_code == 200
+    shipment = next(b for u, b in bodies if u.endswith("/shipment/"))
+    assert shipment["recipient"]["address"] == {
+        "siteId": 10135,
+        "streetId": 12795,
+        "streetNo": "5",
+        "addressNote": "ет.2",
+    }
+    assert "pickupOfficeId" not in shipment["recipient"]

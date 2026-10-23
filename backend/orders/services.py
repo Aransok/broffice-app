@@ -36,6 +36,7 @@ from shipping.pigeon_express import (
     get_pigeon_express_client,
 )
 from shipping.services import get_speedy_client
+from shipping.speedy import SpeedyAPIError
 
 PAYMENT_METHOD_LABELS = dict(Order.PAYMENT_METHOD_CHOICES)
 SHIPPING_METHOD_LABELS = dict(Order.SHIPPING_METHOD_CHOICES)
@@ -983,6 +984,49 @@ def calculate_pigeon_express_price_table(data: dict) -> list[dict]:
     return rows
 
 
+def calculate_speedy_price_table(data: dict) -> list[dict]:
+    """Speedy's price per weight bracket (same brackets as Pigeon's) to the
+    chosen office or city — shown at checkout; the customer pays the courier.
+    A bracket Speedy rejects is left out; raises SpeedyAPIError only if every
+    bracket fails."""
+    method = data.get("shipping_method")
+    if method == Order.SHIPPING_SPEEDY_OFFICE and data.get("speedy_office_id"):
+        where = {"office_id": str(data["speedy_office_id"])}
+    elif method == Order.SHIPPING_SPEEDY_COURIER_ADDRESS and data.get("speedy_site_id"):
+        where = {"site_id": str(data["speedy_site_id"])}
+    else:
+        raise ValueError(
+            "shipping_method speedy_office needs speedy_office_id; "
+            "speedy_courier_address needs speedy_site_id"
+        )
+    weights = [Decimal(w) for w in settings.PIGEON_EXPRESS_PRICE_TABLE_KG]
+
+    def price_for(weight: Decimal):
+        try:
+            return get_speedy_client().calculate_price(weight_kg=weight, **where)
+        except SpeedyAPIError as exc:
+            return exc
+
+    with ThreadPoolExecutor(max_workers=len(weights)) as pool:
+        prices = list(pool.map(price_for, weights))
+
+    rows = []
+    previous = Decimal(0)
+    for weight, price in zip(weights, prices, strict=True):
+        if not isinstance(price, SpeedyAPIError):
+            rows.append(
+                {
+                    "from_kg": str(previous),
+                    "to_kg": str(weight),
+                    "price_bgn": str(price),
+                }
+            )
+        previous = weight
+    if not rows:
+        raise prices[0]
+    return rows
+
+
 def create_pigeon_express_shipment_for_order(order: Order) -> None:
     """Registers the real shipment with Pigeon Express on order confirm
     (not at checkout, since final contents/totals aren't settled until
@@ -1058,7 +1102,10 @@ def create_speedy_shipment_for_order(order: Order) -> None:
     orders, already-shipped orders and the mock client (dev/test). Raises
     SpeedyAPIError on failure — AdminOrderViewSet.confirm reports it as a
     notification instead of blocking the confirmation."""
-    if order.shipping_method != Order.SHIPPING_SPEEDY_OFFICE:
+    if order.shipping_method not in (
+        Order.SHIPPING_SPEEDY_OFFICE,
+        Order.SHIPPING_SPEEDY_COURIER_ADDRESS,
+    ):
         return
     if order.speedy_waybill_number:
         return
@@ -1200,6 +1247,12 @@ def create_order(
     delivery_city="",
     delivery_post_code="",
     speedy_office_id="",
+    speedy_site_id="",
+    speedy_site_name="",
+    speedy_street_id="",
+    speedy_street_name="",
+    speedy_street_number="",
+    speedy_additional_info="",
     pigeon_express_city_id="",
     pigeon_express_street_id="",
     pigeon_express_street_name="",
@@ -1296,6 +1349,12 @@ def create_order(
         delivery_post_code=delivery_post_code or "",
         speedy_office_id=speedy_office_id or "",
         speedy_office_name=speedy_office_name,
+        speedy_site_id=speedy_site_id or "",
+        speedy_site_name=speedy_site_name or "",
+        speedy_street_id=speedy_street_id or "",
+        speedy_street_name=speedy_street_name or "",
+        speedy_street_number=speedy_street_number or "",
+        speedy_additional_info=speedy_additional_info or "",
         pigeon_express_city_id=pigeon_express_city_id or "",
         pigeon_express_city_name=pigeon_express_city_name,
         pigeon_express_street_id=pigeon_express_street_id or "",

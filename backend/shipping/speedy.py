@@ -12,7 +12,7 @@ from decimal import Decimal
 import requests
 from django.conf import settings
 
-from common.currency import bgn_to_eur
+from common.currency import bgn_to_eur, eur_to_bgn
 
 from .models import SpeedyOffice
 from .services import SpeedyClient
@@ -118,10 +118,37 @@ class SpeedyRestClient(SpeedyClient):
             external_id=external_id, is_active=True
         ).first()
 
+    def search_streets(self, site_id: str, query: str) -> list[dict]:
+        if not site_id or len(query.strip()) < 2:
+            return []
+        streets = self._post(
+            "location/street/", siteId=int(site_id), name=query.strip()
+        ).get("streets", [])
+        return [
+            {"id": str(street["id"]), "name": f"{street['type']} {street['name']}"}
+            for street in streets[:20]
+        ]
+
     def calculate_price(
-        self, *, shipping_method: str, city: str, weight_kg: Decimal | None = None
+        self, *, weight_kg: Decimal, site_id: str = "", office_id: str = ""
     ) -> Decimal:
-        raise NotImplementedError("Speedy shipping is paid to the courier, not quoted")
+        recipient = (
+            {"privatePerson": True, "pickupOfficeId": int(office_id)}
+            if office_id
+            else {"privatePerson": True, "addressLocation": {"siteId": int(site_id)}}
+        )
+        data = self._post(
+            "calculate/",
+            recipient=recipient,
+            service={
+                "autoAdjustPickupDate": True,
+                "serviceIds": [settings.SPEEDY_SERVICE_ID],
+            },
+            content={"parcelsCount": 1, "totalWeight": float(weight_kg)},
+            payment={"courierServicePayer": "RECIPIENT"},
+        )
+        # Totals come back in EUR with VAT included.
+        return eur_to_bgn(Decimal(str(data["calculations"][0]["price"]["total"])))
 
     def create_shipment(self, order, *, weight_kg: Decimal) -> dict:
         """Returns {"waybill": str, "label_pdf": bytes}."""
@@ -133,8 +160,17 @@ class SpeedyRestClient(SpeedyClient):
                 (order.company_name or person) if order.is_company_order else person
             )[:60],
             "email": order.customer_email,
-            "pickupOfficeId": int(order.speedy_office_id),
         }
+        if order.shipping_method == order.SHIPPING_SPEEDY_COURIER_ADDRESS:
+            address = {"siteId": int(order.speedy_site_id)}
+            if order.speedy_street_id:
+                address["streetId"] = int(order.speedy_street_id)
+                address["streetNo"] = order.speedy_street_number
+            if order.speedy_additional_info:
+                address["addressNote"] = order.speedy_additional_info
+            recipient["address"] = address
+        else:
+            recipient["pickupOfficeId"] = int(order.speedy_office_id)
         if order.is_company_order:
             recipient["contactName"] = person[:60]  # required for companies
         service = {

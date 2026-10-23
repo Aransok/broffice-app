@@ -5,6 +5,7 @@ import { type CouponDiscountType, validateCoupon } from '../api/coupons'
 import { createOrder } from '../api/orders'
 import {
   fetchPigeonExpressPriceTable,
+  fetchSpeedyPriceTable,
   fetchSpeedyQuote,
   type PigeonExpressPriceRow,
   usePigeonExpressCities,
@@ -12,6 +13,7 @@ import {
   usePigeonExpressStreets,
   useSpeedyCities,
   useSpeedyOffices,
+  useSpeedyStreets,
 } from '../api/shipping'
 import type {
   PaymentMethod,
@@ -21,6 +23,7 @@ import type {
   ShippingMethod,
   SpeedyCity,
   SpeedyOffice,
+  SpeedyStreet,
 } from '../api/types'
 import { Seo } from '../components/Seo'
 import { useAuth } from '../context/AuthContext'
@@ -40,6 +43,150 @@ function useDebounced(value: string, delay = 400) {
   return debounced
 }
 
+function SpeedyCityPicker({ onChange }: { onChange: (city: SpeedyCity | null) => void }) {
+  const [cityText, setCityText] = useState('')
+  const [city, setCity] = useState<SpeedyCity | null>(null)
+  const { data: cities, isFetching } = useSpeedyCities(useDebounced(city ? '' : cityText))
+
+  return (
+    <>
+      <input
+        type="text"
+        placeholder="Град"
+        value={cityText}
+        onChange={(event) => {
+          setCityText(event.target.value)
+          setCity(null)
+          onChange(null)
+        }}
+        className="rounded-ui border border-slate-300 px-3 py-2"
+      />
+      {!city && cityText.trim().length >= 2 && cities && cities.length > 0 && (
+        <ul className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-ui border border-slate-200">
+          {cities.map((item) => (
+            <li key={item.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  setCity(item)
+                  setCityText(item.name)
+                  onChange(item)
+                }}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-primary/10"
+              >
+                {item.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!city && isFetching && <p className="text-sm text-slate-500">Търсене...</p>}
+      {!city && cities && cities.length === 0 && cityText.trim().length >= 2 && !isFetching && (
+        <p className="text-sm text-slate-500">Няма намерени градове.</p>
+      )}
+    </>
+  )
+}
+
+function SpeedyAddressPicker({
+  city,
+  onSelectCity,
+  street,
+  onSelectStreet,
+  streetNumber,
+  onStreetNumberChange,
+  additionalInfo,
+  onAdditionalInfoChange,
+}: {
+  city: SpeedyCity | null
+  onSelectCity: (city: SpeedyCity | null) => void
+  street: SpeedyStreet | null
+  onSelectStreet: (street: SpeedyStreet | null) => void
+  streetNumber: string
+  onStreetNumberChange: (value: string) => void
+  additionalInfo: string
+  onAdditionalInfoChange: (value: string) => void
+}) {
+  const [streetQuery, setStreetQuery] = useState('')
+  const { data: streets, isFetching } = useSpeedyStreets(city?.id ?? '', useDebounced(streetQuery))
+  const showResults = streetQuery.trim().length >= 2 && (!street || street.name !== streetQuery)
+
+  return (
+    <div className="mt-3 flex flex-col gap-3">
+      <SpeedyCityPicker
+        onChange={(next) => {
+          onSelectCity(next)
+          onSelectStreet(null)
+          setStreetQuery('')
+        }}
+      />
+      {city && (
+        <>
+          <div className="flex flex-col gap-2">
+            <input
+              type="text"
+              placeholder="Улица (мин. 2 символа)"
+              value={streetQuery}
+              onChange={(event) => {
+                setStreetQuery(event.target.value)
+                if (street) onSelectStreet(null)
+              }}
+              className="rounded-ui border border-slate-300 px-3 py-2"
+            />
+            {showResults && isFetching && <p className="text-sm text-slate-500">Търсене...</p>}
+            {showResults && streets && streets.length > 0 && (
+              <ul className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-ui border border-slate-200">
+                {streets.map((s) => (
+                  <li key={s.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectStreet(s)
+                        setStreetQuery(s.name)
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-primary/10"
+                    >
+                      {s.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {showResults && streets && streets.length === 0 && !isFetching && (
+              <p className="text-sm text-slate-500">Няма намерена улица.</p>
+            )}
+          </div>
+          <input
+            type="text"
+            placeholder="Номер"
+            value={streetNumber}
+            onChange={(event) => onStreetNumberChange(event.target.value)}
+            className="w-32 rounded-ui border border-slate-300 px-3 py-2"
+          />
+          {!street && (
+            <textarea
+              placeholder="Ако не намерите улицата: допълнителна информация за адреса (мин. 3 символа)"
+              value={additionalInfo}
+              onChange={(event) => onAdditionalInfoChange(event.target.value)}
+              className="rounded-ui border border-slate-300 px-3 py-2"
+              rows={2}
+            />
+          )}
+          {street && (
+            <input
+              type="text"
+              placeholder="Вход, етаж, апартамент (по желание)"
+              value={additionalInfo}
+              onChange={(event) => onAdditionalInfoChange(event.target.value)}
+              className="rounded-ui border border-slate-300 px-3 py-2"
+            />
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 function SpeedyOfficePicker({
   onSelect,
   selected,
@@ -47,12 +194,8 @@ function SpeedyOfficePicker({
   onSelect: (office: SpeedyOffice | null) => void
   selected: SpeedyOffice | null
 }) {
-  const [cityText, setCityText] = useState('')
   const [city, setCity] = useState<SpeedyCity | null>(null)
   const [query, setQuery] = useState('')
-  const { data: cities, isFetching: citiesFetching } = useSpeedyCities(
-    useDebounced(city ? '' : cityText),
-  )
   const {
     data: offices,
     isFetching,
@@ -81,38 +224,7 @@ function SpeedyOfficePicker({
 
   return (
     <div className="mt-3 flex flex-col gap-2">
-      <input
-        type="text"
-        placeholder="Град"
-        value={cityText}
-        onChange={(event) => {
-          setCityText(event.target.value)
-          setCity(null)
-        }}
-        className="rounded-ui border border-slate-300 px-3 py-2"
-      />
-      {!city && cityText.trim().length >= 2 && cities && cities.length > 0 && (
-        <ul className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-ui border border-slate-200">
-          {cities.map((item) => (
-            <li key={item.id}>
-              <button
-                type="button"
-                onClick={() => {
-                  setCity(item)
-                  setCityText(item.name)
-                }}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-primary/10"
-              >
-                {item.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {!city && citiesFetching && <p className="text-sm text-slate-500">Търсене...</p>}
-      {!city && cities && cities.length === 0 && cityText.trim().length >= 2 && !citiesFetching && (
-        <p className="text-sm text-slate-500">Няма намерени градове.</p>
-      )}
+      <SpeedyCityPicker onChange={setCity} />
       {city && (
         <input
           type="text"
@@ -348,7 +460,7 @@ type Courier = 'broffice' | 'speedy' | 'pigeon_express'
 
 // "Broffice" delivery is the store's own shipping - internally the
 // speedy_address method (no courier API behind it); the real Speedy courier
-// is speedy_office only. Pigeon lockers are intentionally not offered.
+// is speedy_courier_address / speedy_office. Pigeon lockers are intentionally not offered.
 const COURIERS: {
   id: Courier
   name: string
@@ -366,7 +478,10 @@ const COURIERS: {
     id: 'speedy',
     name: 'Speedy',
     logo: speedyLogo,
-    options: [{ method: 'speedy_office', label: 'До офис на Speedy' }],
+    options: [
+      { method: 'speedy_courier_address', label: 'Доставка до адрес' },
+      { method: 'speedy_office', label: 'До офис на Speedy' },
+    ],
   },
   {
     id: 'pigeon_express',
@@ -405,6 +520,10 @@ export function CheckoutPage() {
 
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('speedy_address')
   const [selectedOffice, setSelectedOffice] = useState<SpeedyOffice | null>(null)
+  const [speedyCity, setSpeedyCity] = useState<SpeedyCity | null>(null)
+  const [speedyStreet, setSpeedyStreet] = useState<SpeedyStreet | null>(null)
+  const [speedyStreetNumber, setSpeedyStreetNumber] = useState('')
+  const [speedyAdditionalInfo, setSpeedyAdditionalInfo] = useState('')
   const [pigeonExpressCity, setPigeonExpressCity] = useState<PigeonExpressCity | null>(null)
   const [pigeonExpressStreet, setPigeonExpressStreet] = useState<PigeonExpressStreet | null>(null)
   const [pigeonExpressStreetNumber, setPigeonExpressStreetNumber] = useState('')
@@ -551,7 +670,35 @@ export function CheckoutPage() {
       }
     }
 
-    const city = shippingMethod === 'speedy_office' ? selectedOffice?.city : deliveryCity
+    if (shippingMethod === 'speedy_office' || shippingMethod === 'speedy_courier_address') {
+      const ready =
+        shippingMethod === 'speedy_office'
+          ? Boolean(selectedOffice)
+          : Boolean(speedyCity) &&
+            (Boolean(speedyStreet) || speedyAdditionalInfo.trim().length >= 3)
+      if (!ready) return
+      let cancelled = false
+      const timeout = setTimeout(() => {
+        fetchSpeedyPriceTable({
+          shipping_method: shippingMethod,
+          speedy_site_id: speedyCity?.id,
+          speedy_office_id: selectedOffice?.external_id,
+        })
+          .then((rows) => {
+            if (!cancelled) setPigeonPriceTable(rows)
+          })
+          .catch(() => {
+            // Prices are informational; Speedy being slow must not block the order.
+            if (!cancelled) setPigeonPriceTable(null)
+          })
+      }, 300)
+      return () => {
+        cancelled = true
+        clearTimeout(timeout)
+      }
+    }
+
+    const city = deliveryCity
     if (!city) return
     let cancelled = false
     const timeout = setTimeout(() => {
@@ -568,6 +715,9 @@ export function CheckoutPage() {
     shippingMethod,
     deliveryCity,
     selectedOffice,
+    speedyCity,
+    speedyStreet,
+    speedyAdditionalInfo,
     pigeonExpressCity,
     pigeonExpressStreet,
     pigeonExpressStreetNumber,
@@ -593,6 +743,15 @@ export function CheckoutPage() {
     }
     if (shippingMethod === 'speedy_office' && !selectedOffice) {
       setError('Изберете офис на Спиди.')
+      return
+    }
+    if (
+      shippingMethod === 'speedy_courier_address' &&
+      (!speedyCity || (!speedyStreet && speedyAdditionalInfo.trim().length < 3))
+    ) {
+      setError(
+        'Изберете град и улица (или въведете допълнителна информация за адреса, мин. 3 символа).',
+      )
       return
     }
     if (shippingMethod === 'speedy_address' && !deliveryAddressLine.trim()) {
@@ -657,15 +816,24 @@ export function CheckoutPage() {
             }
           : shippingMethod === 'speedy_office'
             ? { speedy_office_id: selectedOffice?.external_id }
-            : shippingMethod === 'pigeon_express_address'
+            : shippingMethod === 'speedy_courier_address'
               ? {
-                  pigeon_express_city_id: pigeonExpressCity?.id,
-                  pigeon_express_street_id: pigeonExpressStreet?.id,
-                  pigeon_express_street_name: pigeonExpressStreet?.name,
-                  pigeon_express_street_number: pigeonExpressStreetNumber,
-                  pigeon_express_additional_info: pigeonExpressAdditionalInfo,
+                  speedy_site_id: speedyCity?.id,
+                  speedy_site_name: speedyCity?.name,
+                  speedy_street_id: speedyStreet?.id,
+                  speedy_street_name: speedyStreet?.name,
+                  speedy_street_number: speedyStreetNumber,
+                  speedy_additional_info: speedyAdditionalInfo,
                 }
-              : { pigeon_express_office_id: pigeonExpressOffice?.id }),
+              : shippingMethod === 'pigeon_express_address'
+                ? {
+                    pigeon_express_city_id: pigeonExpressCity?.id,
+                    pigeon_express_street_id: pigeonExpressStreet?.id,
+                    pigeon_express_street_name: pigeonExpressStreet?.name,
+                    pigeon_express_street_number: pigeonExpressStreetNumber,
+                    pigeon_express_additional_info: pigeonExpressAdditionalInfo,
+                  }
+                : { pigeon_express_office_id: pigeonExpressOffice?.id }),
       })
       clear()
       navigate('/order-confirmation', { state: { order } })
@@ -830,6 +998,19 @@ export function CheckoutPage() {
             </div>
           )}
 
+          {shippingMethod === 'speedy_courier_address' && (
+            <SpeedyAddressPicker
+              city={speedyCity}
+              onSelectCity={setSpeedyCity}
+              street={speedyStreet}
+              onSelectStreet={setSpeedyStreet}
+              streetNumber={speedyStreetNumber}
+              onStreetNumberChange={setSpeedyStreetNumber}
+              additionalInfo={speedyAdditionalInfo}
+              onAdditionalInfoChange={setSpeedyAdditionalInfo}
+            />
+          )}
+
           {shippingMethod === 'speedy_office' && (
             <SpeedyOfficePicker selected={selectedOffice} onSelect={setSelectedOffice} />
           )}
@@ -859,30 +1040,33 @@ export function CheckoutPage() {
             <p className="mt-2 text-sm text-red-600">{shippingQuoteError}</p>
           )}
 
-          {PIGEON_EXPRESS_METHODS.includes(shippingMethod) && pigeonPriceTable && (
-            <div className="mt-3 rounded-ui border border-slate-200 p-3 text-sm">
-              <p className="font-medium text-slate-900">Цена на доставката според теглото</p>
-              <p className="mb-2 text-xs text-slate-500">
-                Заплаща се на куриера при получаване, с ДДС. Не е включена в сумата на поръчката.
-              </p>
-              <table className="w-full">
-                <tbody>
-                  {pigeonPriceTable.map((row) => (
-                    <tr key={row.to_kg} className="border-t border-slate-100">
-                      <td className="py-1 text-slate-600">
-                        {Number(row.from_kg) === 0
-                          ? `до ${row.to_kg} кг`
-                          : `${row.from_kg} – ${row.to_kg} кг`}
-                      </td>
-                      <td className="py-1 text-right font-medium text-slate-900">
-                        €{bgnToEur(row.price_bgn)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          {(PIGEON_EXPRESS_METHODS.includes(shippingMethod) ||
+            shippingMethod === 'speedy_office' ||
+            shippingMethod === 'speedy_courier_address') &&
+            pigeonPriceTable && (
+              <div className="mt-3 rounded-ui border border-slate-200 p-3 text-sm">
+                <p className="font-medium text-slate-900">Цена на доставката според теглото</p>
+                <p className="mb-2 text-xs text-slate-500">
+                  Заплаща се на куриера при получаване, с ДДС. Не е включена в сумата на поръчката.
+                </p>
+                <table className="w-full">
+                  <tbody>
+                    {pigeonPriceTable.map((row) => (
+                      <tr key={row.to_kg} className="border-t border-slate-100">
+                        <td className="py-1 text-slate-600">
+                          {Number(row.from_kg) === 0
+                            ? `до ${row.to_kg} кг`
+                            : `${row.from_kg} – ${row.to_kg} кг`}
+                        </td>
+                        <td className="py-1 text-right font-medium text-slate-900">
+                          €{bgnToEur(row.price_bgn)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
         </section>
 
         <section>

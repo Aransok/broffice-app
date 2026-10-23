@@ -650,6 +650,24 @@ class OrderCreateSerializer(serializers.Serializer):
     speedy_office_id = serializers.CharField(
         required=False, allow_blank=True, default=""
     )
+    # Names are display snapshots from the frontend's own search results
+    # (Speedy has no cheap by-id lookup); the ids are what Speedy receives.
+    speedy_site_id = serializers.CharField(required=False, allow_blank=True, default="")
+    speedy_site_name = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
+    speedy_street_id = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
+    speedy_street_name = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
+    speedy_street_number = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
+    speedy_additional_info = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
     pigeon_express_city_id = serializers.CharField(
         required=False, allow_blank=True, default=""
     )
@@ -707,6 +725,19 @@ class OrderCreateSerializer(serializers.Serializer):
                 )
             if not get_speedy_client().get_office(office_id):
                 raise serializers.ValidationError("Unknown speedy_office_id")
+        elif method == Order.SHIPPING_SPEEDY_COURIER_ADDRESS:
+            if not attrs.get("speedy_site_id"):
+                raise serializers.ValidationError(
+                    "speedy_site_id is required for speedy_courier_address"
+                )
+            if (
+                not attrs.get("speedy_street_id")
+                and len(attrs.get("speedy_additional_info") or "") < 3
+            ):
+                raise serializers.ValidationError(
+                    "speedy_street_id or speedy_additional_info (min 3 chars) "
+                    "is required for speedy_courier_address"
+                )
         elif method == Order.SHIPPING_PIGEON_EXPRESS_ADDRESS:
             if not attrs.get("pigeon_express_city_id"):
                 raise serializers.ValidationError(
@@ -805,6 +836,12 @@ class OrderSerializer(serializers.ModelSerializer):
             "delivery_post_code",
             "speedy_office_id",
             "speedy_office_name",
+            "speedy_site_id",
+            "speedy_site_name",
+            "speedy_street_id",
+            "speedy_street_name",
+            "speedy_street_number",
+            "speedy_additional_info",
             "speedy_waybill_number",
             "speedy_label_pdf",
             "pigeon_express_city_id",

@@ -46,12 +46,14 @@ class Order(TimeStampedModel):
 
     SHIPPING_SPEEDY_ADDRESS = "speedy_address"
     SHIPPING_SPEEDY_OFFICE = "speedy_office"
+    SHIPPING_SPEEDY_COURIER_ADDRESS = "speedy_courier_address"
     SHIPPING_PIGEON_EXPRESS_ADDRESS = "pigeon_express_address"
     SHIPPING_PIGEON_EXPRESS_OFFICE = "pigeon_express_office"
     SHIPPING_PIGEON_EXPRESS_LOCKER = "pigeon_express_locker"
     SHIPPING_METHOD_CHOICES = [
         (SHIPPING_SPEEDY_ADDRESS, "Доставка до адрес"),
         (SHIPPING_SPEEDY_OFFICE, "До офис на Спиди"),
+        (SHIPPING_SPEEDY_COURIER_ADDRESS, "Доставка до адрес (Speedy)"),
         (SHIPPING_PIGEON_EXPRESS_ADDRESS, "Доставка до адрес (Pigeon Express)"),
         (SHIPPING_PIGEON_EXPRESS_OFFICE, "До офис на Pigeon Express"),
         (SHIPPING_PIGEON_EXPRESS_LOCKER, "До автомат на Pigeon Express"),
@@ -116,6 +118,13 @@ class Order(TimeStampedModel):
     delivery_post_code = models.CharField(max_length=16, blank=True, default="")
     speedy_office_id = models.CharField(max_length=64, blank=True, default="")
     speedy_office_name = models.CharField(max_length=255, blank=True, default="")
+    # Speedy's own address delivery (speedy_courier_address): site = city.
+    speedy_site_id = models.CharField(max_length=64, blank=True, default="")
+    speedy_site_name = models.CharField(max_length=255, blank=True, default="")
+    speedy_street_id = models.CharField(max_length=64, blank=True, default="")
+    speedy_street_name = models.CharField(max_length=255, blank=True, default="")
+    speedy_street_number = models.CharField(max_length=64, blank=True, default="")
+    speedy_additional_info = models.CharField(max_length=255, blank=True, default="")
     # Set on confirm for speedy_office orders once the real waybill exists
     # (see create_speedy_shipment_for_order).
     speedy_waybill_number = models.CharField(
@@ -236,6 +245,8 @@ class Order(TimeStampedModel):
                 self.SHIPPING_PIGEON_EXPRESS_ADDRESS,
                 self.SHIPPING_PIGEON_EXPRESS_OFFICE,
                 self.SHIPPING_PIGEON_EXPRESS_LOCKER,
+                self.SHIPPING_SPEEDY_OFFICE,
+                self.SHIPPING_SPEEDY_COURIER_ADDRESS,
             )
             and not self.shipping_cost_bgn
         )
@@ -246,6 +257,13 @@ class Order(TimeStampedModel):
         shipping method it uses. Shared by the order emails."""
         if self.shipping_method == self.SHIPPING_SPEEDY_OFFICE:
             return self.speedy_office_name
+        if self.shipping_method == self.SHIPPING_SPEEDY_COURIER_ADDRESS:
+            street = f"{self.speedy_street_name} {self.speedy_street_number}".strip()
+            return ", ".join(
+                part
+                for part in (street, self.speedy_additional_info, self.speedy_site_name)
+                if part
+            )
         if self.shipping_method in (
             self.SHIPPING_PIGEON_EXPRESS_OFFICE,
             self.SHIPPING_PIGEON_EXPRESS_LOCKER,

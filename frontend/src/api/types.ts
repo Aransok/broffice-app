@@ -127,6 +127,11 @@ export interface SpeedyCity {
   label: string
 }
 
+export interface SpeedyStreet {
+  id: string
+  name: string
+}
+
 export interface SpeedyOffice {
   id: string
   external_id: string
@@ -165,6 +170,7 @@ export interface PigeonExpressOffice {
 export type ShippingMethod =
   | 'speedy_address'
   | 'speedy_office'
+  | 'speedy_courier_address'
   | 'pigeon_express_address'
   | 'pigeon_express_office'
   | 'pigeon_express_locker'
@@ -221,6 +227,12 @@ export interface Order {
   delivery_post_code: string
   speedy_office_id: string
   speedy_office_name: string
+  speedy_site_id: string
+  speedy_site_name: string
+  speedy_street_id: string
+  speedy_street_name: string
+  speedy_street_number: string
+  speedy_additional_info: string
   speedy_waybill_number: string
   speedy_label_pdf: string | null
   pigeon_express_city_id: string
@@ -276,6 +288,12 @@ export interface OrderCreatePayload {
   delivery_city?: string
   delivery_post_code?: string
   speedy_office_id?: string
+  speedy_site_id?: string
+  speedy_site_name?: string
+  speedy_street_id?: string
+  speedy_street_name?: string
+  speedy_street_number?: string
+  speedy_additional_info?: string
   pigeon_express_city_id?: string
   pigeon_express_street_id?: string
   pigeon_express_street_name?: string
