@@ -51,7 +51,7 @@ class Order(TimeStampedModel):
     SHIPPING_PIGEON_EXPRESS_OFFICE = "pigeon_express_office"
     SHIPPING_PIGEON_EXPRESS_LOCKER = "pigeon_express_locker"
     SHIPPING_METHOD_CHOICES = [
-        (SHIPPING_SPEEDY_ADDRESS, "Доставка до адрес"),
+        (SHIPPING_SPEEDY_ADDRESS, "Вътрешен транспорт (BRoffice)"),
         (SHIPPING_SPEEDY_OFFICE, "До офис на Спиди"),
         (SHIPPING_SPEEDY_COURIER_ADDRESS, "Доставка до адрес (Speedy)"),
         (SHIPPING_PIGEON_EXPRESS_ADDRESS, "Доставка до адрес (Pigeon Express)"),

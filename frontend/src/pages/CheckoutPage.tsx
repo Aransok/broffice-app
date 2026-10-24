@@ -465,6 +465,8 @@ const COURIERS: {
   id: Courier
   name: string
   logo: string
+  /** Small caption under the logo. */
+  tagline?: string
   disabled?: boolean
   options: { method: ShippingMethod; label: string }[]
 }[] = [
@@ -472,7 +474,8 @@ const COURIERS: {
     id: 'broffice',
     name: 'BRoffice',
     logo: brofficeLogo,
-    options: [{ method: 'speedy_address', label: 'Доставка до адрес' }],
+    tagline: 'Вътрешен транспорт',
+    options: [{ method: 'speedy_address', label: 'Вътрешен транспорт' }],
   },
   {
     id: 'speedy',
@@ -963,6 +966,11 @@ export function CheckoutPage() {
                 } ${c.disabled ? 'cursor-not-allowed opacity-50' : ''}`}
               >
                 <img src={c.logo} alt={c.name} className="h-9 w-auto max-w-full object-contain" />
+                {c.tagline && (
+                  <span className="text-[11px] font-medium leading-tight text-slate-600">
+                    {c.tagline}
+                  </span>
+                )}
                 {c.disabled && <span className="text-[10px] text-slate-500">Очаквайте скоро</span>}
               </button>
             ))}
