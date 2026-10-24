@@ -384,3 +384,259 @@ html[data-theme='fresh'] body {
     transition: none;
   }
 }
+
+/* 8. BRoffice Bold ("bold") — the "go wild" redesign. Ink-navy header and
+ * footer, warm paper background, Unbounded display headings with Manrope
+ * body, cards with a hard offset shadow that lifts on hover, orange only
+ * on "buy" actions, and a sticky bottom bar on phones. HomePage renders
+ * <BoldHomeIntro> (hero, live quick order, bento categories) when it's on.
+ * Every `bold-*` hook below is a no-op in the other designs. */
+:root[data-theme='bold'] {
+  --color-primary: #0f2140;
+  --color-ink: #0a1628;
+  --color-paper: #f4f1ea;
+  --color-buy: #ff6b1f;
+  --color-buy-ink: #0a1628;
+  --radius-ui: 18px;
+  --shadow-card: none;
+  --color-red-100: #ffe8dc;
+  --color-red-300: #ffb48a;
+  --color-red-500: #ff6b1f;
+  --color-red-600: #e85a12;
+  --color-red-800: #9d3a06;
+}
+:root[data-theme='bold']:not([data-mode='dark']) {
+  --color-surface: #ffffff;
+  --color-slate-50: #f4f1ea;
+  --color-slate-100: #ebe7de;
+  --color-slate-200: #d9d4c8;
+  --color-slate-300: #b9b3a4;
+  --color-slate-500: #5d6474;
+  --color-slate-900: #0a1628;
+}
+:root[data-theme='bold'][data-mode='dark'] {
+  --color-primary: #7fa6f0;
+  --color-ink: #05090f;
+  --color-paper: #0b1220;
+  --color-surface: #121b2d;
+  --color-slate-50: #0b1220;
+  --color-buy: #ff7a36;
+}
+html[data-theme='bold'] body {
+  font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  background: var(--color-paper);
+}
+:root[data-theme='bold'] h1,
+:root[data-theme='bold'] h2,
+:root[data-theme='bold'] .display {
+  font-family: 'Unbounded', 'Manrope', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+:root[data-theme='bold'] .home-section-title {
+  font-size: 1.6rem;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+}
+@media (min-width: 640px) {
+  :root[data-theme='bold'] .home-section-title {
+    font-size: 2rem;
+  }
+}
+
+/* Header: ink-navy bar, white search pill, orange cart. */
+:root[data-theme='bold'] .site-header {
+  background: var(--color-ink);
+  border-bottom: 0;
+  color: #e6ebf5;
+}
+:root[data-theme='bold'] .site-header .text-slate-600,
+:root[data-theme='bold'] .site-header .text-slate-500,
+:root[data-theme='bold'] .site-header .text-slate-700,
+:root[data-theme='bold'] .site-header a.hover\:text-primary {
+  color: #c7d0e0;
+}
+:root[data-theme='bold'] .site-header img[alt='BRoffice'] {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 4px 8px;
+}
+:root[data-theme='bold'] .site-header .text-primary {
+  color: #ffb27a;
+}
+:root[data-theme='bold'] .site-header select,
+:root[data-theme='bold'] .site-header button[aria-pressed] {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #e6ebf5;
+}
+:root[data-theme='bold'] .site-search input {
+  background: #ffffff;
+  border: 0;
+  color: #0a1628;
+  padding-block: 0.85rem;
+  font-size: 1rem;
+  border-radius: 999px 0 0 999px;
+  padding-left: 1.25rem;
+}
+:root[data-theme='bold'] .site-search button {
+  background: var(--color-buy);
+  color: var(--color-buy-ink);
+  border-radius: 0 999px 999px 0;
+  padding-inline: 1.5rem;
+  font-weight: 800;
+}
+:root[data-theme='bold'] .site-nav {
+  background: var(--color-ink);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+:root[data-theme='bold'] .site-nav a {
+  color: #e6ebf5;
+}
+:root[data-theme='bold'] .site-nav a.text-red-600 {
+  color: #ffb27a;
+}
+:root[data-theme='bold'] .mega-menu-button {
+  background: #ffffff;
+  color: #0a1628;
+  border-radius: 999px;
+  padding-block: 0.7rem;
+  font-size: 1rem;
+}
+:root[data-theme='bold'] .site-header a[aria-label^='Количка'] {
+  background: var(--color-buy);
+  color: var(--color-buy-ink);
+  border-radius: 999px;
+  padding: 0.5rem 0.75rem;
+}
+:root[data-theme='bold'] .site-header a[aria-label^='Количка'] span {
+  background: #0a1628;
+  color: #ffffff;
+}
+
+/* Footer: ink-navy. */
+:root[data-theme='bold'] .site-footer {
+  background: var(--color-ink);
+  border-top: 0;
+  color: #aab6cc;
+}
+:root[data-theme='bold'] .site-footer h3 {
+  color: #ffffff;
+  font-family: 'Unbounded', system-ui, sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+:root[data-theme='bold'] .site-footer .border-t {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Cards: hard offset shadow that lifts on hover. */
+:root[data-theme='bold'] .product-card {
+  border: 1.5px solid var(--color-ink);
+  border-radius: 20px;
+  box-shadow: 4px 4px 0 var(--color-ink);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+:root[data-theme='bold'] .product-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 var(--color-ink);
+}
+:root[data-theme='bold'][data-mode='dark'] .product-card {
+  border-color: #2a3a5a;
+  box-shadow: 4px 4px 0 #2a3a5a;
+}
+:root[data-theme='bold'] .product-price {
+  font-family: 'Unbounded', system-ui, sans-serif;
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+}
+:root[data-theme='bold'] .btn-buy {
+  background: var(--color-buy);
+  color: var(--color-buy-ink);
+  font-weight: 800;
+  border-radius: 999px;
+}
+:root[data-theme='bold'] .btn-buy:hover {
+  opacity: 1;
+  filter: brightness(1.06);
+}
+:root[data-theme='bold'] .quick-order-input {
+  border: 1.5px solid var(--color-ink);
+  background: #ffffff;
+  border-radius: 14px;
+}
+:root[data-theme='bold'][data-mode='dark'] .quick-order-input {
+  background: #0b1220;
+  border-color: #2a3a5a;
+}
+
+/* Bold home blocks. */
+@keyframes bold-blob {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(40px, -30px) scale(1.15);
+  }
+  66% {
+    transform: translate(-30px, 25px) scale(0.95);
+  }
+}
+.bold-blob {
+  animation: bold-blob 14s ease-in-out infinite;
+  filter: blur(60px);
+  will-change: transform;
+}
+@keyframes bold-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.bold-marquee {
+  animation: bold-marquee 40s linear infinite;
+}
+.bold-marquee:hover {
+  animation-play-state: paused;
+}
+.bold-tile {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.bold-tile:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 var(--color-ink, #0a1628);
+}
+@keyframes bold-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.bold-rise {
+  animation: bold-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+/* Room for the sticky bottom bar on phones. */
+html[data-theme='bold'] body {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@media (prefers-reduced-motion: reduce) {
+  .bold-blob,
+  .bold-marquee,
+  .bold-rise,
+  .bold-tile {
+    animation: none;
+    transition: none;
+  }
+}

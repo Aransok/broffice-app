@@ -151,7 +151,7 @@ export function AdminDesignsPage() {
                       Активен
                     </span>
                   )}
-                  {option.value === 'fresh' && !isLive && (
+                  {(option.value === 'fresh' || option.value === 'bold') && !isLive && (
                     <span className="rounded-full bg-amber-400 px-2 py-0.5 text-xs font-semibold text-slate-900">
                       Нов
                     </span>

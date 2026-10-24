@@ -1,10 +1,8 @@
-import { type FormEvent, type ReactNode, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useCategoryTree } from '../../api/categories'
-import { lookupProductCodes } from '../../api/products'
-import { parseQuickOrder } from './parseQuickOrder'
+import { QuickOrderBox } from './QuickOrderBox'
 import { useAuth } from '../../context/AuthContext'
-import { useCart } from '../../context/CartContext'
 
 /** The top of the home page in the "BRoffice 2026" design: hero, quick
  * order by item number, reorder, business account, trust bar and category
@@ -96,48 +94,6 @@ function CardShell({
 }
 
 function QuickOrderCard() {
-  const { addItem } = useCart()
-  const [text, setText] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [result, setResult] = useState<{
-    added: { code: string; quantity: number; name: string; number: string }[]
-    missing: string[]
-    failed: boolean
-  } | null>(null)
-
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    const lines = parseQuickOrder(text)
-    if (lines.length === 0) return
-    setBusy(true)
-    setResult(null)
-    try {
-      const found = await lookupProductCodes(lines.map((line) => line.code))
-      const added: { code: string; quantity: number; name: string; number: string }[] = []
-      const missing: string[] = []
-      for (const line of lines) {
-        const product = found[line.code]
-        if (product) {
-          addItem(product, line.quantity)
-          added.push({
-            code: line.code,
-            quantity: line.quantity,
-            name: product.name,
-            number: product.supplier_id || String(product.item_number ?? ''),
-          })
-        } else {
-          missing.push(line.code)
-        }
-      }
-      setResult({ added, missing, failed: false })
-      if (missing.length === 0) setText('')
-    } catch {
-      setResult({ added: [], missing: [], failed: true })
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
     <CardShell
       delay={80}
@@ -156,49 +112,9 @@ function QuickOrderCard() {
         </svg>
       }
       title="Бърза поръчка"
-      text="Напиши номера на продукта (№ от сайта) и количество, по един на ред."
+      text="Напиши номера на продукта (№ от сайта) и количество, по един на ред. Виждаш продукта преди да го добавиш."
     >
-      <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-3">
-        <label htmlFor="quick-order" className="sr-only">
-          Каталожни номера и количества
-        </label>
-        <textarea
-          id="quick-order"
-          rows={3}
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          placeholder={'CF283A x 4\n70031 x 10'}
-          className="resize-y rounded-xl border-[1.5px] border-slate-300 bg-slate-50 px-3.5 py-3 font-mono text-sm leading-relaxed text-slate-900 focus:border-primary focus:outline-none"
-        />
-        {result && (
-          <div className="flex flex-col gap-1 text-sm" role="status">
-            {result.failed && <p className="text-red-600">Нещо се обърка. Опитайте пак.</p>}
-            {result.added.length > 0 && (
-              <>
-                <p className="font-semibold text-green-700">Добавено в количката:</p>
-                <ul className="flex flex-col gap-0.5 text-slate-700">
-                  {result.added.map((item) => (
-                    <li key={item.code} className="truncate">
-                      {item.quantity} × <span className="text-slate-500">№{item.number}</span>{' '}
-                      {item.name}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-            {result.missing.length > 0 && (
-              <p className="text-red-600">Няма продукт с номер: {result.missing.join(', ')}</p>
-            )}
-          </div>
-        )}
-        <button
-          type="submit"
-          disabled={busy || !text.trim()}
-          className="mt-auto rounded-xl bg-primary px-4 py-3.5 font-bold text-white hover:brightness-110 disabled:opacity-60"
-        >
-          {busy ? 'Търсене…' : 'Добави всички в количката'}
-        </button>
-      </form>
+      <QuickOrderBox />
     </CardShell>
   )
 }

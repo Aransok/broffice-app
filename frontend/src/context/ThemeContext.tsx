@@ -2,7 +2,8 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useS
 import { fetchLiveDesign, setLiveDesign } from '../api/design'
 
 export type ColorMode = 'light' | 'dark'
-export type DesignPreset = 'classic' | 'modern' | 'compact' | 'premium' | 'soft' | 'brand' | 'fresh'
+export type DesignPreset =
+  'classic' | 'modern' | 'compact' | 'premium' | 'soft' | 'brand' | 'fresh' | 'bold'
 
 export interface PresetOption {
   value: DesignPreset
@@ -14,6 +15,14 @@ export interface PresetOption {
 }
 
 export const PRESET_OPTIONS: PresetOption[] = [
+  {
+    value: 'bold',
+    label: 'BRoffice Bold',
+    description:
+      'Пълен редизайн: тъмна лента, едри заглавия, живи цветове, категории в мозайка, бърза поръчка с преглед на продукта и лента за телефон.',
+    swatch: ['#f4f1ea', '#ffffff', '#0a1628', '#ff6b1f'],
+    radius: 18,
+  },
   {
     value: 'fresh',
     label: 'BRoffice 2026',
@@ -193,14 +202,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', preset)
-    // The 2026 design uses Onest (free, Google Fonts, Cyrillic). Loaded only
-    // when that design is on, so the other designs pay nothing for it.
-    if (preset === 'fresh' && !document.getElementById('font-onest')) {
+    // Each design loads only its own fonts (free, Google Fonts, Cyrillic),
+    // so the other designs pay nothing for them.
+    const fonts: Partial<Record<DesignPreset, string>> = {
+      fresh: 'Onest:wght@400;500;600;700;800',
+      bold: 'Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700;800',
+    }
+    const family = fonts[preset]
+    const id = `font-${preset}`
+    if (family && !document.getElementById(id)) {
       const link = document.createElement('link')
-      link.id = 'font-onest'
+      link.id = id
       link.rel = 'stylesheet'
-      link.href =
-        'https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap'
+      link.href = `https://fonts.googleapis.com/css2?family=${family}&display=swap`
       document.head.appendChild(link)
     }
   }, [preset])
