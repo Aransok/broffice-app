@@ -4,6 +4,14 @@ import { BannerCarousel } from '../components/home/BannerCarousel'
 import { BoldHomeIntro } from '../components/home/BoldHomeIntro'
 import { FreshHomeIntro } from '../components/home/FreshHomeIntro'
 import { PaperHomeIntro } from '../components/home/PaperHomeIntro'
+import {
+  BrandMarqueeBlock,
+  CategoryTilesBlock,
+  NumbersBlock,
+  PromoCarouselBlock,
+  QuickOrderBlock,
+  TrustStripBlock,
+} from '../components/home/blocks'
 import { ProductCard } from '../components/product/ProductCard'
 import { Seo } from '../components/Seo'
 import { useTheme } from '../context/ThemeContext'
@@ -68,8 +76,39 @@ export function HomePage() {
       {preset === 'fresh' && <FreshHomeIntro />}
       {preset === 'bold' && <BoldHomeIntro />}
       {preset === 'paper' && <PaperHomeIntro />}
+      {/* Optional blocks (admin Дизайн → Елементи). Bold/Paper/Fresh draw
+          their own versions of some inside their intros; everything else,
+          when switched on, comes from the shared blocks here. */}
+      {/* Classic designs: the banner leads, then the optional blocks. */}
+      {isEnabled('banner_carousel') && !['fresh', 'bold', 'paper'].includes(preset) && (
+        <BannerCarousel />
+      )}
+      {!['fresh', 'bold', 'paper'].includes(preset) && (
+        <div className="mb-10 flex flex-col gap-8">
+          {isEnabled('quick_order') && <QuickOrderBlock />}
+          {isEnabled('brand_marquee') && <BrandMarqueeBlock />}
+          {isEnabled('promo_carousel') && <PromoCarouselBlock />}
+          {isEnabled('category_tiles') && <CategoryTilesBlock />}
+          {isEnabled('numbers') && <NumbersBlock />}
+          {isEnabled('trust_strip') && <TrustStripBlock />}
+        </div>
+      )}
+      {preset === 'fresh' && (
+        <div className="mb-10 flex flex-col gap-8">
+          {isEnabled('brand_marquee') && <BrandMarqueeBlock />}
+          {isEnabled('promo_carousel') && <PromoCarouselBlock />}
+          {isEnabled('numbers') && <NumbersBlock />}
+        </div>
+      )}
+      {preset === 'paper' && isEnabled('numbers') && (
+        <div className="mb-10">
+          <NumbersBlock />
+        </div>
+      )}
 
-      {isEnabled('banner_carousel') && <BannerCarousel />}
+      {isEnabled('banner_carousel') && ['fresh', 'bold', 'paper'].includes(preset) && (
+        <BannerCarousel />
+      )}
 
       {/* Personalized to the viewer's own browsing activity — doesn't
           render for guests or logged-in users with no view history yet. */}
@@ -79,7 +118,8 @@ export function HomePage() {
       <ProductSection title="Най-продавани" products={data?.best_sellers} />
       <ProductSection title="Нови продукти" products={data?.new_products} />
       {/* Bold already shows this week's promotions up top. */}
-      {preset !== 'bold' && preset !== 'paper' && (
+      {/* Skipped when the promo carousel already shows them up top. */}
+      {!isEnabled('promo_carousel') && (
         <ProductSection title="Промоции" products={data?.promotions} />
       )}
     </div>

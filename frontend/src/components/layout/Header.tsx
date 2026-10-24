@@ -12,6 +12,7 @@ import { getPreviewUser } from '../../preview'
 import { playNotificationSound } from '../../utils/notificationSound'
 import { CategoriesMegaMenu } from './CategoriesMegaMenu'
 import { InstantSearch } from '../bold/InstantSearch'
+import { requestCartOpen } from '../../lib/cartEvents'
 
 export function Header() {
   const [query, setQuery] = useState('')
@@ -161,6 +162,9 @@ export function Header() {
           <Link
             to="/cart"
             data-cart-target
+            onClick={(event) => {
+              if (requestCartOpen()) event.preventDefault()
+            }}
             aria-label={`Количка, ${itemCount} ${itemCount === 1 ? 'продукт' : 'продукта'}`}
             className="relative flex items-center rounded-ui p-1 text-slate-600 hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >

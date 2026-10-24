@@ -30,11 +30,29 @@ const PALETTES = [
   ['#3b2a05', '#f59e0b'],
 ]
 
+/** "€12,34" / "12.34 €" -> 12.34 */
+function parseEur(text: string) {
+  const n = Number(text.replace(/[^\d.,]/g, '').replace(',', '.'))
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+/** The big number on the slide is always a percentage: the promo's own
+ * "-20%", or one worked out from old vs new price for flat / cost-plus
+ * promotions (which have a price as their label). */
+function discountPercent(banner: BannerEntry): string | null {
+  if (/%/.test(banner.discount_label)) return banner.discount_label
+  const oldPrice = parseEur(banner.old_price)
+  const price = parseEur(banner.price)
+  if (!oldPrice || !price || price >= oldPrice) return null
+  return `-${Math.round((1 - price / oldPrice) * 100)}%`
+}
+
 function Slide({ banner, index, active }: { banner: BannerEntry; index: number; active: boolean }) {
   const countdown = useCountdown(banner.ends_at)
   const [dark, accent] = PALETTES[index % PALETTES.length]
   const subject = getImageUrl(banner.subject_image || '')
   const isCategory = banner.type === 'category'
+  const percent = discountPercent(banner)
   return (
     <Link
       to={banner.target_url}
@@ -72,13 +90,13 @@ function Slide({ banner, index, active }: { banner: BannerEntry; index: number; 
           className="promo-slide-discount display text-5xl font-extrabold leading-none sm:text-7xl lg:text-8xl"
           style={{ color: accent }}
         >
-          {banner.discount_label}
+          {percent ?? banner.discount_label}
         </span>
         <span className="promo-slide-title display line-clamp-2 text-xl font-bold leading-tight sm:text-3xl">
           {banner.title}
         </span>
         <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/80">
-          {banner.price && (
+          {(banner.price || (percent && !/%/.test(banner.discount_label))) && (
             <span>
               {banner.old_price && (
                 <span className="mr-2 text-white/50 line-through">{banner.old_price}</span>

@@ -77,7 +77,10 @@ export function Footer() {
             <li>ЕИК: {config?.company_eik}</li>
             {config?.company_vat_number && <li>ДДС номер: {config.company_vat_number}</li>}
             <li>
-              <a href={`tel:${config?.company_phone.replace(/\s/g, '')}`} className="hover:text-primary">
+              <a
+                href={`tel:${config?.company_phone.replace(/\s/g, '')}`}
+                className="hover:text-primary"
+              >
                 {config?.company_phone}
               </a>
             </li>

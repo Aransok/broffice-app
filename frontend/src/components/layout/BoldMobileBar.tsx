@@ -1,5 +1,6 @@
 import { Link, NavLink } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
+import { requestCartOpen } from '../../lib/cartEvents'
 
 function focusSearch() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -62,7 +63,13 @@ export function BoldMobileBar() {
         </svg>
         Търси
       </button>
-      <Link to="/cart" className={`${item} relative`}>
+      <Link
+        to="/cart"
+        className={`${item} relative`}
+        onClick={(event) => {
+          if (requestCartOpen()) event.preventDefault()
+        }}
+      >
         <svg
           width="22"
           height="22"
