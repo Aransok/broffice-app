@@ -11,6 +11,7 @@ import {
   searchAdminUsers,
   updatePromotion,
   usePromotions,
+  promotionValueLabel,
 } from '../../api/promotions'
 import { bgnToEur, eurToBgn } from '../../utils/currency'
 
@@ -86,12 +87,14 @@ function PromotionsTable({
                 </span>
               )}
             </td>
-            <td className="py-2 pr-4">
-              {promo.discount_type === 'percent' ? `${promo.value}%` : `€${bgnToEur(promo.value)}`}
-            </td>
+            <td className="py-2 pr-4">{promotionValueLabel(promo, bgnToEur)}</td>
             <td className="py-2 pr-4">{promo.active ? 'Да' : 'Не'}</td>
             <td className="flex gap-3 py-2">
-              <button type="button" onClick={() => onEdit(promo)} className="text-primary hover:underline">
+              <button
+                type="button"
+                onClick={() => onEdit(promo)}
+                className="text-primary hover:underline"
+              >
                 Редактирай
               </button>
               <button
@@ -279,16 +282,31 @@ export function AdminPromotionsPage() {
           >
             <option value="percent">Процент (%)</option>
             <option value="flat">Крайна цена (€)</option>
+            <option value="cost_plus">Доставна цена + %</option>
           </select>
           <input
             type="text"
             required
-            placeholder={form.discount_type === 'percent' ? 'Стойност (%)' : 'Крайна цена (€)'}
+            placeholder={
+              form.discount_type === 'flat'
+                ? 'Крайна цена (€)'
+                : form.discount_type === 'cost_plus'
+                  ? 'Надценка (%)'
+                  : 'Стойност (%)'
+            }
             value={form.value}
             onChange={(event) => setForm((prev) => ({ ...prev, value: event.target.value }))}
             className="rounded-ui border border-slate-300 px-3 py-2"
           />
         </div>
+        {form.discount_type === 'cost_plus' && (
+          <p className="-mt-2 text-xs text-slate-500">
+            Цената се смята от вашата доставна цена нагоре: доставна €2.00 + 10% = €2.20 за клиента.
+            Ако излезе над нормалната цена, клиентът плаща нормалната. Продукти без доставна цена не
+            се променят. Клиентът вижда крайната цена и името на промоцията (не пишете „доставна“ в
+            името).
+          </p>
+        )}
         {form.discount_type === 'flat' && (
           <p className="-mt-2 text-xs text-slate-500">
             Продуктът ще струва точно тази цена за клиента (не отстъпка от текущата цена).
@@ -408,9 +426,9 @@ export function AdminPromotionsPage() {
                 </button>
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                Тази промоция ще е видима само за {form.username} — за да проверите, че НЕ е
-                видима за други, проверявайте от анонимен/инкогнито прозорец, а не докато сте
-                влезли в неговия акаунт.
+                Тази промоция ще е видима само за {form.username} — за да проверите, че НЕ е видима
+                за други, проверявайте от анонимен/инкогнито прозорец, а не докато сте влезли в
+                неговия акаунт.
               </p>
             </>
           )}
@@ -469,7 +487,11 @@ export function AdminPromotionsPage() {
       </div>
 
       {tab === 'global' && (
-        <PromotionsTable promotions={globalPromotions} onEdit={editPromotion} onDelete={handleDelete} />
+        <PromotionsTable
+          promotions={globalPromotions}
+          onEdit={editPromotion}
+          onDelete={handleDelete}
+        />
       )}
 
       {tab === 'clients' && (
@@ -512,7 +534,11 @@ export function AdminPromotionsPage() {
               </p>
             )}
           </div>
-          <PromotionsTable promotions={clientPromotions} onEdit={editPromotion} onDelete={handleDelete} />
+          <PromotionsTable
+            promotions={clientPromotions}
+            onEdit={editPromotion}
+            onDelete={handleDelete}
+          />
         </div>
       )}
     </div>

@@ -931,6 +931,14 @@ class PromotionSerializer(serializers.ModelSerializer):
             "discount_type", getattr(self.instance, "discount_type", None)
         )
         value = attrs.get("value", getattr(self.instance, "value", None))
+        if discount_type == Promotion.TYPE_COST_PLUS:
+            # A markup on cost can't go below cost, so nothing to clamp;
+            # only a negative markup makes no sense.
+            if value is not None and value < 0:
+                raise serializers.ValidationError(
+                    {"value": "Надценката не може да е отрицателна."}
+                )
+            return attrs
         if (
             scope == Promotion.SCOPE_PRODUCT
             and product is not None

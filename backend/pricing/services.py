@@ -50,7 +50,14 @@ def compute_promo_price(base: Decimal, promotion: Promotion, product=None) -> De
     different costs), so the floor is enforced here, at the point where a
     specific product's price is actually resolved, rather than on the
     Promotion record itself."""
-    if promotion.discount_type == Promotion.TYPE_PERCENT:
+    if promotion.discount_type == Promotion.TYPE_COST_PLUS:
+        # Cost + markup. Without a known cost there is nothing to build on,
+        # and a markup that lands above the normal price never applies.
+        if product is None or product.admin_price is None:
+            return base.quantize(Decimal("0.01"))
+        candidate = product.admin_price * (Decimal(1) + promotion.value / Decimal(100))
+        candidate = min(candidate, base)
+    elif promotion.discount_type == Promotion.TYPE_PERCENT:
         candidate = base * (Decimal(1) - promotion.value / Decimal(100))
     else:
         # Flat is the final price itself ("this costs €X for this
@@ -114,6 +121,9 @@ def get_effective_price(
         best_promo = None
         for promo in matches:
             candidate = compute_promo_price(base, promo, product=product)
+            if promo.discount_type == Promotion.TYPE_COST_PLUS and candidate >= base:
+                # No cost price, or the markup isn't cheaper: not a deal.
+                continue
             if best_promo is None or candidate < best_price:
                 best_price = candidate
                 best_promo = promo

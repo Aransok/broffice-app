@@ -7,7 +7,15 @@ from common.models import SoftStatusModel, TimeStampedModel
 class Promotion(TimeStampedModel, SoftStatusModel):
     TYPE_PERCENT = "percent"
     TYPE_FLAT = "flat"
-    TYPE_CHOICES = [(TYPE_PERCENT, "Percent"), (TYPE_FLAT, "Flat")]
+    # Price built UP from the owner's own cost price (`admin_price`, the
+    # "0 price") instead of down from the shop price: cost €2.00 with
+    # value 10 means the client pays €2.20. Never above the normal price.
+    TYPE_COST_PLUS = "cost_plus"
+    TYPE_CHOICES = [
+        (TYPE_PERCENT, "Percent"),
+        (TYPE_FLAT, "Flat"),
+        (TYPE_COST_PLUS, "Cost plus percent"),
+    ]
 
     # `scope` is the *target* — what's discounted — and is deliberately
     # independent from `user` below (who it's for). There is no "user" scope

@@ -5,6 +5,7 @@ import {
   type Promotion,
   type PromotionDiscountType,
   updatePromotion,
+  promotionValueLabel,
 } from '../../api/promotions'
 import { bgnToEur, eurToBgn } from '../../utils/currency'
 
@@ -68,7 +69,7 @@ export function AdminQuickPromotionButton({
 
   async function handleSave() {
     if (!value) {
-      setError(discountType === 'percent' ? 'Въведете %.' : 'Въведете €.')
+      setError(discountType === 'flat' ? 'Въведете €.' : 'Въведете %.')
       return
     }
     setSaving(true)
@@ -120,11 +121,10 @@ export function AdminQuickPromotionButton({
     return (
       <button type="button" onClick={openForm} className="text-xs text-primary hover:underline">
         {existingPromotion
-          ? `Редактирай промоция (${
-              existingPromotion.discount_type === 'percent'
-                ? `${existingPromotion.value}%`
-                : `€${bgnToEur(existingPromotion.value)}`
-            }${existingPromotion.max_quantity ? `, до ${existingPromotion.max_quantity} бр.` : ''})`
+          ? `Редактирай промоция (${promotionValueLabel(
+              existingPromotion,
+              bgnToEur,
+            )}${existingPromotion.max_quantity ? `, до ${existingPromotion.max_quantity} бр.` : ''})`
           : audience === 'everyone'
             ? '+ Промоция за всички'
             : '+ Промоция'}
@@ -142,12 +142,18 @@ export function AdminQuickPromotionButton({
       >
         <option value="percent">%</option>
         <option value="flat">€</option>
+        <option value="cost_plus">Доставна +%</option>
       </select>
       <input
         type="text"
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        placeholder={discountType === 'percent' ? '%' : '€'}
+        placeholder={discountType === 'flat' ? '€' : '%'}
+        title={
+          discountType === 'cost_plus'
+            ? 'Надценка върху доставната цена: €2.00 + 10% = €2.20'
+            : undefined
+        }
         aria-label="Стойност на отстъпката"
         className="w-14 rounded-ui border border-slate-300 px-1 py-0.5 text-xs"
       />
