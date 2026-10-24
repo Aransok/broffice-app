@@ -282,10 +282,9 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         "category__external_id": ["exact"],
         "price_bgn": ["gte", "lte"],
     }
-    ordering_fields = ("name", "price_bgn", "created_at")
+    ordering_fields = ("name", "price_bgn", "created_at", "brand__name")
 
-    def get_queryset(self):
-        qs = super().get_queryset()
+    def _category_scoped(self, qs):
         # Handled manually rather than via filterset_fields: a category page
         # must show every product in that category's subtree (children,
         # grandchildren, ...), not just products assigned directly to it -
@@ -298,6 +297,19 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
             if category is None:
                 return qs.none()
             qs = qs.filter(category_id__in=get_descendant_category_ids(category))
+        return qs
+
+    def get_queryset(self):
+        qs = self._category_scoped(super().get_queryset())
+        # `brands=slug1,slug2`: any of the ticked brands in the category
+        # sidebar (the single-brand `brand__slug` filter still works too).
+        brand_slugs = [
+            slug.strip()
+            for slug in self.request.query_params.get("brands", "").split(",")
+            if slug.strip()
+        ]
+        if brand_slugs:
+            qs = qs.filter(brand__slug__in=brand_slugs)
         if self.request.query_params.get("on_promotion"):
             promo_q = promoted_products_q(
                 get_active_promotions(), get_pricing_user(self.request)
@@ -309,6 +321,33 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         if self.action == "retrieve":
             return ProductDetailSerializer
         return ProductListSerializer
+
+    @action(detail=False, methods=["get"])
+    def brands(self, request):
+        """Brands present in a category (incl. its subcategories) with how
+        many products each has - the brand filter in the category sidebar.
+        Deliberately ignores the brand filter itself so ticking one brand
+        doesn't hide the others."""
+        qs = self._category_scoped(
+            Product.objects.filter(
+                status=Product.STATUS_PUBLISHED, brand__isnull=False
+            )
+        )
+        rows = (
+            qs.values("brand__slug", "brand__name")
+            .annotate(count=Count("id"))
+            .order_by("brand__name")
+        )
+        return Response(
+            [
+                {
+                    "slug": row["brand__slug"],
+                    "name": row["brand__name"],
+                    "count": row["count"],
+                }
+                for row in rows
+            ]
+        )
 
     def get_serializer_context(self):
         context = super().get_serializer_context()

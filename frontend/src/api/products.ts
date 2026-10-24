@@ -5,6 +5,8 @@ import type { Paginated, ProductDetail, ProductListItem } from './types'
 export interface ProductListParams {
   category__slug?: string
   brand__slug?: string
+  /** Comma-separated brand slugs (any of them). */
+  brands?: string
   page?: number
   ordering?: string
   search?: string
@@ -61,5 +63,24 @@ export function useRecommendedProducts(slug: string) {
     queryKey: ['product-recommended', slug],
     queryFn: () => fetchRecommendedProducts(slug),
     enabled: Boolean(slug),
+  })
+}
+
+export interface BrandFacet {
+  slug: string
+  name: string
+  count: number
+}
+
+/** Brands present in a category (incl. subcategories), with product counts. */
+export function useCategoryBrands(categorySlug: string) {
+  return useQuery({
+    queryKey: ['category-brands', categorySlug],
+    queryFn: () =>
+      apiClient
+        .get<BrandFacet[]>('/products/brands/', { params: { category__slug: categorySlug } })
+        .then((res) => res.data),
+    enabled: Boolean(categorySlug),
+    staleTime: 5 * 60 * 1000,
   })
 }

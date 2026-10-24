@@ -3977,3 +3977,51 @@ def test_admin_design_requires_admin(api_client):
     api_client.force_authenticate(user=customer)
     resp = api_client.put("/api/v1/admin/design/", {"design": "fresh"}, format="json")
     assert resp.status_code == 403
+
+
+@pytest.mark.django_db
+def test_category_brand_filter_facets_and_sort(api_client):
+    from brands.models import Brand
+
+    parent = Category.objects.create(external_id="c-p", slug="paper", name="Хартия")
+    child = Category.objects.create(
+        external_id="c-c", slug="a4", name="A4", parent=parent
+    )
+    other = Category.objects.create(external_id="c-o", slug="other", name="Друго")
+    hp = Brand.objects.create(external_id="b-hp", slug="hp", name="HP")
+    nav = Brand.objects.create(external_id="b-nav", slug="navigator", name="Navigator")
+    acme = Brand.objects.create(external_id="b-acme", slug="acme", name="Acme")
+    for i, (cat, brand) in enumerate(
+        [(child, nav), (child, nav), (parent, hp), (other, acme)]
+    ):
+        Product.objects.create(
+            external_id=f"p{i}",
+            slug=f"p{i}",
+            name=f"Продукт {i}",
+            category=cat,
+            brand=brand,
+            price_bgn="1.00",
+            status=Product.STATUS_PUBLISHED,
+        )
+
+    resp = api_client.get("/api/v1/products/brands/", {"category__slug": "paper"})
+    assert resp.status_code == 200
+    assert resp.data == [
+        {"slug": "hp", "name": "HP", "count": 1},
+        {"slug": "navigator", "name": "Navigator", "count": 2},
+    ]
+
+    resp = api_client.get(
+        "/api/v1/products/", {"category__slug": "paper", "brands": "navigator"}
+    )
+    assert {p["slug"] for p in resp.data["results"]} == {"p0", "p1"}
+
+    resp = api_client.get(
+        "/api/v1/products/",
+        {"category__slug": "paper", "ordering": "-brand__name,name"},
+    )
+    assert [p["brand_name"] for p in resp.data["results"]] == [
+        "Navigator",
+        "Navigator",
+        "HP",
+    ]
