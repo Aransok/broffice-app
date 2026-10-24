@@ -84,3 +84,13 @@ export function useCategoryBrands(categorySlug: string) {
     staleTime: 5 * 60 * 1000,
   })
 }
+
+/** Quick order: exact product per typed code (the №number customers see,
+ * or the manufacturer code), null when there's no exact match. */
+export function lookupProductCodes(codes: string[]) {
+  return apiClient
+    .get<Record<string, ProductListItem | null>>('/products/lookup/', {
+      params: { codes: codes.join(',') },
+    })
+    .then((res) => res.data)
+}

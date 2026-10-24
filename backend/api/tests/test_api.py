@@ -4073,3 +4073,31 @@ def test_speedy_offices_store_map_coordinates(settings):
     with patch.object(SpeedyRestClient, "_post", return_value=response):
         offices = client.search_offices("", site_id="1")
     assert (offices[0].latitude, offices[0].longitude) == (42.13, 24.78)
+
+
+@pytest.mark.django_db
+def test_quick_order_lookup_uses_the_number_customers_see(api_client):
+    def make(slug, **kw):
+        return Product.objects.create(
+            external_id=f"x-{slug}",
+            slug=slug,
+            name=slug,
+            price_bgn="1.00",
+            status=Product.STATUS_PUBLISHED,
+            **kw,
+        )
+
+    make("clips", supplier_id="646", item_number=113)  # shown as №646
+    make("wanted", supplier_id="113", item_number=900)  # shown as №113
+    make("toner", supplier_id="11359", supplier_code="CF283A", item_number=624)
+    make("manual", supplier_id="", item_number=777)  # shown as №777
+
+    resp = api_client.get(
+        "/api/v1/products/lookup/", {"codes": "113,cf283a,777,646 ,nope"}
+    )
+    assert resp.status_code == 200
+    assert resp.data["113"]["slug"] == "wanted"
+    assert resp.data["cf283a"]["slug"] == "toner"
+    assert resp.data["777"]["slug"] == "manual"
+    assert resp.data["646"]["slug"] == "clips"
+    assert resp.data["nope"] is None
