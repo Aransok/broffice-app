@@ -21,7 +21,7 @@ export function Header() {
   const { data: stats } = useDashboardStats(Boolean(user?.is_admin_portal))
   const { showInclVat, setShowInclVat } = useVat()
   const { data: config } = usePublicConfig()
-  const { mode, setMode, preset } = useTheme()
+  const { mode, setMode, preset, isEnabled } = useTheme()
   // Bold has an ink-navy header, where the blue 'BR' would vanish: a white
   // 'BR' + the same orange 'office' keeps the logo readable without a box.
   const logoSrc = preset === 'bold' ? logoLight : logo
@@ -96,7 +96,7 @@ export function Header() {
               Търси
             </button>
           </form>
-          {preset === 'bold' && searchOpen && (
+          {isEnabled('instant_search') && searchOpen && (
             <InstantSearch query={query} inputRef={searchRef} onClose={closeSearch} />
           )}
         </div>

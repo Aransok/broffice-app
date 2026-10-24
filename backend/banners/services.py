@@ -405,17 +405,36 @@ def _write_manifest(active_promotions: list[Promotion]) -> None:
         banner = banners.get(promotion.id)
         if banner is None:
             continue
+        subject_image = ""
+        price = ""
+        old_price = ""
         if promotion.scope == Promotion.SCOPE_PRODUCT:
-            target_url = f"/product/{promotion.product.slug}"
-            title = promotion.product.name
+            product = promotion.product
+            target_url = f"/product/{product.slug}"
+            title = product.name
+            first = product.images.order_by("sort_order").first()
+            subject_image = first.path if first else ""
+            base = get_base_price(product)
+            if base is not None:
+                old_price = format_eur(base)
+                price = format_eur(compute_promo_price(base, promotion, product))
         else:
             target_url = f"/category/{promotion.category.slug}"
             title = promotion.category.name
+            subject_image = promotion.category.image_path or ""
         entries.append(
             {
                 "id": str(promotion.id),
                 "type": banner.banner_type,
                 "image_path": banner.image_path,
+                # The raw product/category picture and prices, so the
+                # storefront can compose the banner live (the PNG above
+                # stays as the fallback and for designs that want it).
+                "subject_image": subject_image,
+                "price": price,
+                "old_price": old_price if old_price != price else "",
+                "name": promotion.name,
+                "ends_at": promotion.ends_at.isoformat() if promotion.ends_at else "",
                 "target_url": target_url,
                 "title": title,
                 "discount_label": _discount_label(promotion),

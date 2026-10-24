@@ -3,6 +3,7 @@ import type { ProductListItem } from '../api/types'
 import { BannerCarousel } from '../components/home/BannerCarousel'
 import { BoldHomeIntro } from '../components/home/BoldHomeIntro'
 import { FreshHomeIntro } from '../components/home/FreshHomeIntro'
+import { PaperHomeIntro } from '../components/home/PaperHomeIntro'
 import { ProductCard } from '../components/product/ProductCard'
 import { Seo } from '../components/Seo'
 import { useTheme } from '../context/ThemeContext'
@@ -53,7 +54,7 @@ function ProductSection({
 
 export function HomePage() {
   const { data, isError } = useHomeSections()
-  const { preset } = useTheme()
+  const { preset, isEnabled } = useTheme()
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -66,8 +67,9 @@ export function HomePage() {
 
       {preset === 'fresh' && <FreshHomeIntro />}
       {preset === 'bold' && <BoldHomeIntro />}
+      {preset === 'paper' && <PaperHomeIntro />}
 
-      <BannerCarousel />
+      {isEnabled('banner_carousel') && <BannerCarousel />}
 
       {/* Personalized to the viewer's own browsing activity — doesn't
           render for guests or logged-in users with no view history yet. */}
@@ -77,7 +79,9 @@ export function HomePage() {
       <ProductSection title="Най-продавани" products={data?.best_sellers} />
       <ProductSection title="Нови продукти" products={data?.new_products} />
       {/* Bold already shows this week's promotions up top. */}
-      {preset !== 'bold' && <ProductSection title="Промоции" products={data?.promotions} />}
+      {preset !== 'bold' && preset !== 'paper' && (
+        <ProductSection title="Промоции" products={data?.promotions} />
+      )}
     </div>
   )
 }

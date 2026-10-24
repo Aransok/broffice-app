@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import { useVat } from '../../context/VatContext'
 import { announceCartAdd } from '../../lib/cartEvents'
+import { useTheme } from '../../context/ThemeContext'
 import { Aurora } from '../bold/Aurora'
 import { CountUp, Reveal, Tilt } from '../bold/motion'
 import { ProductCard } from '../product/ProductCard'
@@ -22,23 +23,30 @@ import { QuickOrderBox } from './QuickOrderBox'
  * of categories, live numbers and a trust strip. Only rendered when that
  * design is active (see HomePage). */
 export function BoldHomeIntro() {
+  const { isEnabled } = useTheme()
   return (
     <div className="mb-14 flex flex-col gap-14">
       <Hero />
-      <BrandMarquee />
-      <PromoCarousel />
-      <BentoCategories />
-      <Numbers />
-      <TrustStrip />
+      {isEnabled('brand_marquee') && <BrandMarquee />}
+      {isEnabled('promo_carousel') && <PromoCarousel />}
+      {isEnabled('category_tiles') && <BentoCategories />}
+      {isEnabled('numbers') && <Numbers />}
+      {isEnabled('trust_strip') && <TrustStrip />}
     </div>
   )
 }
 
 function Hero() {
   const { user } = useAuth()
+  const { isEnabled } = useTheme()
+  const quickOrder = isEnabled('quick_order')
   return (
     <section className="grid gap-5 lg:grid-cols-12">
-      <div className="relative isolate flex min-h-[520px] flex-col justify-between gap-10 overflow-hidden rounded-[32px] bg-[#070f1e] p-7 text-white sm:p-10 lg:col-span-7">
+      <div
+        className={`relative isolate flex min-h-[520px] flex-col justify-between gap-10 overflow-hidden rounded-[32px] bg-[#070f1e] p-7 text-white sm:p-10 ${
+          quickOrder ? 'lg:col-span-7' : 'lg:col-span-12'
+        }`}
+      >
         <Aurora />
         <div
           aria-hidden="true"
@@ -91,35 +99,37 @@ function Hero() {
             {user ? 'Моите поръчки' : 'Фирмен акаунт'}
           </Link>
         </div>
-        <Spotlight />
+        {isEnabled('spotlight') && <Spotlight />}
       </div>
 
-      <Reveal delay={120} className="lg:col-span-5">
-        <div className="flex h-full flex-col gap-4 rounded-[32px] border-[1.5px] border-[#0a1628] bg-surface p-6 shadow-[6px_6px_0_#0a1628] sm:p-7">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="display text-xl text-slate-900">Бърза поръчка</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Номер и количество на ред. Продуктът се показва веднага, преди да го добавиш.
-              </p>
+      {quickOrder && (
+        <Reveal delay={120} className="lg:col-span-5">
+          <div className="flex h-full flex-col gap-4 rounded-[32px] border-[1.5px] border-[#0a1628] bg-surface p-6 shadow-[6px_6px_0_#0a1628] sm:p-7">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="display text-xl text-slate-900">Бърза поръчка</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Номер и количество на ред. Продуктът се показва веднага, преди да го добавиш.
+                </p>
+              </div>
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#ff6b1f] text-[#0a1628]">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  aria-hidden="true"
+                >
+                  <path d="M13 2 4 14h7l-1 8 9-12h-7z" />
+                </svg>
+              </span>
             </div>
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#ff6b1f] text-[#0a1628]">
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                aria-hidden="true"
-              >
-                <path d="M13 2 4 14h7l-1 8 9-12h-7z" />
-              </svg>
-            </span>
+            <QuickOrderBox />
           </div>
-          <QuickOrderBox />
-        </div>
-      </Reveal>
+        </Reveal>
+      )}
     </section>
   )
 }

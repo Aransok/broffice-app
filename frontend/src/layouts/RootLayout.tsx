@@ -9,7 +9,7 @@ import { Header } from '../components/layout/Header'
 import { useTheme } from '../context/ThemeContext'
 
 export function RootLayout() {
-  const { preset } = useTheme()
+  const { isEnabled } = useTheme()
   return (
     <div className="flex min-h-svh flex-col">
       <DesignPreviewBanner />
@@ -19,8 +19,8 @@ export function RootLayout() {
         <Outlet />
       </main>
       <Footer />
-      {preset === 'bold' && <BoldMobileBar />}
-      {preset === 'bold' && <CartDrawer />}
+      {isEnabled('mobile_bar') && <BoldMobileBar />}
+      {isEnabled('cart_drawer') && <CartDrawer />}
       <CookieConsentBanner />
     </div>
   )
