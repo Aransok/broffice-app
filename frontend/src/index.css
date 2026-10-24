@@ -763,3 +763,260 @@ html[data-theme='bold'] body {
     transform: none;
   }
 }
+
+/* Promotion banner carousel (all designs): progress bar on the active dot
+ * and a serif/display hook the designs can restyle. */
+@keyframes promo-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.promo-progress {
+  animation: promo-progress linear forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .promo-progress {
+    animation: none;
+    transform: none;
+  }
+}
+
+/* 9. BRoffice Paper ("paper") — light editorial look: warm white, ink
+ * text, Playfair Display headlines with Inter body, hairline borders,
+ * a sage accent and large photography. Calm where Bold is loud.
+ * HomePage renders <PaperHomeIntro> when it's on. */
+:root[data-theme='paper'] {
+  --color-primary: #1a1a1a;
+  --color-ink: #1a1a1a;
+  --color-paper: #fbfaf7;
+  --color-sage: #7a9e7e;
+  --color-buy: #1a1a1a;
+  --color-buy-ink: #ffffff;
+  --radius-ui: 6px;
+  --shadow-card: none;
+  --color-red-100: #eef3ee;
+  --color-red-300: #b9cdbb;
+  --color-red-500: #5f8a63;
+  --color-red-600: #4f7a53;
+  --color-red-800: #2f4f33;
+}
+:root[data-theme='paper']:not([data-mode='dark']) {
+  --color-surface: #ffffff;
+  --color-slate-50: #fbfaf7;
+  --color-slate-100: #f3f1ea;
+  --color-slate-200: #e6e2d8;
+  --color-slate-300: #cfc9bb;
+  --color-slate-500: #6b6a63;
+  --color-slate-900: #1a1a1a;
+}
+:root[data-theme='paper'][data-mode='dark'] {
+  --color-primary: #e8e4da;
+  --color-ink: #e8e4da;
+  --color-paper: #15140f;
+  --color-surface: #1d1c16;
+  --color-slate-50: #15140f;
+  --color-slate-100: #23221b;
+  --color-slate-200: #34332a;
+  --color-slate-300: #4a4839;
+  --color-buy: #e8e4da;
+  --color-buy-ink: #15140f;
+  --color-sage: #9dbfa0;
+}
+html[data-theme='paper'] body {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+:root[data-theme='paper'] h1,
+:root[data-theme='paper'] h2,
+:root[data-theme='paper'] .display,
+:root[data-theme='paper'] .home-section-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+:root[data-theme='paper'] .home-section-title {
+  font-size: 2rem;
+}
+:root[data-theme='paper'] .site-header {
+  background: var(--color-paper);
+  border-bottom: 1px solid var(--color-slate-200);
+}
+:root[data-theme='paper'] .site-nav {
+  background: var(--color-paper);
+  border-top: 1px solid var(--color-slate-200);
+}
+:root[data-theme='paper'] .site-search input {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--color-ink);
+  border-radius: 0;
+  padding-left: 0;
+  font-size: 1rem;
+}
+:root[data-theme='paper'] .site-search button {
+  background: transparent;
+  color: var(--color-ink);
+  border: 0;
+  border-bottom: 1px solid var(--color-ink);
+  border-radius: 0;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+:root[data-theme='paper'] .mega-menu-button {
+  background: transparent;
+  color: var(--color-ink);
+  border: 1px solid var(--color-ink);
+  border-radius: 999px;
+  padding-block: 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+:root[data-theme='paper'] .site-nav a.text-red-600 {
+  color: var(--color-sage);
+}
+:root[data-theme='paper'] .site-footer {
+  background: var(--color-paper);
+  border-top: 1px solid var(--color-slate-200);
+}
+:root[data-theme='paper'] .site-footer h3 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 500;
+  font-size: 1rem;
+}
+:root[data-theme='paper'] .product-card {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+}
+:root[data-theme='paper'] .product-card:hover {
+  box-shadow: none;
+}
+:root[data-theme='paper'] .product-card .aspect-square {
+  background: var(--color-surface);
+  border: 1px solid var(--color-slate-200);
+  border-radius: 6px;
+  overflow: hidden;
+}
+:root[data-theme='paper'] .product-card img {
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+:root[data-theme='paper'] .product-card:hover img {
+  transform: scale(1.06);
+}
+:root[data-theme='paper'] .product-price {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+:root[data-theme='paper'] .btn-buy {
+  background: var(--color-buy);
+  color: var(--color-buy-ink);
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+:root[data-theme='paper'] .btn-buy:hover {
+  background: var(--color-sage);
+  color: #ffffff;
+  opacity: 1;
+}
+:root[data-theme='paper'] .quick-order-input {
+  background: var(--color-surface);
+  border: 1px solid var(--color-slate-300);
+  border-radius: 6px;
+}
+:root[data-theme='paper'] .promo-carousel {
+  border-radius: 6px;
+}
+:root[data-theme='paper'] .promo-slide {
+  background: var(--color-surface) !important;
+  color: var(--color-ink);
+  border: 1px solid var(--color-slate-200);
+}
+:root[data-theme='paper'] .promo-slide-badge {
+  background: var(--color-ink) !important;
+  color: var(--color-paper);
+}
+:root[data-theme='paper'] .promo-slide-discount {
+  color: var(--color-sage) !important;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 500;
+  font-style: italic;
+}
+:root[data-theme='paper'] .promo-slide .text-white\/80,
+:root[data-theme='paper'] .promo-slide .text-white\/50 {
+  color: var(--color-slate-500);
+}
+:root[data-theme='paper'] .promo-slide .text-white {
+  color: var(--color-ink);
+}
+:root[data-theme='paper'] .promo-slide-cta {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+:root[data-theme='paper'] .promo-slide-art > span {
+  background: var(--color-slate-100);
+  box-shadow: none;
+  border: 1px solid var(--color-slate-200);
+}
+:root[data-theme='paper'] .promo-carousel .bg-white\/35 {
+  background: rgba(26, 26, 26, 0.2);
+}
+:root[data-theme='paper'] .promo-progress {
+  background: var(--color-ink);
+}
+/* Paper's mobile bar and cart drawer borrow Bold's components; recolor. */
+:root[data-theme='paper'] nav[aria-label='Бърза навигация'] {
+  background: var(--color-paper);
+  border-top-color: var(--color-slate-200);
+}
+:root[data-theme='paper'] nav[aria-label='Бърза навигация'] a,
+:root[data-theme='paper'] nav[aria-label='Бърза навигация'] button {
+  color: var(--color-slate-500);
+}
+:root[data-theme='paper'] nav[aria-label='Бърза навигация'] a.text-white {
+  color: var(--color-ink);
+}
+:root[data-theme='paper'] [role='listbox'][aria-label='Резултати от търсенето'] {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border: 1px solid var(--color-slate-200);
+  border-radius: 6px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12);
+}
+:root[data-theme='paper'] [role='listbox'][aria-label='Резултати от търсенето'] .text-white\/60,
+:root[data-theme='paper'] [role='listbox'][aria-label='Резултати от търсенето'] .text-white\/70 {
+  color: var(--color-slate-500);
+}
+:root[data-theme='paper'] [role='listbox'][aria-label='Резултати от търсенето'] .text-\[\#ffb27a\] {
+  color: var(--color-sage);
+}
+.paper-line {
+  height: 1px;
+  background: currentColor;
+  opacity: 0.2;
+}
+@keyframes paper-fade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.paper-fade {
+  animation: paper-fade 0.8s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .paper-fade {
+    animation: none;
+  }
+}

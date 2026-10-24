@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import {
+  type DesignPreset,
+  featuresFor,
   PRESET_OPTIONS,
   type PresetOption,
   presetLabel,
+  resolveFeature,
   useTheme,
 } from '../../context/ThemeContext'
 
@@ -69,6 +72,77 @@ function DesignThumb({ option }: { option: PresetOption }) {
         </div>
       </div>
     </div>
+  )
+}
+
+/** The on/off switches under a design card. Saves on every change; the
+ * preview tab and the live site pick it up on their next load. */
+function FeatureSwitches({ design }: { design: DesignPreset }) {
+  const { featureOverrides, saveFeatures } = useTheme()
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState(false)
+  const options = featuresFor(design)
+  if (options.length === 0) return null
+  const onCount = options.filter((o) => resolveFeature(featureOverrides, design, o.key)).length
+
+  async function toggle(key: string, next: boolean) {
+    setBusy(key)
+    setError(false)
+    const current: Record<string, boolean> = {}
+    for (const option of options) {
+      current[option.key] = resolveFeature(featureOverrides, design, option.key)
+    }
+    current[key] = next
+    try {
+      await saveFeatures(design, current)
+    } catch {
+      setError(true)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <details className="mt-3 rounded-ui border border-slate-200">
+      <summary className="cursor-pointer select-none px-3 py-2 text-sm font-semibold text-slate-700">
+        Елементи ({onCount}/{options.length} включени)
+      </summary>
+      <ul className="divide-y divide-slate-100 border-t border-slate-200">
+        {options.map((option) => {
+          const on = resolveFeature(featureOverrides, design, option.key)
+          return (
+            <li key={option.key} className="flex items-start gap-3 px-3 py-2">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={on}
+                aria-label={option.label}
+                disabled={busy !== null}
+                onClick={() => toggle(option.key, !on)}
+                className={`relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition ${
+                  on ? 'bg-primary' : 'bg-slate-300'
+                } ${busy === option.key ? 'opacity-60' : ''}`}
+              >
+                <span
+                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition ${
+                    on ? 'left-[18px]' : 'left-0.5'
+                  }`}
+                />
+              </button>
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-slate-900">{option.label}</span>
+                <span className="block text-xs text-slate-500">{option.description}</span>
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+      {error && (
+        <p className="px-3 py-2 text-xs text-red-600" role="alert">
+          Не успяхме да запазим. Опитайте пак.
+        </p>
+      )}
+    </details>
   )
 }
 
@@ -151,13 +225,14 @@ export function AdminDesignsPage() {
                       Активен
                     </span>
                   )}
-                  {(option.value === 'fresh' || option.value === 'bold') && !isLive && (
+                  {['fresh', 'bold', 'paper'].includes(option.value) && !isLive && (
                     <span className="rounded-full bg-amber-400 px-2 py-0.5 text-xs font-semibold text-slate-900">
                       Нов
                     </span>
                   )}
                 </div>
                 <p className="flex-1 text-sm text-slate-600">{option.description}</p>
+                <FeatureSwitches design={option.value} />
                 <div className="mt-2 flex flex-wrap gap-2">
                   <a
                     href={previewHref(option.value)}

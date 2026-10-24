@@ -1,9 +1,14 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react'
-import { fetchLiveDesign, setLiveDesign } from '../api/design'
+import {
+  type FeatureOverrides,
+  fetchLiveDesign,
+  setDesignFeatures,
+  setLiveDesign,
+} from '../api/design'
 
 export type ColorMode = 'light' | 'dark'
 export type DesignPreset =
-  'classic' | 'modern' | 'compact' | 'premium' | 'soft' | 'brand' | 'fresh' | 'bold'
+  'classic' | 'modern' | 'compact' | 'premium' | 'soft' | 'brand' | 'fresh' | 'bold' | 'paper'
 
 export interface PresetOption {
   value: DesignPreset
@@ -15,6 +20,14 @@ export interface PresetOption {
 }
 
 export const PRESET_OPTIONS: PresetOption[] = [
+  {
+    value: 'paper',
+    label: 'BRoffice Paper',
+    description:
+      'Светъл, списанен стил: много въздух, едри серифни заглавия, снимките водят, тънки линии и пастелен акцент. Спокоен и скъп.',
+    swatch: ['#fbfaf7', '#ffffff', '#1a1a1a', '#7a9e7e'],
+    radius: 6,
+  },
   {
     value: 'bold',
     label: 'BRoffice Bold',
@@ -74,6 +87,115 @@ export const PRESET_OPTIONS: PresetOption[] = [
     radius: 22,
   },
 ]
+
+/** Optional storefront blocks the owner can switch on/off per design
+ * (admin "Дизайн"). `designs` lists where the switch applies; the default
+ * is what a design shows until the owner changes it. Keys match
+ * STOREFRONT_FEATURE_KEYS in backend/core/models.py. */
+export interface FeatureOption {
+  key: string
+  label: string
+  description: string
+  designs: DesignPreset[]
+  defaultOn: boolean
+}
+
+const HOME_DESIGNS: DesignPreset[] = ['fresh', 'bold', 'paper']
+const ALL_DESIGNS: DesignPreset[] = [
+  'classic',
+  'modern',
+  'compact',
+  'premium',
+  'soft',
+  'brand',
+  'fresh',
+  'bold',
+  'paper',
+]
+
+export const FEATURES: FeatureOption[] = [
+  {
+    key: 'banner_carousel',
+    label: 'Банери с промоции',
+    description: 'Автоматичните банери от активните промоции на началната страница.',
+    designs: ALL_DESIGNS,
+    defaultOn: true,
+  },
+  {
+    key: 'quick_order',
+    label: 'Бърза поръчка',
+    description: 'Поле за номера и количества с преглед на продукта преди добавяне.',
+    designs: HOME_DESIGNS,
+    defaultOn: true,
+  },
+  {
+    key: 'instant_search',
+    label: 'Търсене на живо',
+    description: 'Резултати със снимка и цена под търсачката, докато пишеш.',
+    designs: ['bold', 'paper'],
+    defaultOn: true,
+  },
+  {
+    key: 'cart_drawer',
+    label: 'Количка отстрани',
+    description: 'Малка количка, която се отваря при всяко добавяне, без да напускаш страницата.',
+    designs: ['bold', 'paper'],
+    defaultOn: true,
+  },
+  {
+    key: 'spotlight',
+    label: 'Промоция в заглавието',
+    description: 'Една актуална промоция като плаваща карта в голямото заглавие.',
+    designs: ['bold'],
+    defaultOn: true,
+  },
+  {
+    key: 'promo_carousel',
+    label: 'Лента с промоции',
+    description: 'Промоциите на седмицата в хоризонтална лента горе.',
+    designs: ['bold', 'paper'],
+    defaultOn: true,
+  },
+  {
+    key: 'brand_marquee',
+    label: 'Лента с марки',
+    description: 'Движеща се лента с марките от каталога.',
+    designs: ['bold', 'paper'],
+    defaultOn: true,
+  },
+  {
+    key: 'category_tiles',
+    label: 'Плочки с категории',
+    description: 'Категориите като големи плочки на началната страница.',
+    designs: HOME_DESIGNS,
+    defaultOn: true,
+  },
+  {
+    key: 'numbers',
+    label: 'Числа',
+    description: 'Брой продукти, марки и категории, броящи се нагоре.',
+    designs: ['bold'],
+    defaultOn: true,
+  },
+  {
+    key: 'trust_strip',
+    label: 'Лента с предимства',
+    description: 'Доставка, фактура, цени в € и лв.',
+    designs: HOME_DESIGNS,
+    defaultOn: true,
+  },
+  {
+    key: 'mobile_bar',
+    label: 'Долна лента на телефон',
+    description: 'Начало, промоции, търсене и количка, залепени долу на телефон.',
+    designs: ['bold', 'paper'],
+    defaultOn: true,
+  },
+]
+
+export function featuresFor(design: DesignPreset) {
+  return FEATURES.filter((f) => f.designs.includes(design))
+}
 
 export function presetLabel(value: string) {
   return PRESET_OPTIONS.find((p) => p.value === value)?.label ?? value
@@ -148,6 +270,23 @@ interface ThemeContextValue {
   makeDesignLive: (design: DesignPreset) => Promise<void>
   /** Called by DesignPreviewGate once auth is known. */
   setPreviewAllowed: (allowed: boolean) => void
+  /** The owner's per-design feature overrides. */
+  featureOverrides: FeatureOverrides
+  /** Whether a feature is on for the design applied in this tab. */
+  isEnabled: (key: string) => boolean
+  /** Saves one design's feature switches for everyone. Admin only. */
+  saveFeatures: (design: DesignPreset, features: Record<string, boolean>) => Promise<void>
+}
+
+export function resolveFeature(
+  overrides: FeatureOverrides,
+  design: DesignPreset,
+  key: string,
+): boolean {
+  const option = FEATURES.find((f) => f.key === key)
+  if (!option || !option.designs.includes(design)) return false
+  const value = overrides[design]?.[key]
+  return value ?? option.defaultOn
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
@@ -171,6 +310,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const cached = storageGet(local, LIVE_CACHE_KEY)
     return isPreset(cached) ? cached : 'classic'
   })
+  const [featureOverrides, setFeatureOverrides] = useState<FeatureOverrides>({})
   const [requestedPreview, setRequestedPreview] = useState<DesignPreset | null>(readInitialPreview)
   const [previewAllowed, setPreviewAllowed] = useState(false)
 
@@ -185,8 +325,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false
     fetchLiveDesign()
-      .then((design) => {
-        if (!cancelled && isPreset(design)) applyLive(design)
+      .then(({ design, features }) => {
+        if (cancelled) return
+        if (isPreset(design)) applyLive(design)
+        setFeatureOverrides(features ?? {})
       })
       .catch(() => {
         // Keep the cached/default design; the shop still works.
@@ -207,6 +349,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const fonts: Partial<Record<DesignPreset, string>> = {
       fresh: 'Onest:wght@400;500;600;700;800',
       bold: 'Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700;800',
+      paper: 'Playfair+Display:ital,wght@0,500;0,700;1,500&family=Inter:wght@400;500;600;700',
     }
     const family = fonts[preset]
     const id = `font-${preset}`
@@ -238,6 +381,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     [applyLive, exitDesignPreview, requestedPreview],
   )
 
+  const isEnabled = useCallback(
+    (key: string) => resolveFeature(featureOverrides, preset, key),
+    [featureOverrides, preset],
+  )
+
+  const saveFeatures = useCallback(
+    async (design: DesignPreset, features: Record<string, boolean>) => {
+      const saved = await setDesignFeatures(design, features)
+      setFeatureOverrides(saved.features ?? {})
+    },
+    [],
+  )
+
   const allowPreview = useCallback((allowed: boolean) => {
     setPreviewAllowed(allowed)
     // A non-admin who got hold of a preview link never keeps it around.
@@ -255,6 +411,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         exitDesignPreview,
         makeDesignLive,
         setPreviewAllowed: allowPreview,
+        featureOverrides,
+        isEnabled,
+        saveFeatures,
       }}
     >
       {children}

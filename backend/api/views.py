@@ -49,6 +49,7 @@ from common.pagination import LargePageNumberPagination
 from core.models import (
     DEFAULT_STOREFRONT_DESIGN,
     STOREFRONT_DESIGN_CHOICES,
+    STOREFRONT_FEATURE_KEYS,
     SiteSettings,
 )
 from coupons.emails import send_coupon_email
@@ -215,14 +216,39 @@ def _current_design():
     )
 
 
+def _clean_features(raw) -> dict:
+    """{"design": {"feature": bool}} with only known designs/features."""
+    designs = dict(STOREFRONT_DESIGN_CHOICES)
+    cleaned = {}
+    if not isinstance(raw, dict):
+        return cleaned
+    for design, flags in raw.items():
+        if design not in designs or not isinstance(flags, dict):
+            continue
+        kept = {
+            key: bool(value)
+            for key, value in flags.items()
+            if key in STOREFRONT_FEATURE_KEYS
+        }
+        if kept:
+            cleaned[design] = kept
+    return cleaned
+
+
+def _current_features() -> dict:
+    site_settings = SiteSettings.objects.first()
+    return _clean_features(site_settings.storefront_features) if site_settings else {}
+
+
 class StorefrontDesignView(APIView):
-    """Which design every visitor gets. Public and tiny, so the SPA can
-    apply it before anything else renders."""
+    """Which design every visitor gets, plus the per-design feature
+    switches. Public and tiny, so the SPA can apply it before anything
+    else renders."""
 
     permission_classes = [AllowAny]
 
     def get(self, request):
-        return Response({"design": _current_design()})
+        return Response({"design": _current_design(), "features": _current_features()})
 
 
 class AdminStorefrontDesignView(APIView):
@@ -236,6 +262,7 @@ class AdminStorefrontDesignView(APIView):
         return Response(
             {
                 "design": _current_design(),
+                "features": _current_features(),
                 "choices": [
                     {"value": value, "label": label}
                     for value, label in STOREFRONT_DESIGN_CHOICES
@@ -247,14 +274,27 @@ class AdminStorefrontDesignView(APIView):
         return self._response()
 
     def put(self, request):
-        design = str(request.data.get("design") or "").strip()
-        if design not in dict(STOREFRONT_DESIGN_CHOICES):
-            return Response(
-                {"detail": "Unknown design."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        """Either or both of `design` (make it live) and `features`
+        ({"bold": {"numbers": false}}, replaces that design's overrides)."""
         site_settings = SiteSettings.objects.first() or SiteSettings()
-        site_settings.storefront_design = design
+        if "design" in request.data:
+            design = str(request.data.get("design") or "").strip()
+            if design not in dict(STOREFRONT_DESIGN_CHOICES):
+                return Response(
+                    {"detail": "Unknown design."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            site_settings.storefront_design = design
+        if "features" in request.data:
+            incoming = _clean_features(request.data.get("features"))
+            current = _clean_features(site_settings.storefront_features)
+            # Designs mentioned in the request get replaced wholesale.
+            if isinstance(request.data.get("features"), dict):
+                for design in request.data["features"]:
+                    if design in dict(STOREFRONT_DESIGN_CHOICES):
+                        current.pop(design, None)
+            current.update(incoming)
+            site_settings.storefront_features = current
         site_settings.save()
         return self._response()
 

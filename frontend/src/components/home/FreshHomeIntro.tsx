@@ -3,22 +3,24 @@ import { Link } from 'react-router-dom'
 import { useCategoryTree } from '../../api/categories'
 import { QuickOrderBox } from './QuickOrderBox'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 
 /** The top of the home page in the "BRoffice 2026" design: hero, quick
  * order by item number, reorder, business account, trust bar and category
  * tiles. Ported from the 21st.dev-based mockup. Only rendered when that
  * design is active (see HomePage). */
 export function FreshHomeIntro() {
+  const { isEnabled } = useTheme()
   return (
     <div className="mb-12 flex flex-col gap-10">
       <section className="grid gap-4 md:grid-cols-3">
         <Hero />
-        <QuickOrderCard />
+        {isEnabled('quick_order') && <QuickOrderCard />}
         <ReorderCard />
         <BusinessCard />
       </section>
-      <TrustBar />
-      <CategoryTiles />
+      {isEnabled('trust_strip') && <TrustBar />}
+      {isEnabled('category_tiles') && <CategoryTiles />}
     </div>
   )
 }

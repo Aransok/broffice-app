@@ -3947,7 +3947,7 @@ def test_speedy_courier_address_streets_price_table_and_order(
 def test_storefront_design_defaults_to_classic(api_client):
     resp = api_client.get("/api/v1/design/")
     assert resp.status_code == 200
-    assert resp.data == {"design": "classic"}
+    assert resp.data == {"design": "classic", "features": {}}
 
 
 @pytest.mark.django_db
@@ -3958,7 +3958,7 @@ def test_admin_can_make_a_design_live(api_client, admin_user):
     assert resp.data["design"] == "fresh"
     assert {"value": "fresh", "label": "BRoffice 2026"} in resp.data["choices"]
     api_client.force_authenticate(user=None)
-    assert api_client.get("/api/v1/design/").data == {"design": "fresh"}
+    assert api_client.get("/api/v1/design/").data["design"] == "fresh"
 
 
 @pytest.mark.django_db
@@ -4101,3 +4101,34 @@ def test_quick_order_lookup_uses_the_number_customers_see(api_client):
     assert resp.data["777"]["slug"] == "manual"
     assert resp.data["646"]["slug"] == "clips"
     assert resp.data["nope"] is None
+
+
+@pytest.mark.django_db
+def test_admin_design_features_per_design(api_client, admin_user):
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.put(
+        "/api/v1/admin/design/",
+        {"features": {"bold": {"numbers": False, "bogus": True}, "nope": {"x": 1}}},
+        format="json",
+    )
+    assert resp.status_code == 200
+    assert resp.data["features"] == {"bold": {"numbers": False}}
+    # Another design's switches don't touch bold's.
+    resp = api_client.put(
+        "/api/v1/admin/design/",
+        {"features": {"fresh": {"quick_order": False}}},
+        format="json",
+    )
+    assert resp.data["features"] == {
+        "bold": {"numbers": False},
+        "fresh": {"quick_order": False},
+    }
+    # Replacing bold's switches drops the old ones.
+    resp = api_client.put(
+        "/api/v1/admin/design/", {"features": {"bold": {}}}, format="json"
+    )
+    assert resp.data["features"] == {"fresh": {"quick_order": False}}
+    api_client.force_authenticate(user=None)
+    public = api_client.get("/api/v1/design/").data
+    assert public["features"] == {"fresh": {"quick_order": False}}
+    assert public["design"] == "classic"

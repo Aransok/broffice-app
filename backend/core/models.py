@@ -14,8 +14,26 @@ STOREFRONT_DESIGN_CHOICES = [
     ("brand", "BRoffice (фирмени цветове)"),
     ("fresh", "BRoffice 2026"),
     ("bold", "BRoffice Bold"),
+    ("paper", "BRoffice Paper"),
 ]
 DEFAULT_STOREFRONT_DESIGN = "classic"
+
+# Optional storefront blocks the owner can switch on/off per design from
+# the admin "Дизайн" page. Keys must match FEATURES in
+# frontend/src/context/ThemeContext.tsx. Missing key = that design's default.
+STOREFRONT_FEATURE_KEYS = [
+    "banner_carousel",
+    "quick_order",
+    "instant_search",
+    "cart_drawer",
+    "promo_carousel",
+    "brand_marquee",
+    "category_tiles",
+    "numbers",
+    "trust_strip",
+    "mobile_bar",
+    "spotlight",
+]
 
 
 class SiteSettings(TimeStampedModel):
@@ -40,6 +58,10 @@ class SiteSettings(TimeStampedModel):
         choices=STOREFRONT_DESIGN_CHOICES,
         default=DEFAULT_STOREFRONT_DESIGN,
     )
+
+    # {"bold": {"numbers": false}, "fresh": {...}} — only overrides are
+    # stored, the frontend fills in each design's defaults.
+    storefront_features = models.JSONField(default=dict, blank=True)
 
     class Meta:
         verbose_name_plural = "Site settings"

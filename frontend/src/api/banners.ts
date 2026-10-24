@@ -8,6 +8,14 @@ export interface BannerEntry {
   target_url: string
   title: string
   discount_label: string
+  /** Raw product/category picture, so the carousel can compose the banner live. */
+  subject_image: string
+  /** Formatted EUR, empty when unknown. */
+  price: string
+  old_price: string
+  name: string
+  /** ISO datetime or empty. */
+  ends_at: string
 }
 
 /** Not a DRF endpoint — banners/services.py (backend) writes this file
