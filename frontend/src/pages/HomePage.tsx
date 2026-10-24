@@ -76,7 +76,8 @@ export function HomePage() {
           doesn't render until there's real order history to draw from. */}
       <ProductSection title="Най-продавани" products={data?.best_sellers} />
       <ProductSection title="Нови продукти" products={data?.new_products} />
-      <ProductSection title="Промоции" products={data?.promotions} />
+      {/* Bold already shows this week's promotions up top. */}
+      {preset !== 'bold' && <ProductSection title="Промоции" products={data?.promotions} />}
     </div>
   )
 }

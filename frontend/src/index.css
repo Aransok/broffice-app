@@ -598,23 +598,85 @@ html[data-theme='bold'] body {
   border-color: #2a3a5a;
 }
 
-/* Bold home blocks. */
-@keyframes bold-blob {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
+/* Bold motion: scroll reveals, headline words, floating spotlight, tilt,
+ * marquee, and a sticky blurred header that stays out of the way. */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.reveal.is-shown {
+  opacity: 1;
+  transform: none;
+}
+@keyframes bold-word {
+  from {
+    opacity: 0;
+    transform: translateY(28px) skewY(2deg);
+    filter: blur(6px);
   }
-  33% {
-    transform: translate(40px, -30px) scale(1.15);
-  }
-  66% {
-    transform: translate(-30px, 25px) scale(0.95);
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
   }
 }
-.bold-blob {
-  animation: bold-blob 14s ease-in-out infinite;
-  filter: blur(60px);
-  will-change: transform;
+.bold-word {
+  animation: bold-word 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes bold-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -10px;
+  }
+}
+.bold-float {
+  animation: bold-float 6s ease-in-out infinite;
+}
+.tilt {
+  transition: transform 0.15s ease-out;
+  transform-style: preserve-3d;
+  position: relative;
+}
+.tilt::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at var(--glare-x, 50%) var(--glare-y, 50%),
+    rgba(255, 255, 255, 0.25),
+    transparent 55%
+  );
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.tilt:hover::after {
+  opacity: 1;
+}
+@keyframes bold-shine {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.bold-shine {
+  background-image: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: bold-shine 3.2s ease-in-out infinite;
 }
 @keyframes bold-marquee {
   from {
@@ -625,7 +687,7 @@ html[data-theme='bold'] body {
   }
 }
 .bold-marquee {
-  animation: bold-marquee 40s linear infinite;
+  animation: bold-marquee 45s linear infinite;
 }
 .bold-marquee:hover {
   animation-play-state: paused;
@@ -639,29 +701,65 @@ html[data-theme='bold'] body {
   transform: translate(-2px, -2px);
   box-shadow: 8px 8px 0 var(--color-ink, #0a1628);
 }
-@keyframes bold-rise {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
+/* Sticky, blurred header from tablet up; on phones it would eat the
+ * screen, and the bottom bar covers search and cart there anyway. */
+@media (min-width: 768px) {
+  :root[data-theme='bold'] .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: rgba(10, 22, 40, 0.86);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
   }
 }
-.bold-rise {
-  animation: bold-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+:root[data-theme='bold'] .product-card .aspect-square {
+  overflow: hidden;
+}
+:root[data-theme='bold'] .product-card img {
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+:root[data-theme='bold'] .product-card:hover img {
+  transform: scale(1.08) rotate(-1deg);
+}
+:root[data-theme='bold'] .product-card .btn-buy {
+  position: relative;
+  overflow: hidden;
+}
+:root[data-theme='bold'] .product-card .btn-buy::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #0a1628;
+  transform: translateY(100%);
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+:root[data-theme='bold'] .product-card .btn-buy:hover {
+  color: #ffffff;
+}
+:root[data-theme='bold'] .product-card .btn-buy:hover::before {
+  transform: translateY(0);
+}
+:root[data-theme='bold'] .product-card .btn-buy > * {
+  position: relative;
 }
 /* Room for the sticky bottom bar on phones. */
 html[data-theme='bold'] body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 @media (prefers-reduced-motion: reduce) {
-  .bold-blob,
   .bold-marquee,
-  .bold-rise,
-  .bold-tile {
+  .bold-word,
+  .bold-float,
+  .bold-shine,
+  .bold-tile,
+  .reveal,
+  .tilt {
     animation: none;
     transition: none;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
   }
 }
