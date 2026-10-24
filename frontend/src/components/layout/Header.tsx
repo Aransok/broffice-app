@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useDashboardStats } from '../../api/adminDashboard'
 import { usePublicConfig } from '../../api/config'
+import logoLight from '../../assets/logo-light.png'
 import logo from '../../assets/logo.png'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
@@ -19,7 +20,10 @@ export function Header() {
   const { data: stats } = useDashboardStats(Boolean(user?.is_admin_portal))
   const { showInclVat, setShowInclVat } = useVat()
   const { data: config } = usePublicConfig()
-  const { mode, setMode } = useTheme()
+  const { mode, setMode, preset } = useTheme()
+  // Bold has an ink-navy header, where the blue 'BR' would vanish: a white
+  // 'BR' + the same orange 'office' keeps the logo readable without a box.
+  const logoSrc = preset === 'bold' ? logoLight : logo
 
   // Plays a short tone whenever the polled unread-notifications count goes
   // up while an admin is logged in — the badge already updates visually,
@@ -58,7 +62,7 @@ export function Header() {
       )}
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3">
         <Link to="/">
-          <img src={logo} alt="BRoffice" className="h-12 w-auto" />
+          <img src={logoSrc} alt="BRoffice" className="h-12 w-auto" />
         </Link>
         <form onSubmit={handleSearchSubmit} className="site-search flex min-w-[200px] flex-1">
           <input

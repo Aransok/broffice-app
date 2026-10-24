@@ -272,8 +272,8 @@ export function CategoriesMegaMenu() {
           }}
           className={
             open
-              ? 'absolute left-0 top-full z-30 mt-1 w-[min(92vw,360px)] border border-[#f3f3f3] bg-white py-1.5 opacity-100 shadow-[0_0_40px_rgba(0,0,0,0.1)] transition-opacity duration-300 max-lg:max-h-[75vh] max-lg:overflow-y-auto lg:w-[250px]'
-              : 'pointer-events-none invisible absolute left-0 top-full z-30 mt-1 w-[min(92vw,360px)] border border-[#f3f3f3] bg-white py-1.5 opacity-0 shadow-[0_0_40px_rgba(0,0,0,0.1)] transition-opacity duration-300 lg:w-[250px]'
+              ? 'mega-menu-panel absolute left-0 top-full z-30 mt-1 w-[min(92vw,360px)] border border-[#f3f3f3] bg-white py-1.5 opacity-100 shadow-[0_0_40px_rgba(0,0,0,0.1)] transition-opacity duration-300 max-lg:max-h-[75vh] max-lg:overflow-y-auto lg:w-[250px]'
+              : 'mega-menu-panel pointer-events-none invisible absolute left-0 top-full z-30 mt-1 w-[min(92vw,360px)] border border-[#f3f3f3] bg-white py-1.5 opacity-0 shadow-[0_0_40px_rgba(0,0,0,0.1)] transition-opacity duration-300 lg:w-[250px]'
           }
         >
           <li className="px-[30px]" onMouseEnter={() => setActiveRootId(null)}>
@@ -328,7 +328,7 @@ export function CategoriesMegaMenu() {
                     </div>
                     <div
                       key={root.id}
-                      className="animate-menu-item-in absolute left-full top-0 ml-px hidden max-h-[80vh] min-h-full w-[870px] overflow-y-auto rounded-br-3xl bg-white p-[60px] pb-[30px] shadow-[5px_5px_15px_20px_rgba(36,41,47,0.1)] lg:block 2xl:w-[990px]"
+                      className="mega-menu-flyout animate-menu-item-in absolute left-full top-0 ml-px hidden max-h-[80vh] min-h-full w-[870px] overflow-y-auto rounded-br-3xl bg-white p-[60px] pb-[30px] shadow-[5px_5px_15px_20px_rgba(36,41,47,0.1)] lg:block 2xl:w-[990px]"
                     >
                       <SubmenuGrid root={root} onNavigate={close} />
                     </div>

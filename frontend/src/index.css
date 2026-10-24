@@ -456,11 +456,6 @@ html[data-theme='bold'] body {
 :root[data-theme='bold'] .site-header a.hover\:text-primary {
   color: #c7d0e0;
 }
-:root[data-theme='bold'] .site-header img[alt='BRoffice'] {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 4px 8px;
-}
 :root[data-theme='bold'] .site-header .text-primary {
   color: #ffb27a;
 }
@@ -512,6 +507,36 @@ html[data-theme='bold'] body {
 :root[data-theme='bold'] .site-header a[aria-label^='Количка'] span {
   background: #0a1628;
   color: #ffffff;
+}
+
+/* Categories menu: ink panels with light text, orange on hover, so the
+ * header's light-text overrides above never land on a white panel. */
+:root[data-theme='bold'] .mega-menu-panel,
+:root[data-theme='bold'] .mega-menu-flyout {
+  background: #0f2140;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+  border-radius: 18px;
+}
+:root[data-theme='bold'] .mega-menu-flyout {
+  border-radius: 0 18px 18px 0;
+}
+:root[data-theme='bold'] .mega-menu-panel a,
+:root[data-theme='bold'] .mega-menu-panel .text-black,
+:root[data-theme='bold'] .mega-menu-panel .text-slate-500,
+:root[data-theme='bold'] .mega-menu-panel .text-slate-900 {
+  color: #e6ebf5;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+:root[data-theme='bold'] .mega-menu-panel a:hover,
+:root[data-theme='bold'] .mega-menu-panel a[aria-expanded='true'] {
+  color: #ffb27a;
+}
+:root[data-theme='bold'] .mega-menu-panel .text-\[\#999\] {
+  color: #aab6cc;
+}
+:root[data-theme='bold'] .mega-menu-panel svg.text-\[\#c5c5c5\] {
+  color: rgba(255, 255, 255, 0.35);
 }
 
 /* Footer: ink-navy. */
