@@ -1,9 +1,8 @@
 import { type FormEvent, type ReactNode, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCategoryTree } from '../../api/categories'
-import { fetchSearch } from '../../api/search'
+import { lookupProductCodes } from '../../api/products'
 import { parseQuickOrder } from './parseQuickOrder'
-import type { ProductListItem } from '../../api/types'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 
@@ -96,18 +95,15 @@ function CardShell({
   )
 }
 
-function matchesCode(product: ProductListItem, code: string) {
-  const c = code.toLowerCase()
-  return [product.supplier_id, product.item_number, product.external_id].some(
-    (value) => value !== null && value !== undefined && String(value).toLowerCase() === c,
-  )
-}
-
 function QuickOrderCard() {
   const { addItem } = useCart()
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
-  const [result, setResult] = useState<{ added: number; missing: string[] } | null>(null)
+  const [result, setResult] = useState<{
+    added: { code: string; quantity: number; name: string; number: string }[]
+    missing: string[]
+    failed: boolean
+  } | null>(null)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -115,27 +111,31 @@ function QuickOrderCard() {
     if (lines.length === 0) return
     setBusy(true)
     setResult(null)
-    let added = 0
-    const missing: string[] = []
-    for (const line of lines) {
-      try {
-        const { results } = await fetchSearch(line.code)
-        const product =
-          results.find((p) => matchesCode(p, line.code)) ??
-          (results.length === 1 ? results[0] : null)
+    try {
+      const found = await lookupProductCodes(lines.map((line) => line.code))
+      const added: { code: string; quantity: number; name: string; number: string }[] = []
+      const missing: string[] = []
+      for (const line of lines) {
+        const product = found[line.code]
         if (product) {
           addItem(product, line.quantity)
-          added += 1
+          added.push({
+            code: line.code,
+            quantity: line.quantity,
+            name: product.name,
+            number: product.supplier_id || String(product.item_number ?? ''),
+          })
         } else {
           missing.push(line.code)
         }
-      } catch {
-        missing.push(line.code)
       }
+      setResult({ added, missing, failed: false })
+      if (missing.length === 0) setText('')
+    } catch {
+      setResult({ added: [], missing: [], failed: true })
+    } finally {
+      setBusy(false)
     }
-    setBusy(false)
-    setResult({ added, missing })
-    if (missing.length === 0) setText('')
   }
 
   return (
@@ -156,7 +156,7 @@ function QuickOrderCard() {
         </svg>
       }
       title="Бърза поръчка"
-      text="Постави каталожни номера и количества, по един на ред."
+      text="Напиши номера на продукта (№ от сайта) и количество, по един на ред."
     >
       <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-3">
         <label htmlFor="quick-order" className="sr-only">
@@ -171,17 +171,25 @@ function QuickOrderCard() {
           className="resize-y rounded-xl border-[1.5px] border-slate-300 bg-slate-50 px-3.5 py-3 font-mono text-sm leading-relaxed text-slate-900 focus:border-primary focus:outline-none"
         />
         {result && (
-          <p className="text-sm" role="status">
-            {result.added > 0 && (
-              <span className="font-semibold text-green-700">
-                {result.added} {result.added === 1 ? 'продукт добавен' : 'продукта добавени'} в
-                количката.{' '}
-              </span>
+          <div className="flex flex-col gap-1 text-sm" role="status">
+            {result.failed && <p className="text-red-600">Нещо се обърка. Опитайте пак.</p>}
+            {result.added.length > 0 && (
+              <>
+                <p className="font-semibold text-green-700">Добавено в количката:</p>
+                <ul className="flex flex-col gap-0.5 text-slate-700">
+                  {result.added.map((item) => (
+                    <li key={item.code} className="truncate">
+                      {item.quantity} × <span className="text-slate-500">№{item.number}</span>{' '}
+                      {item.name}
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
             {result.missing.length > 0 && (
-              <span className="text-red-600">Не намерихме: {result.missing.join(', ')}</span>
+              <p className="text-red-600">Няма продукт с номер: {result.missing.join(', ')}</p>
             )}
-          </p>
+          </div>
         )}
         <button
           type="submit"

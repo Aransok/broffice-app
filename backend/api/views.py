@@ -323,6 +323,42 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         return ProductListSerializer
 
     @action(detail=False, methods=["get"])
+    def lookup(self, request):
+        """Quick order ("Бърза поръчка"): exact product per typed code, never
+        a fuzzy search. `codes=113,CF283A` -> {"113": {...} | null, ...}.
+
+        The number customers see on the site is "№<supplier_id>" (falling
+        back to item_number only for products without one), so that wins;
+        then the supplier/manufacturer code (e.g. CF283A); the internal
+        item_number only counts for products that show it as their №."""
+        codes = []
+        for raw in request.query_params.get("codes", "").split(","):
+            code = raw.strip()
+            if code and code not in codes:
+                codes.append(code)
+        codes = codes[:100]
+        published = super().get_queryset()
+        result = {}
+        for code in codes:
+            product = (
+                published.filter(supplier_id__iexact=code).first()
+                or published.filter(supplier_code__iexact=code).first()
+                or (
+                    published.filter(supplier_id="", item_number=int(code)).first()
+                    if code.isdigit()
+                    else None
+                )
+            )
+            result[code] = (
+                ProductListSerializer(
+                    product, context=self.get_serializer_context()
+                ).data
+                if product
+                else None
+            )
+        return Response(result)
+
+    @action(detail=False, methods=["get"])
     def brands(self, request):
         """Brands present in a category (incl. its subcategories) with how
         many products each has - the brand filter in the category sidebar.
