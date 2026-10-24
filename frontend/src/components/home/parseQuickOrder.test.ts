@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseQuickOrder } from './FreshHomeIntro'
+import { parseQuickOrder } from './parseQuickOrder'
 
 describe('parseQuickOrder', () => {
   it('reads code and quantity in the common formats', () => {

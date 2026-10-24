@@ -31,7 +31,7 @@ def test_cost_plus_builds_price_up_from_cost(client_user):
     Promotion.objects.create(
         name="Доставна +10%",
         discount_type=Promotion.TYPE_COST_PLUS,
-        value=Decimal("10"),
+        value=Decimal(10),
         scope=Promotion.SCOPE_PRODUCT,
         product=product,
         user=client_user,
@@ -51,7 +51,7 @@ def test_cost_plus_never_above_normal_price_or_without_cost(client_user):
     Promotion.objects.create(
         name="Всичко на доставна +10%",
         discount_type=Promotion.TYPE_COST_PLUS,
-        value=Decimal("10"),
+        value=Decimal(10),
         scope=Promotion.SCOPE_GLOBAL,
         user=client_user,
     )
@@ -67,7 +67,7 @@ def test_cost_plus_zero_percent_is_cost(client_user):
     Promotion.objects.create(
         name="На доставна",
         discount_type=Promotion.TYPE_COST_PLUS,
-        value=Decimal("0"),
+        value=Decimal(0),
         scope=Promotion.SCOPE_PRODUCT,
         product=product,
         user=client_user,

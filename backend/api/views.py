@@ -329,9 +329,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         Deliberately ignores the brand filter itself so ticking one brand
         doesn't hide the others."""
         qs = self._category_scoped(
-            Product.objects.filter(
-                status=Product.STATUS_PUBLISHED, brand__isnull=False
-            )
+            Product.objects.filter(status=Product.STATUS_PUBLISHED, brand__isnull=False)
         )
         rows = (
             qs.values("brand__slug", "brand__name")

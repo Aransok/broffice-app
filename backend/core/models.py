@@ -2,7 +2,6 @@ from django.db import models
 
 from common.models import TimeStampedModel
 
-
 # The storefront designs the owner can switch between from the admin panel
 # ("Дизайн"). Keys must match DesignPreset in frontend/src/context/
 # ThemeContext.tsx and the [data-theme] blocks in frontend/src/index.css.

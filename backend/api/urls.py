@@ -47,12 +47,12 @@ from .views import (
     PublicConfigView,
     RegisterView,
     SearchView,
-    StorefrontDesignView,
     SpeedyCityListView,
     SpeedyOfficeListView,
     SpeedyPriceTableView,
     SpeedyQuoteView,
     SpeedyStreetListView,
+    StorefrontDesignView,
     TrackProductViewView,
 )
 

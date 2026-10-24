@@ -196,7 +196,9 @@ def _promotion_discount(promotion: Promotion) -> str:
         if product is not None and product.admin_price is not None:
             base = get_base_price(product)
             if base is not None:
-                return f"Цена {format_eur(compute_promo_price(base, promotion, product))}"
+                return (
+                    f"Цена {format_eur(compute_promo_price(base, promotion, product))}"
+                )
         return "Специална цена"
     if promotion.discount_type == Promotion.TYPE_PERCENT:
         return f"-{promotion.value.normalize():f}%"
