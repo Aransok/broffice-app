@@ -7,6 +7,7 @@ import { lookupProductCodes } from '../../api/products'
 import type { ProductListItem } from '../../api/types'
 import { useCart } from '../../context/CartContext'
 import { useVat } from '../../context/VatContext'
+import { announceCartAdd } from '../../lib/cartEvents'
 import { parseQuickOrder } from './parseQuickOrder'
 
 function useDebounced<T>(value: T, delay = 350) {
@@ -66,6 +67,7 @@ export function QuickOrderBox({
   function addLine(line: (typeof resolved)[number]) {
     if (!line.product) return
     addItem(line.product, line.quantity)
+    announceCartAdd({ product: line.product, quantity: line.quantity })
     setAdded((prev) => ({ ...prev, [line.code]: (prev[line.code] ?? 0) + line.quantity }))
   }
 

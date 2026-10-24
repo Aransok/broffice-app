@@ -1,4 +1,4 @@
-import { type MouseEvent, useState } from 'react'
+import { type MouseEvent, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toggleFavorite } from '../../api/favorites'
 import { getImageUrl } from '../../api/media'
@@ -7,6 +7,7 @@ import type { ProductListItem } from '../../api/types'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import { useVat } from '../../context/VatContext'
+import { announceCartAdd } from '../../lib/cartEvents'
 import { computeProfitBgn, formatEur } from '../../utils/currency'
 
 export function ProductCard({ product }: { product: ProductListItem }) {
@@ -25,8 +26,11 @@ export function ProductCard({ product }: { product: ProductListItem }) {
   const oldEur = displayPrice(raw.oldEur)
   const { onSale } = raw
 
+  const imageRef = useRef<HTMLImageElement>(null)
+
   function handleAdd() {
     addItem(product, quantity)
+    announceCartAdd({ product, quantity, source: imageRef.current })
     setAdded(true)
     setTimeout(() => setAdded(false), 1500)
   }
@@ -77,6 +81,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         <div className="aspect-square bg-slate-50">
           {imageUrl ? (
             <img
+              ref={imageRef}
               src={imageUrl}
               alt={product.name}
               loading="lazy"
@@ -191,7 +196,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
             onClick={handleAdd}
             className="btn-buy flex-1 rounded-ui bg-primary px-3 py-2 text-sm font-medium text-white hover:opacity-90"
           >
-            {added ? 'Добавено' : 'Купи'}
+            <span>{added ? 'Добавено' : 'Купи'}</span>
           </button>
         </div>
       </div>

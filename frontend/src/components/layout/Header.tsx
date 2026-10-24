@@ -1,7 +1,8 @@
-import { type FormEvent, useEffect, useRef, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useDashboardStats } from '../../api/adminDashboard'
 import { usePublicConfig } from '../../api/config'
+import logoLight from '../../assets/logo-light.png'
 import logo from '../../assets/logo.png'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
@@ -10,6 +11,7 @@ import { useVat } from '../../context/VatContext'
 import { getPreviewUser } from '../../preview'
 import { playNotificationSound } from '../../utils/notificationSound'
 import { CategoriesMegaMenu } from './CategoriesMegaMenu'
+import { InstantSearch } from '../bold/InstantSearch'
 
 export function Header() {
   const [query, setQuery] = useState('')
@@ -19,7 +21,21 @@ export function Header() {
   const { data: stats } = useDashboardStats(Boolean(user?.is_admin_portal))
   const { showInclVat, setShowInclVat } = useVat()
   const { data: config } = usePublicConfig()
-  const { mode, setMode } = useTheme()
+  const { mode, setMode, preset } = useTheme()
+  // Bold has an ink-navy header, where the blue 'BR' would vanish: a white
+  // 'BR' + the same orange 'office' keeps the logo readable without a box.
+  const logoSrc = preset === 'bold' ? logoLight : logo
+  const searchRef = useRef<HTMLInputElement>(null)
+  const searchWrapRef = useRef<HTMLDivElement>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const closeSearch = useCallback(() => setSearchOpen(false), [])
+  useEffect(() => {
+    function onClick(event: MouseEvent) {
+      if (!searchWrapRef.current?.contains(event.target as Node)) setSearchOpen(false)
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [])
 
   // Plays a short tone whenever the polled unread-notifications count goes
   // up while an admin is logged in — the badge already updates visually,
@@ -40,6 +56,7 @@ export function Header() {
   function handleSearchSubmit(event: FormEvent) {
     event.preventDefault()
     const q = query.trim()
+    setSearchOpen(false)
     if (q) navigate(`/search?q=${encodeURIComponent(q)}`)
   }
 
@@ -58,20 +75,31 @@ export function Header() {
       )}
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3">
         <Link to="/">
-          <img src={logo} alt="BRoffice" className="h-12 w-auto" />
+          <img src={logoSrc} alt="BRoffice" className="h-12 w-auto" />
         </Link>
-        <form onSubmit={handleSearchSubmit} className="site-search flex min-w-[200px] flex-1">
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Кои продукти търсите?"
-            className="w-full rounded-l-ui border border-slate-300 px-3 py-2 focus:outline-none"
-          />
-          <button type="submit" className="rounded-r-ui bg-primary px-4 text-white">
-            Търси
-          </button>
-        </form>
+        <div ref={searchWrapRef} className="relative min-w-[200px] flex-1">
+          <form onSubmit={handleSearchSubmit} className="site-search flex">
+            <input
+              ref={searchRef}
+              type="search"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value)
+                setSearchOpen(true)
+              }}
+              onFocus={() => setSearchOpen(true)}
+              placeholder="Кои продукти търсите?"
+              autoComplete="off"
+              className="w-full rounded-l-ui border border-slate-300 px-3 py-2 focus:outline-none"
+            />
+            <button type="submit" className="rounded-r-ui bg-primary px-4 text-white">
+              Търси
+            </button>
+          </form>
+          {preset === 'bold' && searchOpen && (
+            <InstantSearch query={query} inputRef={searchRef} onClose={closeSearch} />
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500 sm:gap-4">
           <button
             type="button"
@@ -132,6 +160,7 @@ export function Header() {
           )}
           <Link
             to="/cart"
+            data-cart-target
             aria-label={`Количка, ${itemCount} ${itemCount === 1 ? 'продукт' : 'продукта'}`}
             className="relative flex items-center rounded-ui p-1 text-slate-600 hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
