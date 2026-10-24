@@ -44,7 +44,7 @@ export function Header() {
   }
 
   return (
-    <header className="border-b border-slate-200 bg-surface">
+    <header className="site-header border-b border-slate-200 bg-surface">
       {config?.company_phone && (
         <div className="mx-auto max-w-7xl px-4 py-2 text-sm text-slate-600">
           Номер за поръчки:{' '}
@@ -161,7 +161,7 @@ export function Header() {
           </Link>
         </div>
       </div>
-      <nav className="border-t border-slate-100 bg-slate-50">
+      <nav className="site-nav border-t border-slate-100 bg-slate-50">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3 sm:gap-8">
           <CategoriesMegaMenu />
           <NavLink

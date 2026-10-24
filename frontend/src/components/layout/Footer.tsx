@@ -10,7 +10,7 @@ export function Footer() {
   const quickLinks = categories?.results.slice(0, 6) ?? []
 
   return (
-    <footer className="mt-auto border-t border-slate-200 bg-slate-50 text-sm text-slate-600">
+    <footer className="site-footer mt-auto border-t border-slate-200 bg-slate-50 text-sm text-slate-600">
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <h3 className="mb-3 font-semibold text-slate-900">Информация</h3>

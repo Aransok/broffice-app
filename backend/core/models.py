@@ -13,6 +13,7 @@ STOREFRONT_DESIGN_CHOICES = [
     ("soft", "Soft / Friendly"),
     ("brand", "BRoffice (фирмени цветове)"),
     ("fresh", "BRoffice 2026"),
+    ("bold", "BRoffice Bold"),
 ]
 DEFAULT_STOREFRONT_DESIGN = "classic"
 

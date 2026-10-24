@@ -247,7 +247,7 @@ export function CategoriesMegaMenu() {
           setOpen((value) => !value)
           setActiveRootId(null)
         }}
-        className="flex items-center gap-3 rounded-ui bg-primary px-6 py-4 text-lg font-semibold text-white"
+        className="mega-menu-button flex items-center gap-3 rounded-ui bg-primary px-6 py-4 text-lg font-semibold text-white"
       >
         <svg
           width="24"

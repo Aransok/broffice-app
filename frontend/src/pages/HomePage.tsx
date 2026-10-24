@@ -1,6 +1,7 @@
 import { useHomeSections } from '../api/homeSections'
 import type { ProductListItem } from '../api/types'
 import { BannerCarousel } from '../components/home/BannerCarousel'
+import { BoldHomeIntro } from '../components/home/BoldHomeIntro'
 import { FreshHomeIntro } from '../components/home/FreshHomeIntro'
 import { ProductCard } from '../components/product/ProductCard'
 import { Seo } from '../components/Seo'
@@ -64,6 +65,7 @@ export function HomePage() {
       {isError && <p className="text-red-600">Продуктите не могат да бъдат заредени в момента.</p>}
 
       {preset === 'fresh' && <FreshHomeIntro />}
+      {preset === 'bold' && <BoldHomeIntro />}
 
       <BannerCarousel />
 
