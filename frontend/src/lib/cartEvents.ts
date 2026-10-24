@@ -10,6 +10,24 @@ export interface CartAddDetail {
 }
 
 const EVENT = 'broffice:cart-add'
+const OPEN_EVENT = 'broffice:cart-open'
+
+/** Asks the cart drawer (if the design has one) to open. Returns false
+ * when nobody is listening, so the caller can fall back to /cart. */
+export function requestCartOpen(): boolean {
+  const event = new CustomEvent(OPEN_EVENT, { cancelable: true })
+  window.dispatchEvent(event)
+  return event.defaultPrevented
+}
+
+export function onCartOpen(handler: () => void) {
+  const listener = (event: Event) => {
+    event.preventDefault()
+    handler()
+  }
+  window.addEventListener(OPEN_EVENT, listener)
+  return () => window.removeEventListener(OPEN_EVENT, listener)
+}
 
 export function announceCartAdd(detail: CartAddDetail) {
   window.dispatchEvent(new CustomEvent<CartAddDetail>(EVENT, { detail }))

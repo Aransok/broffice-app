@@ -89,18 +89,21 @@ export const PRESET_OPTIONS: PresetOption[] = [
 ]
 
 /** Optional storefront blocks the owner can switch on/off per design
- * (admin "Дизайн"). `designs` lists where the switch applies; the default
- * is what a design shows until the owner changes it. Keys match
- * STOREFRONT_FEATURE_KEYS in backend/core/models.py. */
+ * (admin "Дизайн"). Every switch exists on every design (except the few
+ * that only make sense inside one design's layout, see `designs`);
+ * `defaultOn` lists the designs where it starts switched on, which keeps
+ * each design looking exactly as designed until the owner changes it.
+ * Keys match STOREFRONT_FEATURE_KEYS in backend/core/models.py. */
 export interface FeatureOption {
   key: string
   label: string
   description: string
-  designs: DesignPreset[]
-  defaultOn: boolean
+  /** Designs that can show it at all. Default: all. */
+  designs?: DesignPreset[]
+  /** Designs where it's on until the owner flips it. */
+  defaultOn: DesignPreset[]
 }
 
-const HOME_DESIGNS: DesignPreset[] = ['fresh', 'bold', 'paper']
 const ALL_DESIGNS: DesignPreset[] = [
   'classic',
   'modern',
@@ -118,83 +121,74 @@ export const FEATURES: FeatureOption[] = [
     key: 'banner_carousel',
     label: 'Банери с промоции',
     description: 'Автоматичните банери от активните промоции на началната страница.',
-    designs: ALL_DESIGNS,
-    defaultOn: true,
+    defaultOn: ALL_DESIGNS,
   },
   {
     key: 'quick_order',
     label: 'Бърза поръчка',
     description: 'Поле за номера и количества с преглед на продукта преди добавяне.',
-    designs: HOME_DESIGNS,
-    defaultOn: true,
+    defaultOn: ['fresh', 'bold', 'paper'],
   },
   {
     key: 'instant_search',
     label: 'Търсене на живо',
     description: 'Резултати със снимка и цена под търсачката, докато пишеш.',
-    designs: ['bold', 'paper'],
-    defaultOn: true,
+    defaultOn: ['bold', 'paper'],
   },
   {
     key: 'cart_drawer',
     label: 'Количка отстрани',
-    description: 'Малка количка, която се отваря при всяко добавяне, без да напускаш страницата.',
-    designs: ['bold', 'paper'],
-    defaultOn: true,
+    description:
+      'Малка количка отстрани, която се отваря от иконата на количката, без да напускаш страницата.',
+    defaultOn: ['bold', 'paper'],
   },
   {
     key: 'spotlight',
     label: 'Промоция в заглавието',
     description: 'Една актуална промоция като плаваща карта в голямото заглавие.',
     designs: ['bold'],
-    defaultOn: true,
+    defaultOn: ['bold'],
   },
   {
     key: 'promo_carousel',
     label: 'Лента с промоции',
     description: 'Промоциите на седмицата в хоризонтална лента горе.',
-    designs: ['bold', 'paper'],
-    defaultOn: true,
+    defaultOn: ['bold', 'paper'],
   },
   {
     key: 'brand_marquee',
     label: 'Лента с марки',
     description: 'Движеща се лента с марките от каталога.',
-    designs: ['bold', 'paper'],
-    defaultOn: true,
+    defaultOn: ['bold', 'paper'],
   },
   {
     key: 'category_tiles',
     label: 'Плочки с категории',
     description: 'Категориите като големи плочки на началната страница.',
-    designs: HOME_DESIGNS,
-    defaultOn: true,
+    defaultOn: ['fresh', 'bold', 'paper'],
   },
   {
     key: 'numbers',
     label: 'Числа',
     description: 'Брой продукти, марки и категории, броящи се нагоре.',
-    designs: ['bold'],
-    defaultOn: true,
+    defaultOn: ['bold'],
   },
   {
     key: 'trust_strip',
     label: 'Лента с предимства',
     description: 'Доставка, фактура, цени в € и лв.',
-    designs: HOME_DESIGNS,
-    defaultOn: true,
+    defaultOn: ['fresh', 'bold', 'paper'],
   },
   {
     key: 'mobile_bar',
     label: 'Долна лента на телефон',
     description: 'Начало, промоции, търсене и количка, залепени долу на телефон.',
-    designs: ['bold', 'paper'],
-    defaultOn: true,
+    defaultOn: ['bold', 'paper'],
   },
 ]
 
 export function featuresFor(design: DesignPreset) {
-  return FEATURES.filter((f) => f.designs.includes(design))
+  return FEATURES.filter((f) => !f.designs || f.designs.includes(design))
 }
 
 export function presetLabel(value: string) {
@@ -284,9 +278,9 @@ export function resolveFeature(
   key: string,
 ): boolean {
   const option = FEATURES.find((f) => f.key === key)
-  if (!option || !option.designs.includes(design)) return false
+  if (!option || (option.designs && !option.designs.includes(design))) return false
   const value = overrides[design]?.[key]
-  return value ?? option.defaultOn
+  return value ?? option.defaultOn.includes(design)
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)

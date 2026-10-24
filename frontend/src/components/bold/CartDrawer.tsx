@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { getImageUrl } from '../../api/media'
 import { useCart } from '../../context/CartContext'
 import { useVat } from '../../context/VatContext'
-import { type CartAddDetail, onCartAdd } from '../../lib/cartEvents'
+import { type CartAddDetail, onCartAdd, onCartOpen } from '../../lib/cartEvents'
 import { bgnToEur } from '../../utils/currency'
 
 /** Sends a copy of the product image flying into the header cart icon. */
@@ -42,10 +42,10 @@ function flyToCart(source: HTMLElement | null | undefined) {
 }
 
 /**
- * Bold design: a slide-over mini cart that opens whenever something is
- * added (with the product image flying into the cart icon), so people
- * see the cart grow without leaving the page. Also opened by the header
- * cart icon on wide screens.
+ * Slide-over mini cart. Opens from the cart icon (header and phone bar)
+ * instead of the /cart page. Adding a product only flies its image into
+ * the icon and bumps the badge; the drawer stays closed so it never gets
+ * in the way of adding several things in a row.
  */
 export function CartDrawer() {
   const { items, itemCount, totalPrice, removeItem, setQuantity } = useCart()
@@ -64,14 +64,15 @@ export function CartDrawer() {
     () =>
       onCartAdd((detail) => {
         flyToCart(detail.source)
-        setTimeout(
-          () => {
-            setLastAdded(detail)
-            setOpenedAt(window.location.pathname)
-            setOpen(true)
-          },
-          detail.source ? 550 : 0,
-        )
+        setLastAdded(detail)
+      }),
+    [],
+  )
+  useEffect(
+    () =>
+      onCartOpen(() => {
+        setOpenedAt(window.location.pathname)
+        setOpen(true)
       }),
     [],
   )
@@ -134,9 +135,9 @@ export function CartDrawer() {
           </button>
         </header>
 
-        {lastAdded && (
+        {lastAdded && open && (
           <p className="bg-green-100 px-5 py-2 text-sm font-semibold text-green-800" role="status">
-            ✓ Добавено: {lastAdded.quantity} × {lastAdded.product.name}
+            ✓ Последно добавено: {lastAdded.quantity} × {lastAdded.product.name}
           </p>
         )}
 
