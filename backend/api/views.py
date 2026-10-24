@@ -46,7 +46,11 @@ from categories.models import Category
 from categories.services import get_descendant_category_ids
 from common.emails import BORDER, BRAND_BLUE, MUTED, logo_header_html
 from common.pagination import LargePageNumberPagination
-from core.models import SiteSettings
+from core.models import (
+    DEFAULT_STOREFRONT_DESIGN,
+    STOREFRONT_DESIGN_CHOICES,
+    SiteSettings,
+)
 from coupons.emails import send_coupon_email
 from coupons.models import Coupon
 from coupons.services import CouponError, check_min_order_amount, get_valid_coupon
@@ -202,6 +206,57 @@ class PublicConfigView(APIView):
                 "company_working_hours": settings.COMPANY_WORKING_HOURS,
             }
         )
+
+
+def _current_design():
+    site_settings = SiteSettings.objects.first()
+    return (
+        site_settings.storefront_design if site_settings else DEFAULT_STOREFRONT_DESIGN
+    )
+
+
+class StorefrontDesignView(APIView):
+    """Which design every visitor gets. Public and tiny, so the SPA can
+    apply it before anything else renders."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response({"design": _current_design()})
+
+
+class AdminStorefrontDesignView(APIView):
+    """Admin panel "Дизайн": lists the designs and switches the live one.
+    Previewing a design never calls this; it only lives in the admin's
+    own browser tab until they press "Направи активен"."""
+
+    permission_classes = [IsAdminPortalUser]
+
+    def _response(self):
+        return Response(
+            {
+                "design": _current_design(),
+                "choices": [
+                    {"value": value, "label": label}
+                    for value, label in STOREFRONT_DESIGN_CHOICES
+                ],
+            }
+        )
+
+    def get(self, request):
+        return self._response()
+
+    def put(self, request):
+        design = str(request.data.get("design") or "").strip()
+        if design not in dict(STOREFRONT_DESIGN_CHOICES):
+            return Response(
+                {"detail": "Unknown design."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        site_settings = SiteSettings.objects.first() or SiteSettings()
+        site_settings.storefront_design = design
+        site_settings.save()
+        return self._response()
 
 
 class CsrfView(APIView):

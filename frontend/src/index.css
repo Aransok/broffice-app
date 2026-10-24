@@ -246,3 +246,141 @@ html[data-theme='premium'] {
 .rounded-ui {
   box-shadow: var(--shadow-card);
 }
+
+/* 7. BRoffice 2026 ("fresh") — the redesign built from 21st.dev patterns
+ * (sticky search with item-number hint, mega category tiles, animated
+ * product cards). Navy for trust, orange only for buying. Unlike presets
+ * 1-6 this one also changes the home page layout: HomePage renders
+ * <FreshHomeIntro> when it's active, and the `fresh-*` / `btn-buy` /
+ * `product-*` hook classes below are no-ops in every other design. */
+:root[data-theme='fresh'] {
+  --color-primary: #1d3f73;
+  --color-buy: #f07a32;
+  --color-buy-ink: #14213a;
+  --radius-ui: 14px;
+  --shadow-card: 0 1px 2px rgba(20, 33, 58, 0.06);
+  --color-red-100: #fde9dc;
+  --color-red-300: #f3b28f;
+  --color-red-500: #e8622a;
+  --color-red-600: #d4561f;
+  --color-red-800: #b0450f;
+}
+:root[data-theme='fresh']:not([data-mode='dark']) {
+  --color-slate-50: #f3f5f8;
+  --color-slate-100: #e9edf3;
+  --color-slate-200: #e1e6ee;
+  --color-slate-300: #c9d2df;
+  --color-slate-500: #5b6678;
+  --color-slate-900: #14213a;
+}
+:root[data-theme='fresh'][data-mode='dark'] {
+  --color-primary: #6f9be0;
+  --color-surface: #131c2c;
+  --color-slate-50: #0a111d;
+  --color-buy: #f4884a;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+html[data-theme='fresh'] body {
+  font-family: 'Onest', ui-sans-serif, system-ui, sans-serif;
+}
+:root[data-theme='fresh'] h1,
+:root[data-theme='fresh'] h2,
+:root[data-theme='fresh'] h3 {
+  letter-spacing: -0.02em;
+}
+:root[data-theme='fresh'] .home-section-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+/* Header: a big, rounded search bar as the main tool. */
+:root[data-theme='fresh'] .site-search input {
+  border-width: 2px;
+  border-right-width: 0;
+  border-color: var(--color-slate-200);
+  background: var(--color-slate-50);
+  padding-block: 0.8rem;
+  font-size: 1rem;
+  border-radius: 14px 0 0 14px;
+  transition: border-color 0.2s ease;
+}
+:root[data-theme='fresh'] .site-search input:focus {
+  border-color: var(--color-primary);
+}
+:root[data-theme='fresh'] .site-search button {
+  border-radius: 0 14px 14px 0;
+  padding-inline: 1.4rem;
+  font-weight: 700;
+}
+
+/* Product cards: lift on hover, bigger price, orange buy button. */
+:root[data-theme='fresh'] .product-card {
+  border-radius: 20px;
+  transition:
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+}
+:root[data-theme='fresh'] .product-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 34px rgba(20, 33, 58, 0.12);
+}
+:root[data-theme='fresh'] .product-card img {
+  transition: transform 0.5s ease;
+}
+:root[data-theme='fresh'] .product-card:hover img {
+  transform: scale(1.05);
+}
+:root[data-theme='fresh'] .product-price {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+:root[data-theme='fresh'] .btn-buy {
+  background: var(--color-buy);
+  color: var(--color-buy-ink);
+  font-weight: 700;
+}
+:root[data-theme='fresh'] .btn-buy:hover {
+  opacity: 1;
+  filter: brightness(1.05);
+}
+
+/* Home page blocks only rendered in this design. */
+.fresh-tile {
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+.fresh-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(20, 33, 58, 0.12);
+}
+.fresh-tile .fresh-tile-art {
+  transition: transform 0.5s ease;
+}
+.fresh-tile:hover .fresh-tile-art {
+  transform: scale(1.08);
+}
+@keyframes fresh-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fresh-rise {
+  animation: fresh-rise 0.5s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fresh-rise,
+  .fresh-tile,
+  .fresh-tile .fresh-tile-art,
+  :root[data-theme='fresh'] .product-card,
+  :root[data-theme='fresh'] .product-card img {
+    animation: none;
+    transition: none;
+  }
+}

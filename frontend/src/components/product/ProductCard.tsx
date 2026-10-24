@@ -51,7 +51,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
   }
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-ui border border-slate-200 bg-surface transition hover:shadow-md">
+    <div className="product-card flex flex-col overflow-hidden rounded-ui border border-slate-200 bg-surface transition hover:shadow-md">
       <Link to={`/product/${product.slug}`} className="group relative">
         <button
           type="button"
@@ -102,7 +102,11 @@ export function ProductCard({ product }: { product: ProductListItem }) {
 
         <div className="mt-1">
           {onSale && oldEur && <div className="text-sm text-slate-400 line-through">€{oldEur}</div>}
-          <div className={onSale ? 'font-semibold text-red-600' : 'font-semibold text-slate-900'}>
+          <div
+            className={
+              onSale ? 'product-price font-semibold text-red-600' : 'product-price font-semibold text-slate-900'
+            }
+          >
             {currentEur ? `€${currentEur}` : 'Цена при запитване'}
           </div>
           {/* admin_price only ever comes back non-null when the viewer is an
@@ -172,7 +176,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
           <button
             type="button"
             onClick={handleAdd}
-            className="flex-1 rounded-ui bg-primary px-3 py-2 text-sm font-medium text-white hover:opacity-90"
+            className="btn-buy flex-1 rounded-ui bg-primary px-3 py-2 text-sm font-medium text-white hover:opacity-90"
           >
             {added ? 'Добавено' : 'Купи'}
           </button>

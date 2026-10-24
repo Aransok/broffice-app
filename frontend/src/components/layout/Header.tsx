@@ -5,7 +5,7 @@ import { usePublicConfig } from '../../api/config'
 import logo from '../../assets/logo.png'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
-import { PRESET_OPTIONS, useTheme } from '../../context/ThemeContext'
+import { useTheme } from '../../context/ThemeContext'
 import { useVat } from '../../context/VatContext'
 import { getPreviewUser } from '../../preview'
 import { playNotificationSound } from '../../utils/notificationSound'
@@ -19,7 +19,7 @@ export function Header() {
   const { data: stats } = useDashboardStats(Boolean(user?.is_admin_portal))
   const { showInclVat, setShowInclVat } = useVat()
   const { data: config } = usePublicConfig()
-  const { mode, setMode, preset, setPreset } = useTheme()
+  const { mode, setMode } = useTheme()
 
   // Plays a short tone whenever the polled unread-notifications count goes
   // up while an admin is logged in — the badge already updates visually,
@@ -60,7 +60,7 @@ export function Header() {
         <Link to="/">
           <img src={logo} alt="BRoffice" className="h-12 w-auto" />
         </Link>
-        <form onSubmit={handleSearchSubmit} className="flex min-w-[200px] flex-1">
+        <form onSubmit={handleSearchSubmit} className="site-search flex min-w-[200px] flex-1">
           <input
             type="search"
             value={query}
@@ -73,21 +73,6 @@ export function Header() {
           </button>
         </form>
         <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500 sm:gap-4">
-          <label className="sr-only" htmlFor="design-preset-select">
-            Дизайн на сайта
-          </label>
-          <select
-            id="design-preset-select"
-            value={preset}
-            onChange={(event) => setPreset(event.target.value as typeof preset)}
-            className="rounded-ui border border-slate-300 px-2 py-1 text-xs"
-          >
-            {PRESET_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
           <button
             type="button"
             onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}

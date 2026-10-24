@@ -3941,3 +3941,39 @@ def test_speedy_courier_address_streets_price_table_and_order(
         "addressNote": "ет.2",
     }
     assert "pickupOfficeId" not in shipment["recipient"]
+
+
+@pytest.mark.django_db
+def test_storefront_design_defaults_to_classic(api_client):
+    resp = api_client.get("/api/v1/design/")
+    assert resp.status_code == 200
+    assert resp.data == {"design": "classic"}
+
+
+@pytest.mark.django_db
+def test_admin_can_make_a_design_live(api_client, admin_user):
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.put("/api/v1/admin/design/", {"design": "fresh"}, format="json")
+    assert resp.status_code == 200
+    assert resp.data["design"] == "fresh"
+    assert {"value": "fresh", "label": "BRoffice 2026"} in resp.data["choices"]
+    api_client.force_authenticate(user=None)
+    assert api_client.get("/api/v1/design/").data == {"design": "fresh"}
+
+
+@pytest.mark.django_db
+def test_admin_design_rejects_unknown_design(api_client, admin_user):
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.put("/api/v1/admin/design/", {"design": "nope"}, format="json")
+    assert resp.status_code == 400
+    assert not SiteSettings.objects.exists()
+
+
+@pytest.mark.django_db
+def test_admin_design_requires_admin(api_client):
+    customer = User.objects.create_user(username="client", password="clientpass")
+    resp = api_client.put("/api/v1/admin/design/", {"design": "fresh"}, format="json")
+    assert resp.status_code in (401, 403)
+    api_client.force_authenticate(user=customer)
+    resp = api_client.put("/api/v1/admin/design/", {"design": "fresh"}, format="json")
+    assert resp.status_code == 403
