@@ -90,12 +90,23 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         </div>
       </Link>
       <div className="flex flex-1 flex-col gap-1 p-3">
-        {product.brand_name && <span className="text-xs text-slate-500">{product.brand_name}</span>}
-        <Link to={`/product/${product.slug}`}>
-          <h3 className="line-clamp-2 flex-1 text-sm text-slate-800 hover:text-primary">
+        {/* Brand left, item number top-right on its own row, so the
+         * number never eats into the (2-line) product name. */}
+        {(product.brand_name || product.supplier_id || product.item_number) && (
+          <div className="flex items-start justify-between gap-2 text-xs">
+            <span className="min-w-0 truncate text-slate-500">{product.brand_name}</span>
             {(product.supplier_id || product.item_number) && (
-              <span className="text-slate-400">№{product.supplier_id || product.item_number} </span>
+              <span className="shrink-0 whitespace-nowrap font-medium text-slate-400 tabular-nums">
+                №{product.supplier_id || product.item_number}
+              </span>
             )}
+          </div>
+        )}
+        <Link to={`/product/${product.slug}`}>
+          <h3
+            className="line-clamp-2 flex-1 text-sm text-slate-800 hover:text-primary"
+            title={product.name}
+          >
             {product.name}
           </h3>
         </Link>
@@ -104,7 +115,9 @@ export function ProductCard({ product }: { product: ProductListItem }) {
           {onSale && oldEur && <div className="text-sm text-slate-400 line-through">€{oldEur}</div>}
           <div
             className={
-              onSale ? 'product-price font-semibold text-red-600' : 'product-price font-semibold text-slate-900'
+              onSale
+                ? 'product-price font-semibold text-red-600'
+                : 'product-price font-semibold text-slate-900'
             }
           >
             {currentEur ? `€${currentEur}` : 'Цена при запитване'}
