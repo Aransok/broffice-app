@@ -13,6 +13,7 @@ from .views import (
     AdminPriceOverrideViewSet,
     AdminProductViewSet,
     AdminPromotionViewSet,
+    AdminStorefrontDesignView,
     AdminUserListView,
     BackupListView,
     BackupRestoreStatusView,
@@ -51,6 +52,7 @@ from .views import (
     SpeedyPriceTableView,
     SpeedyQuoteView,
     SpeedyStreetListView,
+    StorefrontDesignView,
     TrackProductViewView,
 )
 
@@ -76,6 +78,12 @@ router.register(r"admin/customers", AdminCustomerViewSet, basename="admin-custom
 
 urlpatterns = [
     path("config/", PublicConfigView.as_view(), name="public-config"),
+    path("design/", StorefrontDesignView.as_view(), name="storefront-design"),
+    path(
+        "admin/design/",
+        AdminStorefrontDesignView.as_view(),
+        name="admin-storefront-design",
+    ),
     path("contact/", ContactView.as_view(), name="contact"),
     path("home-sections/", HomeSectionsView.as_view(), name="home-sections"),
     path("navigation/", NavigationView.as_view(), name="navigation"),

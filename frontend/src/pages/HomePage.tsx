@@ -1,8 +1,10 @@
 import { useHomeSections } from '../api/homeSections'
 import type { ProductListItem } from '../api/types'
 import { BannerCarousel } from '../components/home/BannerCarousel'
+import { FreshHomeIntro } from '../components/home/FreshHomeIntro'
 import { ProductCard } from '../components/product/ProductCard'
 import { Seo } from '../components/Seo'
+import { useTheme } from '../context/ThemeContext'
 
 const HOME_JSON_LD = [
   {
@@ -35,7 +37,7 @@ function ProductSection({
 
   return (
     <section className="mb-10">
-      <h2 className="mb-4 text-xl font-semibold text-slate-900">{title}</h2>
+      <h2 className="home-section-title mb-4 text-xl font-semibold text-slate-900">{title}</h2>
       {!products && <p className="text-slate-500">Зареждане...</p>}
       {products && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -50,6 +52,7 @@ function ProductSection({
 
 export function HomePage() {
   const { data, isError } = useHomeSections()
+  const { preset } = useTheme()
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -59,6 +62,8 @@ export function HomePage() {
         jsonLd={HOME_JSON_LD}
       />
       {isError && <p className="text-red-600">Продуктите не могат да бъдат заредени в момента.</p>}
+
+      {preset === 'fresh' && <FreshHomeIntro />}
 
       <BannerCarousel />
 

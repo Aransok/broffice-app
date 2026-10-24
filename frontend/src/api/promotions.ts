@@ -4,7 +4,9 @@ import type { Paginated } from './types'
 
 /** What's discounted — independent of who it's for, see `user` below. */
 export type PromotionScope = 'global' | 'category' | 'product'
-export type PromotionDiscountType = 'percent' | 'flat'
+/** percent: % off the shop price. flat: the final price itself.
+ * cost_plus: % ON TOP of the owner's cost price (cost €2.00 + 10% = €2.20). */
+export type PromotionDiscountType = 'percent' | 'flat' | 'cost_plus'
 
 export interface Promotion {
   id: string
@@ -75,4 +77,14 @@ export function usePromotions(params: { user?: number; product?: string } = {}) 
     queryKey: ['admin-promotions', params],
     queryFn: () => fetchPromotions(params),
   })
+}
+
+/** Short admin-facing label for a promotion's value. */
+export function promotionValueLabel(
+  promo: { discount_type: PromotionDiscountType; value: string },
+  bgnToEur: (bgn: string) => string,
+) {
+  if (promo.discount_type === 'percent') return `${promo.value}%`
+  if (promo.discount_type === 'cost_plus') return `Доставна +${promo.value}%`
+  return `€${bgnToEur(promo.value)}`
 }

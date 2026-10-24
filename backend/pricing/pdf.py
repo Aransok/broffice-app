@@ -190,6 +190,16 @@ def _promotion_target(promotion: Promotion) -> str:
 
 
 def _promotion_discount(promotion: Promotion) -> str:
+    if promotion.discount_type == Promotion.TYPE_COST_PLUS:
+        # This PDF goes to the client: show the price, never "cost + X%".
+        product = promotion.product
+        if product is not None and product.admin_price is not None:
+            base = get_base_price(product)
+            if base is not None:
+                return (
+                    f"Цена {format_eur(compute_promo_price(base, promotion, product))}"
+                )
+        return "Специална цена"
     if promotion.discount_type == Promotion.TYPE_PERCENT:
         return f"-{promotion.value.normalize():f}%"
     return f"Цена {format_eur(promotion.value)}"

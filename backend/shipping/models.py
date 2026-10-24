@@ -9,6 +9,9 @@ class SpeedyOffice(TimeStampedModel):
     city = models.CharField(max_length=128, db_index=True)
     address = models.CharField(max_length=512)
     phone = models.CharField(max_length=64, blank=True, default="")
+    # From Speedy's address.y / address.x, for the office map at checkout.
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     raw_payload = models.JSONField(default=dict, blank=True)
 

@@ -7,6 +7,7 @@ import './index.css'
 import { primeCsrfCookie } from './api/client'
 import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
+import { DesignPreviewGate } from './components/DesignPreviewBanner'
 import { CookieConsentProvider } from './context/CookieConsentContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { VatProvider } from './context/VatContext'
@@ -24,6 +25,7 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
+            <DesignPreviewGate />
             <VatProvider>
               <CartProvider>
                 <CookieConsentProvider>

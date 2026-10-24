@@ -3941,3 +3941,135 @@ def test_speedy_courier_address_streets_price_table_and_order(
         "addressNote": "ет.2",
     }
     assert "pickupOfficeId" not in shipment["recipient"]
+
+
+@pytest.mark.django_db
+def test_storefront_design_defaults_to_classic(api_client):
+    resp = api_client.get("/api/v1/design/")
+    assert resp.status_code == 200
+    assert resp.data == {"design": "classic"}
+
+
+@pytest.mark.django_db
+def test_admin_can_make_a_design_live(api_client, admin_user):
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.put("/api/v1/admin/design/", {"design": "fresh"}, format="json")
+    assert resp.status_code == 200
+    assert resp.data["design"] == "fresh"
+    assert {"value": "fresh", "label": "BRoffice 2026"} in resp.data["choices"]
+    api_client.force_authenticate(user=None)
+    assert api_client.get("/api/v1/design/").data == {"design": "fresh"}
+
+
+@pytest.mark.django_db
+def test_admin_design_rejects_unknown_design(api_client, admin_user):
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.put("/api/v1/admin/design/", {"design": "nope"}, format="json")
+    assert resp.status_code == 400
+    assert not SiteSettings.objects.exists()
+
+
+@pytest.mark.django_db
+def test_admin_design_requires_admin(api_client):
+    customer = User.objects.create_user(username="client", password="clientpass")
+    resp = api_client.put("/api/v1/admin/design/", {"design": "fresh"}, format="json")
+    assert resp.status_code in (401, 403)
+    api_client.force_authenticate(user=customer)
+    resp = api_client.put("/api/v1/admin/design/", {"design": "fresh"}, format="json")
+    assert resp.status_code == 403
+
+
+@pytest.mark.django_db
+def test_category_brand_filter_facets_and_sort(api_client):
+    from brands.models import Brand
+
+    parent = Category.objects.create(external_id="c-p", slug="paper", name="Хартия")
+    child = Category.objects.create(
+        external_id="c-c", slug="a4", name="A4", parent=parent
+    )
+    other = Category.objects.create(external_id="c-o", slug="other", name="Друго")
+    hp = Brand.objects.create(external_id="b-hp", slug="hp", name="HP")
+    nav = Brand.objects.create(external_id="b-nav", slug="navigator", name="Navigator")
+    acme = Brand.objects.create(external_id="b-acme", slug="acme", name="Acme")
+    for i, (cat, brand) in enumerate(
+        [(child, nav), (child, nav), (parent, hp), (other, acme)]
+    ):
+        Product.objects.create(
+            external_id=f"p{i}",
+            slug=f"p{i}",
+            name=f"Продукт {i}",
+            category=cat,
+            brand=brand,
+            price_bgn="1.00",
+            status=Product.STATUS_PUBLISHED,
+        )
+
+    resp = api_client.get("/api/v1/products/brands/", {"category__slug": "paper"})
+    assert resp.status_code == 200
+    assert resp.data == [
+        {"slug": "hp", "name": "HP", "count": 1},
+        {"slug": "navigator", "name": "Navigator", "count": 2},
+    ]
+
+    resp = api_client.get(
+        "/api/v1/products/", {"category__slug": "paper", "brands": "navigator"}
+    )
+    assert {p["slug"] for p in resp.data["results"]} == {"p0", "p1"}
+
+    resp = api_client.get(
+        "/api/v1/products/",
+        {"category__slug": "paper", "ordering": "-brand__name,name"},
+    )
+    assert [p["brand_name"] for p in resp.data["results"]] == [
+        "Navigator",
+        "Navigator",
+        "HP",
+    ]
+
+
+@pytest.mark.django_db
+def test_pigeon_express_offices_include_map_coordinates(api_client):
+    office = {"id": "1", "name": "A", "type": "office", "city": {"name": "Пловдив"}}
+    with mock_pigeon_express_client(
+        search_offices={
+            "results": [
+                {**office, "latitude": "42.15", "longitude": "24.75"},
+                {**office, "id": "2", "location": {"lat": 42.1, "lng": 24.7}},
+                {**office, "id": "3"},
+            ],
+            "meta": {},
+        }
+    ) as client:
+        resp = api_client.get(
+            "/api/v1/shipping/pigeon-express/offices/", {"city_id": "7"}
+        )
+    rows = resp.data["results"]
+    assert (rows[0]["latitude"], rows[0]["longitude"]) == (42.15, 24.75)
+    assert (rows[1]["latitude"], rows[1]["longitude"]) == (42.1, 24.7)
+    assert (rows[2]["latitude"], rows[2]["longitude"]) == (None, None)
+    # A whole city is fetched for the map.
+    assert client.search_offices.call_args.kwargs["per_page"] == 100
+
+
+@pytest.mark.django_db
+def test_speedy_offices_store_map_coordinates(settings):
+    from shipping.speedy import SpeedyRestClient
+
+    client = SpeedyRestClient()
+    response = {
+        "offices": [
+            {
+                "id": 77,
+                "name": "Пловдив Тракия",
+                "address": {
+                    "siteName": "ПЛОВДИВ",
+                    "fullAddressString": "ул. Тест 1",
+                    "x": 24.78,
+                    "y": 42.13,
+                },
+            }
+        ]
+    }
+    with patch.object(SpeedyRestClient, "_post", return_value=response):
+        offices = client.search_offices("", site_id="1")
+    assert (offices[0].latitude, offices[0].longitude) == (42.13, 24.78)

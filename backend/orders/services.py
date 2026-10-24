@@ -232,7 +232,9 @@ def _build_customer_promo_note(order: Order) -> str | None:
     if not promos:
         return None
     promo = promos[0]
-    if promo.discount_type == Promotion.TYPE_PERCENT:
+    if promo.discount_type == Promotion.TYPE_COST_PLUS:
+        discount_text = "със специална цена"
+    elif promo.discount_type == Promotion.TYPE_PERCENT:
         discount_text = f"-{promo.value}%"
     else:
         discount_text = f"-{promo.value} лв."

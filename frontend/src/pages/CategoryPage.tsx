@@ -1,7 +1,7 @@
 import { type FormEvent, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { type CategoryTreeNode, useCategory, useCategoryTree } from '../api/categories'
-import { useProducts } from '../api/products'
+import { useCategoryBrands, useProducts } from '../api/products'
 import { PriceRangeSlider } from '../components/PriceRangeSlider'
 import { ProductCard } from '../components/product/ProductCard'
 import { Seo } from '../components/Seo'
@@ -18,7 +18,12 @@ const SORT_OPTIONS: { value: string; label: string; ordering: string }[] = [
   { value: 'name', label: 'Име (А-Я)', ordering: 'name' },
   { value: 'price_asc', label: 'Цена: ниска към висока', ordering: 'price_bgn' },
   { value: 'price_desc', label: 'Цена: висока към ниска', ordering: '-price_bgn' },
+  { value: 'brand', label: 'Марка (А-Я)', ordering: 'brand__name,name' },
+  { value: 'brand_desc', label: 'Марка (Я-А)', ordering: '-brand__name,name' },
 ]
+
+/** Brands shown before "Покажи всички" in the sidebar. */
+const BRANDS_COLLAPSED = 8
 
 export function CategoryPage() {
   const { slug = '' } = useParams()
@@ -29,6 +34,10 @@ export function CategoryPage() {
   const maxParam = searchParams.get('max') ?? ''
   const [minInput, setMinInput] = useState(minParam)
   const [maxInput, setMaxInput] = useState(maxParam)
+  const brandParam = searchParams.get('brand') ?? ''
+  const selectedBrands = useMemo(() => brandParam.split(',').filter(Boolean), [brandParam])
+  const [showAllBrands, setShowAllBrands] = useState(false)
+  const { data: brandFacets } = useCategoryBrands(slug)
 
   const { data: category, isLoading: categoryLoading, isError: categoryError } = useCategory(slug)
   const { data: categoryTree } = useCategoryTree()
@@ -70,7 +79,21 @@ export function CategoryPage() {
     ordering: ordering || undefined,
     price_bgn__gte: minParam ? eurToBgn(minParam) : undefined,
     price_bgn__lte: maxParam ? eurToBgn(maxParam) : undefined,
+    brands: brandParam || undefined,
   })
+
+  function toggleBrand(brandSlug: string) {
+    const next = selectedBrands.includes(brandSlug)
+      ? selectedBrands.filter((s) => s !== brandSlug)
+      : [...selectedBrands, brandSlug]
+    updateFilters({ brand: next.join(',') })
+  }
+
+  const visibleBrands =
+    brandFacets && !showAllBrands && brandFacets.length > BRANDS_COLLAPSED + 2
+      ? // Keep ticked brands visible even when collapsed.
+        brandFacets.filter((b, i) => i < BRANDS_COLLAPSED || selectedBrands.includes(b.slug))
+      : (brandFacets ?? [])
 
   function updateFilters(next: Record<string, string>) {
     const merged = new URLSearchParams(searchParams)
@@ -169,6 +192,53 @@ export function CategoryPage() {
             </div>
           )}
 
+          {brandFacets && brandFacets.length > 1 && (
+            <div className="mb-6">
+              <h2 className="mb-5 flex items-baseline justify-between border-b-2 border-slate-200 pb-2.5 text-lg font-medium text-slate-900">
+                Марка
+                {selectedBrands.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => updateFilters({ brand: '' })}
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    Изчисти
+                  </button>
+                )}
+              </h2>
+              <ul className="flex flex-col">
+                {visibleBrands.map((brand) => {
+                  const checked = selectedBrands.includes(brand.slug)
+                  return (
+                    <li key={brand.slug}>
+                      <label className="flex cursor-pointer items-center gap-2.5 py-1.5 text-sm font-medium text-slate-700 hover:text-primary">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleBrand(brand.slug)}
+                          className="h-4 w-4 accent-[var(--color-primary)]"
+                        />
+                        <span className={`flex-1 ${checked ? 'text-primary' : ''}`}>
+                          {brand.name}
+                        </span>
+                        <span className="text-xs text-slate-400 tabular-nums">{brand.count}</span>
+                      </label>
+                    </li>
+                  )
+                })}
+              </ul>
+              {brandFacets.length > BRANDS_COLLAPSED + 2 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllBrands((v) => !v)}
+                  className="mt-1 text-sm font-medium text-primary hover:underline"
+                >
+                  {showAllBrands ? 'Покажи по-малко' : `Покажи всички (${brandFacets.length})`}
+                </button>
+              )}
+            </div>
+          )}
+
           <div>
             <h2 className="mb-5 border-b-2 border-slate-200 pb-2.5 text-lg font-medium text-slate-900">
               Цена
@@ -196,11 +266,7 @@ export function CategoryPage() {
                   />
                 </label>
               </div>
-              <div
-                className="px-1"
-                onMouseUp={commitSliderFilter}
-                onTouchEnd={commitSliderFilter}
-              >
+              <div className="px-1" onMouseUp={commitSliderFilter} onTouchEnd={commitSliderFilter}>
                 <PriceRangeSlider
                   bounds={PRICE_BOUNDS}
                   value={sliderValue}

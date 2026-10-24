@@ -94,6 +94,14 @@ def _trim_decimal(value: Decimal) -> str:
 
 
 def _discount_label(promotion: Promotion) -> str:
+    if promotion.discount_type == Promotion.TYPE_COST_PLUS:
+        # Clients see the resulting price, never "cost + X%".
+        product = promotion.product
+        if product is not None and product.admin_price is not None:
+            base = get_base_price(product)
+            if base is not None:
+                return format_eur(compute_promo_price(base, promotion, product))
+        return "Специална цена"
     if promotion.discount_type == Promotion.TYPE_PERCENT:
         return f"-{_trim_decimal(promotion.value)}%"
     # Flat is the final price itself (see compute_promo_price), shown in
