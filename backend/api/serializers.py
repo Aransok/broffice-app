@@ -159,7 +159,16 @@ class AddressSerializer(serializers.ModelSerializer):
 class SpeedyOfficeSerializer(serializers.ModelSerializer):
     class Meta:
         model = SpeedyOffice
-        fields = ("id", "external_id", "name", "city", "address", "phone")
+        fields = (
+            "id",
+            "external_id",
+            "name",
+            "city",
+            "address",
+            "phone",
+            "latitude",
+            "longitude",
+        )
 
 
 class PigeonExpressCitySerializer(serializers.Serializer):
@@ -188,9 +197,41 @@ class PigeonExpressOfficeSerializer(serializers.Serializer):
     postal_code = serializers.CharField(required=False, allow_blank=True)
     phone = serializers.CharField(required=False, allow_blank=True)
 
+    latitude = serializers.SerializerMethodField()
+    longitude = serializers.SerializerMethodField()
+
     def get_city_name(self, obj):
         city = obj.get("city") or {}
         return city.get("name", "")
+
+    @staticmethod
+    def _coordinates(obj):
+        """Pigeon's office payload, for the checkout map. Accepts the usual
+        spellings (top-level or under location/coordinates/geo) so a field
+        rename on their side just hides the pin instead of breaking."""
+        for source in (
+            obj,
+            obj.get("location") or {},
+            obj.get("coordinates") or {},
+            obj.get("geo") or {},
+        ):
+            if not isinstance(source, dict):
+                continue
+            lat = source.get("latitude", source.get("lat"))
+            lng = source.get("longitude", source.get("lng", source.get("lon")))
+            try:
+                lat, lng = float(lat), float(lng)
+            except (TypeError, ValueError):
+                continue
+            if lat and lng:
+                return lat, lng
+        return None, None
+
+    def get_latitude(self, obj):
+        return self._coordinates(obj)[0]
+
+    def get_longitude(self, obj):
+        return self._coordinates(obj)[1]
 
 
 class BrandSerializer(serializers.ModelSerializer):

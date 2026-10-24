@@ -4025,3 +4025,51 @@ def test_category_brand_filter_facets_and_sort(api_client):
         "Navigator",
         "HP",
     ]
+
+
+@pytest.mark.django_db
+def test_pigeon_express_offices_include_map_coordinates(api_client):
+    office = {"id": "1", "name": "A", "type": "office", "city": {"name": "Пловдив"}}
+    with mock_pigeon_express_client(
+        search_offices={
+            "results": [
+                {**office, "latitude": "42.15", "longitude": "24.75"},
+                {**office, "id": "2", "location": {"lat": 42.1, "lng": 24.7}},
+                {**office, "id": "3"},
+            ],
+            "meta": {},
+        }
+    ) as client:
+        resp = api_client.get(
+            "/api/v1/shipping/pigeon-express/offices/", {"city_id": "7"}
+        )
+    rows = resp.data["results"]
+    assert (rows[0]["latitude"], rows[0]["longitude"]) == (42.15, 24.75)
+    assert (rows[1]["latitude"], rows[1]["longitude"]) == (42.1, 24.7)
+    assert (rows[2]["latitude"], rows[2]["longitude"]) == (None, None)
+    # A whole city is fetched for the map.
+    assert client.search_offices.call_args.kwargs["per_page"] == 100
+
+
+@pytest.mark.django_db
+def test_speedy_offices_store_map_coordinates(settings):
+    from shipping.speedy import SpeedyRestClient
+
+    client = SpeedyRestClient()
+    response = {
+        "offices": [
+            {
+                "id": 77,
+                "name": "Пловдив Тракия",
+                "address": {
+                    "siteName": "ПЛОВДИВ",
+                    "fullAddressString": "ул. Тест 1",
+                    "x": 24.78,
+                    "y": 42.13,
+                },
+            }
+        ]
+    }
+    with patch.object(SpeedyRestClient, "_post", return_value=response):
+        offices = client.search_offices("", site_id="1")
+    assert (offices[0].latitude, offices[0].longitude) == (42.13, 24.78)

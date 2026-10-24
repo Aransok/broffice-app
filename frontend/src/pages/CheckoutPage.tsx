@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAddresses } from '../api/addresses'
 import { type CouponDiscountType, validateCoupon } from '../api/coupons'
@@ -30,6 +30,7 @@ import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { useVat } from '../context/VatContext'
 import brofficeLogo from '../assets/logo.png'
+import type { MapOffice } from '../components/checkout/OfficeMap'
 import pigeonLogo from '../assets/couriers/pigeon.svg'
 import speedyLogo from '../assets/couriers/speedy.png'
 import { bgnToEur } from '../utils/currency'
@@ -187,6 +188,69 @@ function SpeedyAddressPicker({
   )
 }
 
+const OfficeMap = lazy(() => import('../components/checkout/OfficeMap'))
+
+function toMapOffices<
+  T extends { latitude: number | null; longitude: number | null; name: string; address: string },
+>(offices: T[] | undefined, getId: (office: T) => string): MapOffice[] {
+  return (offices ?? [])
+    .filter((o) => o.latitude !== null && o.longitude !== null)
+    .map((o) => ({
+      id: getId(o),
+      name: o.name,
+      address: o.address,
+      latitude: o.latitude as number,
+      longitude: o.longitude as number,
+    }))
+}
+
+/** "Списък / Карта" switch shown above an office list once at least one
+ * office has coordinates. */
+function OfficeViewSwitch({
+  view,
+  onChange,
+}: {
+  view: 'list' | 'map'
+  onChange: (view: 'list' | 'map') => void
+}) {
+  return (
+    <div
+      className="flex gap-1 self-start rounded-ui border border-slate-300 p-0.5 text-sm"
+      role="tablist"
+    >
+      {(['list', 'map'] as const).map((v) => (
+        <button
+          key={v}
+          type="button"
+          role="tab"
+          aria-selected={view === v}
+          onClick={() => onChange(v)}
+          className={`rounded-ui px-3 py-1 font-medium ${
+            view === v ? 'bg-primary text-white' : 'text-slate-600 hover:text-primary'
+          }`}
+        >
+          {v === 'list' ? 'Списък' : 'Карта'}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function OfficeMapPanel({
+  offices,
+  onSelect,
+}: {
+  offices: MapOffice[]
+  onSelect: (id: string) => void
+}) {
+  return (
+    <Suspense fallback={<p className="text-sm text-slate-500">Зареждане на картата...</p>}>
+      <OfficeMap offices={offices} onSelect={onSelect} />
+      <p className="text-xs text-slate-500">Натиснете точка на картата, за да изберете офиса.</p>
+    </Suspense>
+  )
+}
+
 function SpeedyOfficePicker({
   onSelect,
   selected,
@@ -201,6 +265,8 @@ function SpeedyOfficePicker({
     isFetching,
     isError,
   } = useSpeedyOffices(city?.id ?? '', useDebounced(query))
+  const [view, setView] = useState<'list' | 'map'>('list')
+  const mapOffices = useMemo(() => toMapOffices(offices, (o) => o.id), [offices])
 
   if (selected) {
     return (
@@ -238,7 +304,14 @@ function SpeedyOfficePicker({
       {isError && (
         <p className="text-sm text-red-600">Офисите не могат да се заредят. Опитайте пак.</p>
       )}
-      {offices && offices.length > 0 && (
+      {mapOffices.length > 0 && <OfficeViewSwitch view={view} onChange={setView} />}
+      {view === 'map' && mapOffices.length > 0 && (
+        <OfficeMapPanel
+          offices={mapOffices}
+          onSelect={(id) => onSelect(offices?.find((o) => o.id === id) ?? null)}
+        />
+      )}
+      {(view === 'list' || mapOffices.length === 0) && offices && offices.length > 0 && (
         <ul className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-ui border border-slate-200">
           {offices.map((office) => (
             <li key={office.id}>
@@ -410,6 +483,13 @@ function PigeonExpressOfficePicker({
   // Same as PigeonExpressCityPicker: once an office is picked its name fills
   // the search box and the list closes; editing the text reopens it.
   const showResults = !selected || selected.name !== query
+  const [view, setView] = useState<'list' | 'map'>('list')
+  const mapOffices = useMemo(() => toMapOffices(offices, (o) => o.id), [offices])
+
+  function pick(office: PigeonExpressOffice) {
+    onSelect(office)
+    setQuery(office.name)
+  }
 
   return (
     <div className="mt-3 flex flex-col gap-2">
@@ -422,25 +502,38 @@ function PigeonExpressOfficePicker({
         className="rounded-ui border border-slate-300 px-3 py-2"
       />
       {showResults && isFetching && <p className="text-sm text-slate-500">Търсене...</p>}
-      {showResults && offices && offices.length > 0 && (
-        <ul className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-ui border border-slate-200">
-          {offices.map((office) => (
-            <li key={office.id}>
-              <button
-                type="button"
-                onClick={() => {
-                  onSelect(office)
-                  setQuery(office.name)
-                }}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-primary/10"
-              >
-                <div className="font-medium text-slate-800">{office.name}</div>
-                <div className="text-slate-500">{office.address}</div>
-              </button>
-            </li>
-          ))}
-        </ul>
+      {showResults && mapOffices.length > 0 && <OfficeViewSwitch view={view} onChange={setView} />}
+      {showResults && view === 'map' && mapOffices.length > 0 && (
+        <OfficeMapPanel
+          offices={mapOffices}
+          onSelect={(id) => {
+            const office = offices?.find((o) => o.id === id)
+            if (office) pick(office)
+          }}
+        />
       )}
+      {showResults &&
+        (view === 'list' || mapOffices.length === 0) &&
+        offices &&
+        offices.length > 0 && (
+          <ul className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-ui border border-slate-200">
+            {offices.map((office) => (
+              <li key={office.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelect(office)
+                    setQuery(office.name)
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-primary/10"
+                >
+                  <div className="font-medium text-slate-800">{office.name}</div>
+                  <div className="text-slate-500">{office.address}</div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       {showResults && offices && offices.length === 0 && (
         <p className="text-sm text-slate-500">
           {type === 'locker' ? 'Няма намерени автомати.' : 'Няма намерени офиси.'}

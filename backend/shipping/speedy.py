@@ -100,12 +100,16 @@ class SpeedyRestClient(SpeedyClient):
             if query:
                 body["name"] = query
             for office in self._post("location/office/", **body).get("offices", []):
+                address = office["address"]
                 saved, _ = SpeedyOffice.objects.update_or_create(
                     external_id=str(office["id"]),
                     defaults={
                         "name": office["name"],
-                        "city": office["address"]["siteName"],
-                        "address": office["address"]["fullAddressString"],
+                        "city": address["siteName"],
+                        "address": address["fullAddressString"],
+                        # Speedy: x = longitude, y = latitude (0 when unknown).
+                        "latitude": address.get("y") or None,
+                        "longitude": address.get("x") or None,
                         "is_active": True,
                     },
                 )

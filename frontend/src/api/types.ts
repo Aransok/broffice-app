@@ -139,6 +139,9 @@ export interface SpeedyOffice {
   city: string
   address: string
   phone: string
+  /** For the checkout office map; null when the courier gave none. */
+  latitude: number | null
+  longitude: number | null
 }
 
 export interface PigeonExpressCity {
@@ -165,6 +168,8 @@ export interface PigeonExpressOffice {
   address: string
   city_name: string
   postal_code: string
+  latitude: number | null
+  longitude: number | null
 }
 
 export type ShippingMethod =

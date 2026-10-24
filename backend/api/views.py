@@ -1825,7 +1825,11 @@ class PigeonExpressOfficeListView(APIView):
         city_id = request.query_params.get("city_id") or ""
         try:
             result = get_pigeon_express_client().search_offices(
-                type=office_type, name=name, city_id=city_id
+                type=office_type,
+                name=name,
+                city_id=city_id,
+                # A whole city for the map; a name search stays short.
+                per_page=100 if city_id and not name else 20,
             )
         except PigeonExpressAPIError as exc:
             return Response({"detail": exc.message}, status=status.HTTP_502_BAD_GATEWAY)
