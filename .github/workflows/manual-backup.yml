@@ -32,7 +32,7 @@ jobs:
         run: |
           Get-ChildItem "$env:RUNNER_TEMP\manual-backup" -Recurse | Select-Object FullName, Length
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: broffice-manual-backup
           path: ${{ runner.temp }}\manual-backup
