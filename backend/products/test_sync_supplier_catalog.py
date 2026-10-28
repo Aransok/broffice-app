@@ -2,6 +2,7 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 from django.core.management.base import CommandError
 
 from brands.models import Brand
@@ -10,8 +11,8 @@ from products.management.commands.sync_supplier_catalog import Command
 from products.models import Product, ProductImage, ProductSpecification
 
 
-def _mock_response(payload: dict) -> MagicMock:
-    response = MagicMock()
+def _mock_response(payload: dict, status_code: int = 200) -> MagicMock:
+    response = MagicMock(status_code=status_code)
     response.json.return_value = payload
     response.raise_for_status.return_value = None
     return response
@@ -221,5 +222,72 @@ def test_sync_respects_max_pages(settings):
     ) as mock_get:
         command = Command()
         command.handle(max_pages=1)
+
+    assert mock_get.call_count == 1
+
+
+@pytest.mark.django_db
+def test_sync_retries_a_timed_out_page(settings):
+    settings.SUPPLIER_CATALOG_API_KEY = "test-key"
+    payload = {"data": [_item()], "links": {"next": None}}
+    with (
+        patch(
+            "products.management.commands.sync_supplier_catalog.requests.get",
+            side_effect=[requests.ReadTimeout("slow"), _mock_response(payload)],
+        ) as mock_get,
+        patch("products.management.commands.sync_supplier_catalog.time.sleep"),
+    ):
+        command = Command()
+        command.handle(max_pages=None)
+
+    assert mock_get.call_count == 2
+    assert command.created_count == 1
+
+
+@pytest.mark.django_db
+def test_sync_retries_a_5xx_page(settings):
+    settings.SUPPLIER_CATALOG_API_KEY = "test-key"
+    payload = {"data": [_item()], "links": {"next": None}}
+    with (
+        patch(
+            "products.management.commands.sync_supplier_catalog.requests.get",
+            side_effect=[_mock_response({}, status_code=503), _mock_response(payload)],
+        ) as mock_get,
+        patch("products.management.commands.sync_supplier_catalog.time.sleep"),
+    ):
+        Command().handle(max_pages=None)
+
+    assert mock_get.call_count == 2
+
+
+@pytest.mark.django_db
+def test_sync_gives_up_after_repeated_timeouts(settings):
+    settings.SUPPLIER_CATALOG_API_KEY = "test-key"
+    with (
+        patch(
+            "products.management.commands.sync_supplier_catalog.requests.get",
+            side_effect=requests.ReadTimeout("slow"),
+        ) as mock_get,
+        patch("products.management.commands.sync_supplier_catalog.time.sleep"),
+        pytest.raises(requests.ReadTimeout),
+    ):
+        Command().handle(max_pages=None)
+
+    assert mock_get.call_count == 3
+
+
+@pytest.mark.django_db
+def test_sync_does_not_retry_a_4xx(settings):
+    settings.SUPPLIER_CATALOG_API_KEY = "test-key"
+    response = _mock_response({}, status_code=404)
+    response.raise_for_status.side_effect = requests.HTTPError("404")
+    with (
+        patch(
+            "products.management.commands.sync_supplier_catalog.requests.get",
+            return_value=response,
+        ) as mock_get,
+        pytest.raises(requests.HTTPError),
+    ):
+        Command().handle(max_pages=None)
 
     assert mock_get.call_count == 1

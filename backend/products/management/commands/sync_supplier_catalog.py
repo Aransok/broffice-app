@@ -27,6 +27,7 @@ Field mapping:
 
 from __future__ import annotations
 
+import time
 from decimal import Decimal, InvalidOperation
 
 import requests
@@ -43,6 +44,27 @@ from products.models import (
     ProductSpecification,
     next_item_number,
 )
+
+# A single slow page used to abort the whole nightly run (the supplier API
+# timed out once at 03:11 on 2026-10-28, ~3000 products never refreshed).
+# Retry only transient failures (timeouts, dropped connections, 5xx); a 4xx
+# means a bad key or URL and retrying would just hide it.
+FETCH_ATTEMPTS = 3
+FETCH_BACKOFF_SECONDS = 5
+
+
+def _fetch_page(url: str, params: dict | None) -> requests.Response:
+    for attempt in range(1, FETCH_ATTEMPTS + 1):
+        try:
+            response = requests.get(url, params=params, timeout=30)
+            if response.status_code < 500 or attempt == FETCH_ATTEMPTS:
+                response.raise_for_status()
+                return response
+        except (requests.Timeout, requests.ConnectionError):
+            if attempt == FETCH_ATTEMPTS:
+                raise
+        time.sleep(FETCH_BACKOFF_SECONDS * 2 ** (attempt - 1))
+    raise AssertionError("unreachable")
 
 
 def _dec(val):
@@ -82,8 +104,7 @@ class Command(BaseCommand):
 
         while url:
             page_number += 1
-            response = requests.get(url, params=params, timeout=30)
-            response.raise_for_status()
+            response = _fetch_page(url, params)
             payload = response.json()
             # One short transaction per product (not one for the whole run)
             # — SQLite takes a whole-database write lock for the duration of
