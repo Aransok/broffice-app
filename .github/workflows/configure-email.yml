@@ -20,7 +20,7 @@ jobs:
   configure-email:
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           clean: false
 
