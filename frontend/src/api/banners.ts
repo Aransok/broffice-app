@@ -10,6 +10,9 @@ export interface BannerEntry {
   discount_label: string
   /** Raw product/category picture, so the carousel can compose the banner live. */
   subject_image: string
+  /** Background-removed cut-outs: one for a product, up to 4 products from
+   * across the category for a category promo. Missing on older manifests. */
+  subject_images?: string[]
   /** Formatted EUR, empty when unknown. */
   price: string
   old_price: string

@@ -206,3 +206,91 @@ def test_sync_banners_excludes_future_and_expired_promotions(product, category):
     sync_banners()
 
     assert Banner.objects.count() == 0
+
+
+def _product_with_photo(external_id, category, color):
+    from PIL import Image
+
+    from products.models import ProductImage
+
+    product = Product.objects.create(
+        external_id=external_id,
+        slug=external_id,
+        name=f"Product {external_id}",
+        category=category,
+        price_bgn="10.00",
+        client_price="10.00",
+    )
+    relative = f"products/{external_id}.png"
+    path = Path(settings.MEDIA_ROOT) / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # A product on a transparent margin: the cut-out must be trimmed to it.
+    image = Image.new("RGBA", (200, 100), (0, 0, 0, 0))
+    image.paste(Image.new("RGBA", (50, 40), color), (30, 20))
+    image.save(path)
+    ProductImage.objects.create(product=product, path=relative)
+    return product
+
+
+@pytest.mark.django_db
+def test_product_banner_saves_trimmed_cutout_for_carousel(category):
+    from PIL import Image
+
+    product = _product_with_photo("cut-1", category, (200, 0, 0, 255))
+    promo = _active_promotion(scope=Promotion.SCOPE_PRODUCT, product=product)
+
+    sync_banners()
+
+    banner = Banner.objects.get(promotion=promo)
+    assert banner.subject_paths == [f"highlights/{promo.id}-item-0.png"]
+    cutout = Image.open(Path(settings.MEDIA_ROOT) / banner.subject_paths[0])
+    assert cutout.size == (50, 40)
+    manifest = json.loads(
+        (Path(settings.MEDIA_ROOT) / "highlights" / "manifest.json").read_text()
+    )
+    assert manifest[0]["subject_images"] == banner.subject_paths
+
+    promo.delete()
+    assert not (Path(settings.MEDIA_ROOT) / banner.subject_paths[0]).exists()
+
+
+@pytest.mark.django_db
+def test_category_banner_shows_products_from_across_subcategories(category):
+    paper = Category.objects.create(
+        external_id="sub-paper", slug="sub-paper", name="Paper", parent=category
+    )
+    labels = Category.objects.create(
+        external_id="sub-labels", slug="sub-labels", name="Labels", parent=category
+    )
+    for index in range(3):
+        _product_with_photo(f"paper-{index}", paper, (0, 0, 200, 255))
+    _product_with_photo("labels-0", labels, (0, 200, 0, 255))
+    promo = _active_promotion(scope=Promotion.SCOPE_CATEGORY, category=category)
+
+    sync_banners()
+
+    banner = Banner.objects.get(promotion=promo)
+    assert len(banner.subject_paths) == 4
+    # Round-robin over subcategories: the one label product is among the
+    # first two picks, not crowded out by the paper products.
+    from PIL import Image
+
+    first_two = [
+        Image.open(Path(settings.MEDIA_ROOT) / p).convert("RGB").getpixel((0, 0))
+        for p in banner.subject_paths[:2]
+    ]
+    assert (0, 200, 0) in first_two
+
+
+@pytest.mark.django_db
+def test_old_banner_without_cutouts_is_regenerated(category):
+    product = _product_with_photo("old-1", category, (200, 0, 0, 255))
+    promo = _active_promotion(scope=Promotion.SCOPE_PRODUCT, product=product)
+    sync_banners()
+    Banner.objects.filter(promotion=promo).update(subject_paths=None)
+
+    sync_banners()
+
+    assert Banner.objects.get(promotion=promo).subject_paths == [
+        f"highlights/{promo.id}-item-0.png"
+    ]

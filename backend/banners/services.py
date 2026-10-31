@@ -25,6 +25,7 @@ import requests
 from django.conf import settings
 from PIL import Image, ImageDraw, ImageFont
 
+from categories.services import get_descendant_category_ids
 from common.currency import format_eur
 from common.emails import BRAND_BLUE, BRAND_ORANGE
 from common.fonts import (
@@ -86,6 +87,36 @@ def remove_background(image: Image.Image) -> Image.Image:
     from rembg import remove
 
     return remove(image, session=_get_rembg_session())
+
+
+CUTOUT_MAX_SIZE = (720, 720)
+
+
+def _trim_cutout(image: Image.Image) -> Image.Image:
+    """Crops a background-removed image to the product itself (no empty
+    transparent margin, so the storefront can size and place it exactly)
+    and caps it at a size the carousel never needs to exceed."""
+    image = image.convert("RGBA")
+    bbox = image.getchannel("A").getbbox()
+    if bbox:
+        image = image.crop(bbox)
+    image.thumbnail(CUTOUT_MAX_SIZE)
+    return image
+
+
+def _save_cutouts(promotion: Promotion, cutouts: list[Image.Image]) -> list[str]:
+    """Writes this promotion's cut-outs as highlights/<id>-item-<n>.png
+    (replacing any earlier set) and returns their MEDIA_ROOT-relative
+    paths, in order."""
+    banners_dir = _banners_dir()
+    for old in banners_dir.glob(f"{promotion.id}-item-*.png"):
+        old.unlink()
+    paths = []
+    for index, cutout in enumerate(cutouts):
+        relative_path = f"highlights/{promotion.id}-item-{index}.png"
+        _trim_cutout(cutout).save(Path(settings.MEDIA_ROOT) / relative_path, "PNG")
+        paths.append(relative_path)
+    return paths
 
 
 def _trim_decimal(value: Decimal) -> str:
@@ -277,7 +308,9 @@ def _compose(
     return canvas.convert("RGB")
 
 
-def _make_product_banner(promotion: Promotion) -> Image.Image | None:
+def _make_product_banner(
+    promotion: Promotion,
+) -> tuple[Image.Image, list[Image.Image]] | None:
     product = promotion.product
     if product is None:
         return None
@@ -293,7 +326,7 @@ def _make_product_banner(promotion: Promotion) -> Image.Image | None:
         if loaded is not None:
             subject = remove_background(loaded)
 
-    return _compose(
+    image = _compose(
         title=product.name,
         subject_image=subject,
         discount_label=_discount_label(promotion),
@@ -302,9 +335,15 @@ def _make_product_banner(promotion: Promotion) -> Image.Image | None:
         ),
         new_price_text=format_eur(new_price),
     )
+    return image, [subject] if subject is not None else []
 
 
 MAX_COLLAGE_IMAGES = 4
+
+
+# How many products to try per category banner before giving up (each try
+# can be a remote image fetch plus a background-removal pass).
+MAX_COLLAGE_ATTEMPTS = 10
 
 
 def _category_representative_images(category, limit: int = MAX_COLLAGE_IMAGES):
@@ -313,15 +352,37 @@ def _category_representative_images(category, limit: int = MAX_COLLAGE_IMAGES):
     products (background-removed, same as a product banner) rather than a
     single photo or the category's own (often generic) icon image. Client
     feedback: "if its category ... get more photos" — one item's photo
-    looked like only that one item was on sale."""
+    looked like only that one item was on sale.
+
+    Drawn from the whole category subtree and spread across its
+    subcategories (one product from each in turn), so a "Хартия" promo
+    shows paper, notebooks and labels rather than four copies of near-
+    identical copy paper - and a parent category whose products all sit in
+    subcategories still gets pictures."""
     products = (
-        Product.objects.filter(category=category, status=Product.STATUS_PUBLISHED)
+        Product.objects.filter(
+            category_id__in=get_descendant_category_ids(category),
+            status=Product.STATUS_PUBLISHED,
+        )
         .exclude(images__isnull=True)
         .prefetch_related("images")
-        .distinct()[:limit]
+        .distinct()
+        .order_by("category_id", "-created_at")[:200]
     )
-    images = []
+    by_category: dict = {}
     for product in products:
+        by_category.setdefault(product.category_id, []).append(product)
+    queues = list(by_category.values())
+    ordered = []
+    while any(queues):
+        for queue in queues:
+            if queue:
+                ordered.append(queue.pop(0))
+
+    images = []
+    for product in ordered[:MAX_COLLAGE_ATTEMPTS]:
+        if len(images) >= limit:
+            break
         first_image = product.images.first()
         if first_image is None:
             continue
@@ -353,7 +414,9 @@ def _build_collage(images: list[Image.Image], box: tuple[int, int]) -> Image.Ima
     return collage
 
 
-def _make_category_banner(promotion: Promotion) -> Image.Image | None:
+def _make_category_banner(
+    promotion: Promotion,
+) -> tuple[Image.Image, list[Image.Image]] | None:
     category = promotion.category
     if category is None:
         return None
@@ -367,13 +430,14 @@ def _make_category_banner(promotion: Promotion) -> Image.Image | None:
         subject = _load_source_image(category.image_path)
     else:
         subject = None
-    return _compose(
+    image = _compose(
         title=category.name,
         subject_image=subject,
         discount_label=_discount_label(promotion),
         old_price_text=None,
         new_price_text=None,
     )
+    return image, representative_images
 
 
 def _active_banner_promotions() -> list[Promotion]:
@@ -431,6 +495,10 @@ def _write_manifest(active_promotions: list[Promotion]) -> None:
                 # storefront can compose the banner live (the PNG above
                 # stays as the fallback and for designs that want it).
                 "subject_image": subject_image,
+                # Background-removed cut-outs (1 for a product, up to 4
+                # products from across the category) - what the carousel
+                # actually shows; subject_image is only its fallback.
+                "subject_images": banner.subject_paths or [],
                 "price": price,
                 "old_price": old_price if old_price != price else "",
                 "name": promotion.name,
@@ -467,17 +535,19 @@ def sync_banners() -> None:
         if (
             banner is not None
             and banner.updated_at >= promotion.updated_at
+            and banner.subject_paths is not None
             and (Path(settings.MEDIA_ROOT) / banner.image_path).exists()
         ):
             continue
 
-        image = (
+        made = (
             _make_product_banner(promotion)
             if promotion.scope == Promotion.SCOPE_PRODUCT
             else _make_category_banner(promotion)
         )
-        if image is None:
+        if made is None:
             continue
+        image, cutouts = made
 
         relative_path = f"highlights/{promotion.id}.png"
         (Path(settings.MEDIA_ROOT) / relative_path).parent.mkdir(
@@ -486,7 +556,11 @@ def sync_banners() -> None:
         image.save(Path(settings.MEDIA_ROOT) / relative_path, format="PNG")
         Banner.objects.update_or_create(
             promotion=promotion,
-            defaults={"banner_type": promotion.scope, "image_path": relative_path},
+            defaults={
+                "banner_type": promotion.scope,
+                "image_path": relative_path,
+                "subject_paths": _save_cutouts(promotion, cutouts),
+            },
         )
 
     _write_manifest(active)

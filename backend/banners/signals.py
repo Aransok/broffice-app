@@ -30,6 +30,7 @@ def _on_banner_deleted(sender, instance: Banner, **kwargs) -> None:
     # being hard-deleted: Django's CASCADE removes the Banner row as part of
     # that same delete() call, before sync_banners ever gets a chance to run
     # — this is the only place that case's leftover PNG file gets removed.
-    path = Path(settings.MEDIA_ROOT) / instance.image_path
-    if path.exists():
-        path.unlink()
+    for relative_path in [instance.image_path, *(instance.subject_paths or [])]:
+        path = Path(settings.MEDIA_ROOT) / relative_path
+        if path.exists():
+            path.unlink()
