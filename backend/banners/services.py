@@ -457,6 +457,41 @@ def _active_banner_promotions() -> list[Promotion]:
     ]
 
 
+def _subject_hue(relative_paths: list[str]) -> int | None:
+    """The main colour of the product cut-out(s) as a hue (0-359), so the
+    carousel can pick a slide colour that contrasts with the product rather
+    than one that swallows it (a teal paper box on a teal slide). None when
+    the product is mostly white/grey/black - any slide colour works then."""
+    import colorsys
+    import math
+
+    x = y = weight = 0.0
+    total = 0
+    for relative_path in relative_paths:
+        path = Path(settings.MEDIA_ROOT) / relative_path
+        try:
+            image = Image.open(path).convert("RGBA")
+        except OSError:
+            continue
+        image.thumbnail((48, 48))
+        data = image.tobytes()
+        for i in range(0, len(data), 4):
+            r, g, b, a = data[i : i + 4]
+            if a < 128:
+                continue
+            total += 1
+            h, sat, val = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+            if sat < 0.25 or val < 0.2:
+                continue
+            w = sat * val
+            x += math.cos(h * 2 * math.pi) * w
+            y += math.sin(h * 2 * math.pi) * w
+            weight += w
+    if total == 0 or weight / total < 0.12:
+        return None
+    return round(math.degrees(math.atan2(y, x))) % 360
+
+
 def _write_manifest(active_promotions: list[Promotion]) -> None:
     banners = {
         b.promotion_id: b
@@ -499,6 +534,7 @@ def _write_manifest(active_promotions: list[Promotion]) -> None:
                 # products from across the category) - what the carousel
                 # actually shows; subject_image is only its fallback.
                 "subject_images": banner.subject_paths or [],
+                "subject_hue": _subject_hue(banner.subject_paths or []),
                 "price": price,
                 "old_price": old_price if old_price != price else "",
                 "name": promotion.name,

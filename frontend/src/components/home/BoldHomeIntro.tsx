@@ -1,27 +1,20 @@
-import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useBrands } from '../../api/brands'
 import { usePublicConfig } from '../../api/config'
-import { getImageUrl } from '../../api/media'
-import { getDisplayPrice } from '../../api/pricing'
 import { useProducts } from '../../api/products'
 import type { ProductListItem } from '../../api/types'
 import { useAuth } from '../../context/AuthContext'
-import { useCart } from '../../context/CartContext'
-import { useVat } from '../../context/VatContext'
-import { announceCartAdd } from '../../lib/cartEvents'
 import { useTheme } from '../../context/ThemeContext'
 import { Aurora } from '../bold/Aurora'
-import { Reveal, Tilt } from '../bold/motion'
+import { Reveal } from '../bold/motion'
 import { ProductCard } from '../product/ProductCard'
 import { QuickOrderTable } from './QuickOrderTable'
 
 /** Top of the home page in the "BRoffice Bold" design: an aurora hero
- * with a live promo spotlight, the quick order with product preview, a
- * brand marquee, this week's promotions as a snap carousel and a trust
- * strip. (The category tiles and the numbers band were taken out at the
- * client's request; categories live in the Категории menu.) Only rendered when that
- * design is active (see HomePage). */
+ * next to the quick order table, a brand marquee, this week's promotions
+ * as a snap carousel and a trust strip. (The hero's floating promo card,
+ * the category tiles and the numbers band were taken out at the client's
+ * request.) Only rendered when that design is active (see HomePage). */
 export function BoldHomeIntro() {
   const { isEnabled } = useTheme()
   return (
@@ -97,7 +90,6 @@ function Hero() {
             {user ? 'Моите поръчки' : 'Фирмен акаунт'}
           </Link>
         </div>
-        {isEnabled('spotlight') && <Spotlight />}
       </div>
 
       {quickOrder && (
@@ -129,71 +121,6 @@ function Hero() {
         </Reveal>
       )}
     </section>
-  )
-}
-
-/** One real promotion floating in the hero as a tilting glass card. */
-function Spotlight() {
-  const { data } = useProducts({ on_promotion: true })
-  const { displayPrice } = useVat()
-  const { addItem } = useCart()
-  const imageRef = useRef<HTMLImageElement>(null)
-  const product = data?.results.find((p) => p.primary_image) ?? data?.results[0]
-  if (!product) return null
-  const raw = getDisplayPrice(product)
-  const price = displayPrice(raw.currentEur)
-  const old = displayPrice(raw.oldEur)
-  const image = getImageUrl(product.primary_image ?? '')
-  const pct =
-    raw.oldEur && raw.currentEur
-      ? Math.round((1 - Number(raw.currentEur) / Number(raw.oldEur)) * 100)
-      : null
-  return (
-    <div
-      className="bold-word absolute bottom-8 right-8 hidden w-64 lg:block"
-      style={{ animationDelay: '500ms' }}
-    >
-      <Tilt className="bold-float">
-        <div className="relative overflow-hidden rounded-[24px] border border-white/20 bg-white/10 p-4 text-white shadow-[0_30px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-          <span className="absolute left-4 top-4 z-10 rounded-full bg-[#ff6b1f] px-2.5 py-1 text-[11px] font-extrabold text-[#0a1628]">
-            {pct ? `−${pct}%` : 'ПРОМО'}
-          </span>
-          <Link to={`/product/${product.slug}`} className="block">
-            <span className="grid aspect-square place-items-center overflow-hidden rounded-2xl bg-white">
-              {image ? (
-                <img
-                  ref={imageRef}
-                  src={image}
-                  alt={product.name}
-                  className="h-full w-full object-contain p-3"
-                />
-              ) : (
-                <span className="text-xs text-slate-400">Промоция</span>
-              )}
-            </span>
-            <span className="mt-3 line-clamp-2 block text-sm font-semibold leading-snug">
-              {product.name}
-            </span>
-          </Link>
-          <div className="mt-2 flex items-end justify-between gap-2">
-            <span>
-              {old && <span className="block text-xs text-white/50 line-through">€{old}</span>}
-              <span className="display text-xl text-[#ffb27a]">€{price}</span>
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                addItem(product, 1)
-                announceCartAdd({ product, quantity: 1, source: imageRef.current })
-              }}
-              className="rounded-full bg-white px-3.5 py-2 text-xs font-extrabold text-[#0a1628] hover:bg-[#ffb27a]"
-            >
-              Купи
-            </button>
-          </div>
-        </div>
-      </Tilt>
-    </div>
   )
 }
 
@@ -246,7 +173,7 @@ function PromoCarousel() {
           {products.map((product, index) => (
             <div
               key={product.id}
-              className="w-[46vw] shrink-0 snap-start sm:w-[210px]"
+              className="w-[52vw] shrink-0 snap-start sm:w-[240px]"
               style={{ transitionDelay: `${index * 40}ms` }}
             >
               <ProductCard product={product} />

@@ -143,13 +143,6 @@ export const FEATURES: FeatureOption[] = [
     defaultOn: ['bold', 'paper'],
   },
   {
-    key: 'spotlight',
-    label: 'Промоция в заглавието',
-    description: 'Една актуална промоция като плаваща карта в голямото заглавие.',
-    designs: ['bold'],
-    defaultOn: ['bold'],
-  },
-  {
     key: 'promo_carousel',
     label: 'Лента с промоции',
     description: 'Промоциите на седмицата в хоризонтална лента горе.',
