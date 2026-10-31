@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import { useBrands } from '../../api/brands'
-import { usePublicConfig } from '../../api/config'
 import { useProducts } from '../../api/products'
 import type { ProductListItem } from '../../api/types'
 import { useAuth } from '../../context/AuthContext'
@@ -11,10 +10,10 @@ import { ProductCard } from '../product/ProductCard'
 import { QuickOrderTable } from './QuickOrderTable'
 
 /** Top of the home page in the "BRoffice Bold" design: an aurora hero
- * next to the quick order table, a brand marquee, this week's promotions
- * as a snap carousel and a trust strip. (The hero's floating promo card,
- * the category tiles and the numbers band were taken out at the client's
- * request.) Only rendered when that design is active (see HomePage). */
+ * next to the quick order table, a brand marquee and this week's
+ * promotions as a snap carousel. (The hero's floating promo card, the
+ * category tiles, the numbers band and the trust strip were taken out at
+ * the client's request.) Only rendered when that design is active (see HomePage). */
 export function BoldHomeIntro() {
   const { isEnabled } = useTheme()
   return (
@@ -22,7 +21,6 @@ export function BoldHomeIntro() {
       <Hero />
       {isEnabled('brand_marquee') && <BrandMarquee />}
       {isEnabled('promo_carousel') && <PromoCarousel />}
-      {isEnabled('trust_strip') && <TrustStrip />}
     </div>
   )
 }
@@ -180,33 +178,6 @@ function PromoCarousel() {
             </div>
           ))}
         </div>
-      </section>
-    </Reveal>
-  )
-}
-
-function TrustStrip() {
-  const { data: config } = usePublicConfig()
-  const items = [
-    { k: 'Доставка', v: 'Speedy, Pigeon Express или наш транспорт' },
-    { k: 'Фактура', v: 'За всяка фирмена поръчка, с ЕИК и ДДС' },
-    { k: 'Цени', v: 'В € и лв, с или без ДДС' },
-    { k: 'Поръчки', v: config?.company_phone || 'по телефон и онлайн' },
-  ]
-  return (
-    <Reveal>
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {items.map((item) => (
-          <div
-            key={item.k}
-            className="flex flex-col gap-1 rounded-[18px] border-[1.5px] border-[#0a1628]/15 bg-surface px-4 py-3.5"
-          >
-            <span className="display text-[11px] uppercase tracking-[0.16em] text-slate-500">
-              {item.k}
-            </span>
-            <span className="text-sm font-semibold text-slate-900">{item.v}</span>
-          </div>
-        ))}
       </section>
     </Reveal>
   )

@@ -174,7 +174,9 @@ export const FEATURES: FeatureOption[] = [
     key: 'trust_strip',
     label: 'Лента с предимства',
     description: 'Доставка, фактура, цени в € и лв.',
-    defaultOn: ['fresh', 'bold', 'paper'],
+    // Taken out of Bold at the client's request.
+    designs: ALL_DESIGNS.filter((d) => d !== 'bold'),
+    defaultOn: ['fresh', 'paper'],
   },
   {
     key: 'mobile_bar',
