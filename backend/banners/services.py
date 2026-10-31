@@ -23,7 +23,7 @@ from pathlib import Path
 
 import requests
 from django.conf import settings
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 from categories.services import get_descendant_category_ids
 from common.currency import format_eur
@@ -104,17 +104,70 @@ def _trim_cutout(image: Image.Image) -> Image.Image:
     return image
 
 
+# Share of a cut-out's visible pixels that are only half see-through. A
+# clean cut-out is solid with soft edges (measured 0.03-0.15 on real
+# catalog photos); a white product on a white studio background comes back
+# ghostly instead (the BMO paper box: 0.49, panels see-through and its top
+# missing), so that one is better shown as the plain photo.
+MAX_TRANSLUCENT_SHARE = 0.3
+
+
+def _cutout_is_reliable(cutout: Image.Image) -> bool:
+    histogram = cutout.convert("RGBA").getchannel("A").histogram()
+    solid = sum(histogram[240:])
+    partial = sum(histogram[16:240])
+    return (solid + partial) > 0 and partial / (solid + partial) < MAX_TRANSLUCENT_SHARE
+
+
+def _isolate_subject(image: Image.Image) -> Image.Image:
+    """The product with its background removed (RGBA) when that works, or
+    the original photo flattened on white (RGB) when the removal ate into
+    the product - the storefront shows those on a white card instead."""
+    cutout = remove_background(image)
+    if _cutout_is_reliable(cutout):
+        return cutout
+    photo = Image.new("RGB", image.size, "white")
+    rgba = image.convert("RGBA")
+    photo.paste(rgba, mask=rgba.getchannel("A"))
+    return photo
+
+
+def _trim_photo(photo: Image.Image) -> Image.Image:
+    """Crops a white-background photo to the product plus a small margin."""
+    difference = ImageChops.difference(photo, Image.new("RGB", photo.size, "white"))
+    bbox = difference.convert("L").point(lambda v: 255 if v > 12 else 0).getbbox()
+    if bbox:
+        pad = max(4, (bbox[2] - bbox[0]) // 25)
+        bbox = (
+            max(0, bbox[0] - pad),
+            max(0, bbox[1] - pad),
+            min(photo.width, bbox[2] + pad),
+            min(photo.height, bbox[3] + pad),
+        )
+        photo = photo.crop(bbox)
+    photo.thumbnail(CUTOUT_MAX_SIZE)
+    return photo
+
+
 def _save_cutouts(promotion: Promotion, cutouts: list[Image.Image]) -> list[str]:
-    """Writes this promotion's cut-outs as highlights/<id>-item-<n>.png
-    (replacing any earlier set) and returns their MEDIA_ROOT-relative
-    paths, in order."""
+    """Writes this promotion's pictures (replacing any earlier set) and
+    returns their MEDIA_ROOT-relative paths, in order: cut-outs (RGBA) as
+    highlights/<id>-item-<n>.png, plain photos (RGB, see _isolate_subject)
+    as highlights/<id>-photo-<n>.png so the storefront knows to put those
+    on a white card."""
     banners_dir = _banners_dir()
-    for old in banners_dir.glob(f"{promotion.id}-item-*.png"):
-        old.unlink()
+    for pattern in (f"{promotion.id}-item-*.png", f"{promotion.id}-photo-*.png"):
+        for old in banners_dir.glob(pattern):
+            old.unlink()
     paths = []
-    for index, cutout in enumerate(cutouts):
-        relative_path = f"highlights/{promotion.id}-item-{index}.png"
-        _trim_cutout(cutout).save(Path(settings.MEDIA_ROOT) / relative_path, "PNG")
+    for index, picture in enumerate(cutouts):
+        if picture.mode == "RGB":
+            relative_path = f"highlights/{promotion.id}-photo-{index}.png"
+            picture = _trim_photo(picture)
+        else:
+            relative_path = f"highlights/{promotion.id}-item-{index}.png"
+            picture = _trim_cutout(picture)
+        picture.save(Path(settings.MEDIA_ROOT) / relative_path, "PNG")
         paths.append(relative_path)
     return paths
 
@@ -266,7 +319,7 @@ def _compose(
     draw.text((badge_padding, 12), discount_label, font=badge_font, fill="white")
 
     if subject_image is not None:
-        subject_image = subject_image.copy()
+        subject_image = subject_image.convert("RGBA")
         subject_image.thumbnail(SUBJECT_BOX)
         px = (
             CANVAS_SIZE[0]
@@ -324,7 +377,7 @@ def _make_product_banner(
     if first_image is not None:
         loaded = _load_source_image(first_image.path)
         if loaded is not None:
-            subject = remove_background(loaded)
+            subject = _isolate_subject(loaded)
 
     image = _compose(
         title=product.name,
@@ -388,7 +441,7 @@ def _category_representative_images(category, limit: int = MAX_COLLAGE_IMAGES):
             continue
         loaded = _load_source_image(first_image.path)
         if loaded is not None:
-            images.append(remove_background(loaded))
+            images.append(_isolate_subject(loaded))
     return images
 
 
@@ -397,7 +450,7 @@ def _build_collage(images: list[Image.Image], box: tuple[int, int]) -> Image.Ima
     `box` — a single image just gets thumbnailed (matches how a product
     banner places its one subject image), 2+ get tiled 2-per-row."""
     if len(images) == 1:
-        thumb = images[0].copy()
+        thumb = images[0].convert("RGBA")
         thumb.thumbnail(box)
         return thumb
     cols = 2
@@ -406,7 +459,7 @@ def _build_collage(images: list[Image.Image], box: tuple[int, int]) -> Image.Ima
     collage = Image.new("RGBA", box, (0, 0, 0, 0))
     for idx, image in enumerate(images[: cols * rows]):
         col, row = idx % cols, idx // cols
-        thumb = image.copy()
+        thumb = image.convert("RGBA")
         thumb.thumbnail((cell_w - 10, cell_h - 10))
         cx = col * cell_w + (cell_w - thumb.width) // 2
         cy = row * cell_h + (cell_h - thumb.height) // 2
@@ -535,6 +588,11 @@ def _write_manifest(active_promotions: list[Promotion]) -> None:
                 # actually shows; subject_image is only its fallback.
                 "subject_images": banner.subject_paths or [],
                 "subject_hue": _subject_hue(banner.subject_paths or []),
+                # True when the pictures are plain photos (the background
+                # couldn't be removed cleanly): shown on a white card.
+                "subject_photo": any(
+                    "-photo-" in path for path in banner.subject_paths or []
+                ),
                 "price": price,
                 "old_price": old_price if old_price != price else "",
                 "name": promotion.name,

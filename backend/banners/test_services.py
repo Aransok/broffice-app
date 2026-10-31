@@ -312,3 +312,30 @@ def test_manifest_gives_the_products_main_colour(category):
     hues = {entry["title"]: entry["subject_hue"] for entry in manifest}
     assert 170 <= hues["Product teal-1"] <= 180
     assert hues["Product white-1"] is None
+
+
+@pytest.mark.django_db
+def test_ghostly_cutout_falls_back_to_the_plain_photo(category):
+    """A white product on a white background comes back half see-through
+    from background removal; the banner then uses the photo itself."""
+    from PIL import Image
+
+    def ghostly(image):
+        faded = image.convert("RGBA")
+        faded.putalpha(120)
+        return faded
+
+    product = _product_with_photo("ghost-1", category, (240, 240, 240, 255))
+    # Saving the promotion already syncs (signal, tasks run eagerly in tests).
+    with patch("banners.services.remove_background", side_effect=ghostly):
+        promo = _active_promotion(scope=Promotion.SCOPE_PRODUCT, product=product)
+        sync_banners()
+
+    banner = Banner.objects.get(promotion=promo)
+    assert banner.subject_paths == [f"highlights/{promo.id}-photo-0.png"]
+    photo = Image.open(Path(settings.MEDIA_ROOT) / banner.subject_paths[0])
+    assert photo.mode == "RGB"
+    manifest = json.loads(
+        (Path(settings.MEDIA_ROOT) / "highlights" / "manifest.json").read_text()
+    )
+    assert manifest[0]["subject_photo"] is True

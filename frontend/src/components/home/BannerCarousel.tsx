@@ -90,11 +90,14 @@ const GROUP_COLUMNS: Record<number, string> = {
 
 function ProductArt({
   images,
+  photo,
   fallback,
   accent,
   active,
 }: {
   images: string[]
+  /** The pictures are plain photos, not cut-outs (see subject_photo). */
+  photo: boolean
   fallback: string | null
   accent: string
   active: boolean
@@ -107,6 +110,23 @@ function ProductArt({
       style={{ background: accent }}
     />
   )
+
+  if (images.length === 1 && photo) {
+    // The background couldn't be removed cleanly (a white product on a
+    // white photo): the photo itself, whole, on a white card.
+    return (
+      <div className="relative flex h-full w-full items-center justify-center">
+        {glow}
+        <span className="relative h-[86%] w-[86%] overflow-hidden rounded-[22px] bg-white shadow-[0_24px_50px_rgba(0,0,0,0.4)]">
+          <img
+            src={images[0]}
+            alt=""
+            className={`absolute inset-0 h-full w-full object-contain p-[6%] ${zoom}`}
+          />
+        </span>
+      </div>
+    )
+  }
 
   if (images.length === 1) {
     // One product: the background-removed cut-out floats on the slide.
@@ -258,7 +278,13 @@ function Slide({
       </div>
 
       <div className="promo-slide-art relative flex w-[40%] shrink-0 items-center justify-center py-5 pr-4 sm:w-[42%] sm:p-6">
-        <ProductArt images={cutouts} fallback={fallback} accent={accent} active={active} />
+        <ProductArt
+          images={cutouts}
+          photo={Boolean(banner.subject_photo)}
+          fallback={fallback}
+          accent={accent}
+          active={active}
+        />
       </div>
     </Link>
   )

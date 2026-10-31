@@ -15,6 +15,8 @@ export interface BannerEntry {
   subject_images?: string[]
   /** Main colour of the product (hue 0-359), null for white/grey ones. */
   subject_hue?: number | null
+  /** The pictures are plain photos (background not removable cleanly). */
+  subject_photo?: boolean
   /** Formatted EUR, empty when unknown. */
   price: string
   old_price: string
