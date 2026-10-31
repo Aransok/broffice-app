@@ -367,9 +367,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     async (design: DesignPreset) => {
       const saved = await setLiveDesign(design)
       if (isPreset(saved.design)) applyLive(saved.design)
-      if (requestedPreview === design) exitDesignPreview()
+      // Always leave preview: a tab still previewing another design kept
+      // showing that one after this one went live, which looked like the
+      // wrong design had been made the site's.
+      exitDesignPreview()
     },
-    [applyLive, exitDesignPreview, requestedPreview],
+    [applyLive, exitDesignPreview],
   )
 
   const isEnabled = useCallback(
