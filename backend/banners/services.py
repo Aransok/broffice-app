@@ -105,10 +105,9 @@ def _trim_cutout(image: Image.Image) -> Image.Image:
 
 
 # Share of a cut-out's visible pixels that are only half see-through. A
-# clean cut-out is solid with soft edges (measured 0.03-0.15 on real
-# catalog photos); a white product on a white studio background comes back
-# ghostly instead (the BMO paper box: 0.49, panels see-through and its top
-# missing), so that one is better shown as the plain photo.
+# clean cut-out is solid with soft edges; one still mostly translucent even
+# after _repair_cutout means removal found no real product shape, and the
+# plain photo is shown instead.
 MAX_TRANSLUCENT_SHARE = 0.3
 
 
@@ -119,11 +118,42 @@ def _cutout_is_reliable(cutout: Image.Image) -> bool:
     return (solid + partial) > 0 and partial / (solid + partial) < MAX_TRANSLUCENT_SHARE
 
 
+def _repair_cutout(original: Image.Image, cutout: Image.Image) -> Image.Image:
+    """Background removal finds a white product's outline fine but makes
+    its white areas half see-through (the BMO paper box on a white studio
+    photo came back with its panels translucent and part of its top gone).
+    Keep the outline, make everything inside it solid, take the colours
+    from the original photo, and drop stray specks - tested on boxes, clear
+    pens, mesh baskets and markers, it's never worse than the raw cut-out."""
+    import numpy as np
+    from scipy import ndimage
+
+    rgb = np.array(original.convert("RGB"))
+    alpha = np.array(cutout.convert("RGBA").getchannel("A"))
+    if alpha.shape != rgb.shape[:2]:
+        return cutout
+    mask = ndimage.binary_closing(alpha > 10, iterations=3)
+    labels, count = ndimage.label(mask)
+    if count == 0:
+        return cutout
+    sizes = ndimage.sum(mask, labels, range(1, count + 1))
+    mask = np.isin(labels, 1 + np.flatnonzero(sizes >= 0.01 * sizes.max()))
+    # Fill enclosed see-through gaps, but not big real openings.
+    holes, hole_count = ndimage.label(ndimage.binary_fill_holes(mask) & ~mask)
+    if hole_count:
+        hole_sizes = ndimage.sum(holes > 0, holes, range(1, hole_count + 1))
+        small = 1 + np.flatnonzero(hole_sizes < 0.1 * mask.sum())
+        mask |= np.isin(holes, small)
+    solid = ndimage.binary_erosion(mask, iterations=2)
+    repaired = np.where(mask, np.maximum(alpha, solid * 255), 0).astype(np.uint8)
+    return Image.fromarray(np.dstack([rgb, repaired]), "RGBA")
+
+
 def _isolate_subject(image: Image.Image) -> Image.Image:
-    """The product with its background removed (RGBA) when that works, or
-    the original photo flattened on white (RGB) when the removal ate into
-    the product - the storefront shows those on a white card instead."""
-    cutout = remove_background(image)
+    """The product with its background removed (RGBA), or - only if even
+    the repaired cut-out is unusable - the original photo flattened on
+    white (RGB), which the storefront shows on a white card."""
+    cutout = _repair_cutout(image, remove_background(image))
     if _cutout_is_reliable(cutout):
         return cutout
     photo = Image.new("RGB", image.size, "white")

@@ -1,5 +1,5 @@
-# Banner pictures now fall back to the plain photo when background removal
-# makes the product see-through (white products on white backgrounds).
+# Banner cut-outs are now repaired when background removal makes a white
+# product see-through (white box on a white studio photo).
 # Clearing subject_paths makes the next sync_banners() rebuild every
 # current banner with that check, instead of keeping the ghostly cut-outs.
 from django.db import migrations

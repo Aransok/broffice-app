@@ -315,14 +315,16 @@ def test_manifest_gives_the_products_main_colour(category):
 
 
 @pytest.mark.django_db
-def test_ghostly_cutout_falls_back_to_the_plain_photo(category):
+def test_see_through_cutout_is_made_solid(category):
     """A white product on a white background comes back half see-through
-    from background removal; the banner then uses the photo itself."""
+    from background removal; the banner keeps its outline but makes it
+    solid, with the photo's own colours."""
     from PIL import Image
 
     def ghostly(image):
         faded = image.convert("RGBA")
-        faded.putalpha(120)
+        alpha = faded.getchannel("A").point(lambda v: 120 if v else 0)
+        faded.putalpha(alpha)
         return faded
 
     product = _product_with_photo("ghost-1", category, (240, 240, 240, 255))
@@ -332,9 +334,33 @@ def test_ghostly_cutout_falls_back_to_the_plain_photo(category):
         sync_banners()
 
     banner = Banner.objects.get(promotion=promo)
+    assert banner.subject_paths == [f"highlights/{promo.id}-item-0.png"]
+    cutout = Image.open(Path(settings.MEDIA_ROOT) / banner.subject_paths[0])
+    assert cutout.getpixel((cutout.width // 2, cutout.height // 2)) == (
+        240,
+        240,
+        240,
+        255,
+    )
+
+
+@pytest.mark.django_db
+def test_failed_removal_falls_back_to_the_plain_photo(category):
+    from PIL import Image
+
+    def nothing_found(image):
+        empty = image.convert("RGBA")
+        empty.putalpha(0)
+        return empty
+
+    product = _product_with_photo("empty-1", category, (240, 0, 0, 255))
+    with patch("banners.services.remove_background", side_effect=nothing_found):
+        promo = _active_promotion(scope=Promotion.SCOPE_PRODUCT, product=product)
+        sync_banners()
+
+    banner = Banner.objects.get(promotion=promo)
     assert banner.subject_paths == [f"highlights/{promo.id}-photo-0.png"]
-    photo = Image.open(Path(settings.MEDIA_ROOT) / banner.subject_paths[0])
-    assert photo.mode == "RGB"
+    assert Image.open(Path(settings.MEDIA_ROOT) / banner.subject_paths[0]).mode == "RGB"
     manifest = json.loads(
         (Path(settings.MEDIA_ROOT) / "highlights" / "manifest.json").read_text()
     )
