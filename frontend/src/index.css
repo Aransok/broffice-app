@@ -748,29 +748,21 @@ html[data-theme='bold'] body {
 :root[data-theme='bold'] .product-card .btn-buy > * {
   position: relative;
 }
-/* Compact cards (client: Bold's product cards were too big): a shorter
- * photo, smaller price and a lighter offset shadow, six to a row on wide
- * screens. */
-:root[data-theme='bold'] .product-card .aspect-square {
-  aspect-ratio: 5 / 4;
-}
+/* Card size (client: the original Bold cards were too big, the first
+ * compact pass too small): square photo, five to a row, a lighter price
+ * and offset shadow than the original. */
 :root[data-theme='bold'] .product-card .aspect-square img {
-  padding: 0.6rem;
+  padding: 0.75rem;
 }
 :root[data-theme='bold'] .product-card {
-  border-radius: 16px;
+  border-radius: 18px;
   box-shadow: 3px 3px 0 var(--color-ink);
 }
 :root[data-theme='bold'] .product-card:hover {
-  box-shadow: 5px 5px 0 var(--color-ink);
+  box-shadow: 6px 6px 0 var(--color-ink);
 }
 :root[data-theme='bold'] .product-price {
-  font-size: 1.02rem;
-}
-@media (min-width: 1280px) {
-  :root[data-theme='bold'] .home-product-grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
+  font-size: 1.1rem;
 }
 /* Room for the sticky bottom bar on phones. */
 html[data-theme='bold'] body {

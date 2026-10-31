@@ -1,5 +1,5 @@
 import { type FormEvent, useMemo, useState } from 'react'
-import { orderedCategoryOptions, useCategories } from '../../api/categories'
+import { AdminCategoryPicker } from '../../components/admin/AdminCategoryPicker'
 import { AdminProductPicker } from '../../components/admin/AdminProductPicker'
 import {
   type AdminUserResult,
@@ -114,7 +114,6 @@ function PromotionsTable({
 
 export function AdminPromotionsPage() {
   const { data: promotions, refetch } = usePromotions()
-  const { data: categories } = useCategories()
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [userResults, setUserResults] = useState<AdminUserResult[]>([])
@@ -341,24 +340,10 @@ export function AdminPromotionsPage() {
         </select>
 
         {form.scope === 'category' && (
-          <select
+          <AdminCategoryPicker
             value={form.category}
-            onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))}
-            className="rounded-ui border border-slate-300 px-3 py-2"
-          >
-            <option value="">Избери категория (вкл. подкатегории)</option>
-            {orderedCategoryOptions(categories?.results ?? []).map(({ category, depth }) => (
-              <option
-                key={category.id}
-                value={category.id}
-                style={depth === 0 ? { backgroundColor: '#e0f2fe', fontWeight: 600 } : undefined}
-              >
-                {'  '.repeat(depth)}
-                {depth > 0 ? '— ' : ''}
-                {category.name}
-              </option>
-            ))}
-          </select>
+            onChange={(categoryId) => setForm((prev) => ({ ...prev, category: categoryId }))}
+          />
         )}
 
         {form.scope === 'product' && (

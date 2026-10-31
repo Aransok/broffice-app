@@ -22,13 +22,48 @@ function useCountdown(endsAt: string) {
   return `Още ${Math.max(1, hours)} ${hours === 1 ? 'час' : 'часа'}`
 }
 
-const PALETTES = [
-  ['#0f2140', '#2f5fd6'],
-  ['#3a1d0b', '#ff6b1f'],
-  ['#0b2e2a', '#14b8a6'],
-  ['#2a1248', '#a855f7'],
-  ['#3b2a05', '#f59e0b'],
+/** [dark, accent, accent hue in degrees] */
+const PALETTES: [string, string, number][] = [
+  ['#0f2140', '#2f5fd6', 224],
+  ['#3a1d0b', '#ff6b1f', 22],
+  ['#0b2e2a', '#14b8a6', 173],
+  ['#2a1248', '#a855f7', 271],
+  ['#3b2a05', '#f59e0b', 38],
 ]
+
+function hueDistance(a: number, b: number) {
+  const d = Math.abs(a - b) % 360
+  return d > 180 ? 360 - d : d
+}
+
+/** Each slide's colours. When the product has a clear colour of its own
+ * (subject_hue from the server), only palettes far from it are used, so a
+ * teal box never sits on a teal slide; and two slides in a row never share
+ * a palette, so the carousel still visibly changes. */
+function assignPalettes(banners: BannerEntry[]) {
+  const assigned: [string, string, number][] = []
+  banners.forEach((banner, index) => {
+    const hue = banner.subject_hue
+    let candidates = PALETTES
+    if (hue !== null && hue !== undefined) {
+      const far = PALETTES.filter((p) => hueDistance(p[2], hue) >= 70)
+      candidates =
+        far.length > 0
+          ? far
+          : [...PALETTES].sort((x, y) => hueDistance(y[2], hue) - hueDistance(x[2], hue))
+    }
+    const rotated = candidates.map((_, k) => candidates[(index + k) % candidates.length])
+    const previous = assigned[index - 1]
+    const first = assigned[0]
+    const isLast = index === banners.length - 1 && index > 0
+    assigned.push(
+      rotated.find((p) => p !== previous && !(isLast && p === first)) ??
+        rotated.find((p) => p !== previous) ??
+        rotated[0],
+    )
+  })
+  return assigned
+}
 
 /** "€12,34" / "12.34 €" -> 12.34 */
 function parseEur(text: string) {
@@ -55,11 +90,14 @@ const GROUP_COLUMNS: Record<number, string> = {
 
 function ProductArt({
   images,
+  photo,
   fallback,
   accent,
   active,
 }: {
   images: string[]
+  /** The pictures are plain photos, not cut-outs (see subject_photo). */
+  photo: boolean
   fallback: string | null
   accent: string
   active: boolean
@@ -72,6 +110,23 @@ function ProductArt({
       style={{ background: accent }}
     />
   )
+
+  if (images.length === 1 && photo) {
+    // The background couldn't be removed cleanly (a white product on a
+    // white photo): the photo itself, whole, on a white card.
+    return (
+      <div className="relative flex h-full w-full items-center justify-center">
+        {glow}
+        <span className="relative h-[86%] w-[86%] overflow-hidden rounded-[22px] bg-white shadow-[0_24px_50px_rgba(0,0,0,0.4)]">
+          <img
+            src={images[0]}
+            alt=""
+            className={`absolute inset-0 h-full w-full object-contain p-[6%] ${zoom}`}
+          />
+        </span>
+      </div>
+    )
+  }
 
   if (images.length === 1) {
     // One product: the background-removed cut-out floats on the slide.
@@ -144,9 +199,17 @@ function ProductArt({
   )
 }
 
-function Slide({ banner, index, active }: { banner: BannerEntry; index: number; active: boolean }) {
+function Slide({
+  banner,
+  palette,
+  active,
+}: {
+  banner: BannerEntry
+  palette: [string, string, number]
+  active: boolean
+}) {
   const countdown = useCountdown(banner.ends_at)
-  const [dark, accent] = PALETTES[index % PALETTES.length]
+  const [dark, accent] = palette
   const cutouts = (banner.subject_images ?? [])
     .map((path) => getImageUrl(path))
     .filter((url): url is string => Boolean(url))
@@ -215,7 +278,13 @@ function Slide({ banner, index, active }: { banner: BannerEntry; index: number; 
       </div>
 
       <div className="promo-slide-art relative flex w-[40%] shrink-0 items-center justify-center py-5 pr-4 sm:w-[42%] sm:p-6">
-        <ProductArt images={cutouts} fallback={fallback} accent={accent} active={active} />
+        <ProductArt
+          images={cutouts}
+          photo={Boolean(banner.subject_photo)}
+          fallback={fallback}
+          accent={accent}
+          active={active}
+        />
       </div>
     </Link>
   )
@@ -245,6 +314,7 @@ export function BannerCarousel() {
   }, [count, paused, activeIndex])
 
   if (!banners || banners.length === 0) return null
+  const palettes = assignPalettes(banners)
 
   function go(next: number) {
     setActiveIndex((next + count) % count)
@@ -269,7 +339,12 @@ export function BannerCarousel() {
       }}
     >
       {banners.map((banner, index) => (
-        <Slide key={banner.id} banner={banner} index={index} active={index === activeIndex} />
+        <Slide
+          key={banner.id}
+          banner={banner}
+          palette={palettes[index]}
+          active={index === activeIndex}
+        />
       ))}
 
       {banners.length > 1 && (

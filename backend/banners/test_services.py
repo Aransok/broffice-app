@@ -294,3 +294,74 @@ def test_old_banner_without_cutouts_is_regenerated(category):
     assert Banner.objects.get(promotion=promo).subject_paths == [
         f"highlights/{promo.id}-item-0.png"
     ]
+
+
+@pytest.mark.django_db
+def test_manifest_gives_the_products_main_colour(category):
+    _product_with_photo("teal-1", category, (0, 160, 150, 255))
+    grey = Product.objects.get(external_id="teal-1")
+    _active_promotion(scope=Promotion.SCOPE_PRODUCT, product=grey)
+    white = _product_with_photo("white-1", category, (250, 250, 250, 255))
+    _active_promotion(scope=Promotion.SCOPE_PRODUCT, product=white)
+
+    sync_banners()
+
+    manifest = json.loads(
+        (Path(settings.MEDIA_ROOT) / "highlights" / "manifest.json").read_text()
+    )
+    hues = {entry["title"]: entry["subject_hue"] for entry in manifest}
+    assert 170 <= hues["Product teal-1"] <= 180
+    assert hues["Product white-1"] is None
+
+
+@pytest.mark.django_db
+def test_see_through_cutout_is_made_solid(category):
+    """A white product on a white background comes back half see-through
+    from background removal; the banner keeps its outline but makes it
+    solid, with the photo's own colours."""
+    from PIL import Image
+
+    def ghostly(image):
+        faded = image.convert("RGBA")
+        alpha = faded.getchannel("A").point(lambda v: 120 if v else 0)
+        faded.putalpha(alpha)
+        return faded
+
+    product = _product_with_photo("ghost-1", category, (240, 240, 240, 255))
+    # Saving the promotion already syncs (signal, tasks run eagerly in tests).
+    with patch("banners.services.remove_background", side_effect=ghostly):
+        promo = _active_promotion(scope=Promotion.SCOPE_PRODUCT, product=product)
+        sync_banners()
+
+    banner = Banner.objects.get(promotion=promo)
+    assert banner.subject_paths == [f"highlights/{promo.id}-item-0.png"]
+    cutout = Image.open(Path(settings.MEDIA_ROOT) / banner.subject_paths[0])
+    assert cutout.getpixel((cutout.width // 2, cutout.height // 2)) == (
+        240,
+        240,
+        240,
+        255,
+    )
+
+
+@pytest.mark.django_db
+def test_failed_removal_falls_back_to_the_plain_photo(category):
+    from PIL import Image
+
+    def nothing_found(image):
+        empty = image.convert("RGBA")
+        empty.putalpha(0)
+        return empty
+
+    product = _product_with_photo("empty-1", category, (240, 0, 0, 255))
+    with patch("banners.services.remove_background", side_effect=nothing_found):
+        promo = _active_promotion(scope=Promotion.SCOPE_PRODUCT, product=product)
+        sync_banners()
+
+    banner = Banner.objects.get(promotion=promo)
+    assert banner.subject_paths == [f"highlights/{promo.id}-photo-0.png"]
+    assert Image.open(Path(settings.MEDIA_ROOT) / banner.subject_paths[0]).mode == "RGB"
+    manifest = json.loads(
+        (Path(settings.MEDIA_ROOT) / "highlights" / "manifest.json").read_text()
+    )
+    assert manifest[0]["subject_photo"] is True
