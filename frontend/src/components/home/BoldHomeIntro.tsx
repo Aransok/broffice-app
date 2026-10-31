@@ -14,7 +14,7 @@ import { useTheme } from '../../context/ThemeContext'
 import { Aurora } from '../bold/Aurora'
 import { Reveal, Tilt } from '../bold/motion'
 import { ProductCard } from '../product/ProductCard'
-import { QuickOrderBox } from './QuickOrderBox'
+import { QuickOrderTable } from './QuickOrderTable'
 
 /** Top of the home page in the "BRoffice Bold" design: an aurora hero
  * with a live promo spotlight, the quick order with product preview, a
@@ -107,7 +107,7 @@ function Hero() {
               <div>
                 <h2 className="display text-xl text-slate-900">Бърза поръчка</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Номер и количество на ред. Продуктът се показва веднага, преди да го добавиш.
+                  Номер и брой, като в Excel. Продуктът се показва веднага, преди да го добавиш.
                 </p>
               </div>
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#ff6b1f] text-[#0a1628]">
@@ -124,7 +124,7 @@ function Hero() {
                 </svg>
               </span>
             </div>
-            <QuickOrderBox />
+            <QuickOrderTable />
           </div>
         </Reveal>
       )}
