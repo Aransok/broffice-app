@@ -165,13 +165,17 @@ export const FEATURES: FeatureOption[] = [
     key: 'category_tiles',
     label: 'Плочки с категории',
     description: 'Категориите като големи плочки на началната страница.',
-    defaultOn: ['fresh', 'bold', 'paper'],
+    // Taken out of Bold at the client's request.
+    designs: ALL_DESIGNS.filter((d) => d !== 'bold'),
+    defaultOn: ['fresh', 'paper'],
   },
   {
     key: 'numbers',
     label: 'Числа',
     description: 'Брой продукти, марки и категории, броящи се нагоре.',
-    defaultOn: ['bold'],
+    // Taken out of Bold at the client's request.
+    designs: ALL_DESIGNS.filter((d) => d !== 'bold'),
+    defaultOn: [],
   },
   {
     key: 'trust_strip',

@@ -524,11 +524,16 @@ html[data-theme='bold'] body {
 :root[data-theme='bold'] .mega-menu-panel a,
 :root[data-theme='bold'] .mega-menu-panel .text-black,
 :root[data-theme='bold'] .mega-menu-panel .text-slate-500,
-:root[data-theme='bold'] .mega-menu-panel .text-slate-900 {
+:root[data-theme='bold'] .mega-menu-panel .text-slate-900,
+:root[data-theme='bold'] .mega-menu-flyout a,
+:root[data-theme='bold'] .mega-menu-flyout .text-black,
+:root[data-theme='bold'] .mega-menu-flyout .text-slate-500,
+:root[data-theme='bold'] .mega-menu-flyout .text-slate-900 {
   color: #e6ebf5;
   border-color: rgba(255, 255, 255, 0.08);
 }
 :root[data-theme='bold'] .mega-menu-panel a:hover,
+:root[data-theme='bold'] .mega-menu-flyout a:hover,
 :root[data-theme='bold'] .mega-menu-panel a[aria-expanded='true'] {
   color: #ffb27a;
 }
@@ -742,6 +747,30 @@ html[data-theme='bold'] body {
 }
 :root[data-theme='bold'] .product-card .btn-buy > * {
   position: relative;
+}
+/* Compact cards (client: Bold's product cards were too big): a shorter
+ * photo, smaller price and a lighter offset shadow, six to a row on wide
+ * screens. */
+:root[data-theme='bold'] .product-card .aspect-square {
+  aspect-ratio: 5 / 4;
+}
+:root[data-theme='bold'] .product-card .aspect-square img {
+  padding: 0.6rem;
+}
+:root[data-theme='bold'] .product-card {
+  border-radius: 16px;
+  box-shadow: 3px 3px 0 var(--color-ink);
+}
+:root[data-theme='bold'] .product-card:hover {
+  box-shadow: 5px 5px 0 var(--color-ink);
+}
+:root[data-theme='bold'] .product-price {
+  font-size: 1.02rem;
+}
+@media (min-width: 1280px) {
+  :root[data-theme='bold'] .home-product-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 }
 /* Room for the sticky bottom bar on phones. */
 html[data-theme='bold'] body {

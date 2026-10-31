@@ -1,34 +1,50 @@
-# Weekly dependency checks. Security fixes open PRs right away; routine
-# minor/patch updates are grouped into one PR per ecosystem so they stay
-# easy to review. Major versions are left out of the groups on purpose:
-# the first grouped run bundled Django 5->6 and TypeScript 6->7 in with
-# everything else, both broke CI, and the safe updates got stuck with them.
-# Each major bump now arrives as its own PR to take or leave.
+# Monthly dependency checks, kept quiet on purpose (the owner found a
+# dozen open bot PRs at once annoying): each ecosystem gets at most ONE
+# grouped PR a month with every minor/patch update in it. Major versions
+# are skipped entirely - the first grouped run bundled Django 5->6 and
+# TypeScript 6->7, both broke CI; those upgrades get done deliberately by
+# hand instead. Security fixes still arrive on their own (GitHub security
+# updates, not this schedule).
 version: 2
 updates:
   - package-ecosystem: pip
     directory: /backend
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       python:
         patterns: ["*"]
-        update-types: ["minor", "patch"]
   - package-ecosystem: npm
     directory: /frontend
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       frontend:
         patterns: ["*"]
-        update-types: ["minor", "patch"]
   - package-ecosystem: docker
     directories: ["/backend", "/frontend"]
     schedule:
       interval: monthly
+    open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      docker:
+        patterns: ["*"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    open-pull-requests-limit: 1
+    groups:
+      actions:
+        patterns: ["*"]

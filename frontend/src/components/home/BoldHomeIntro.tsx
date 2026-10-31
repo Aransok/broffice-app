@@ -1,7 +1,6 @@
 import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useBrands } from '../../api/brands'
-import { useCategoryTree } from '../../api/categories'
 import { usePublicConfig } from '../../api/config'
 import { getImageUrl } from '../../api/media'
 import { getDisplayPrice } from '../../api/pricing'
@@ -13,14 +12,15 @@ import { useVat } from '../../context/VatContext'
 import { announceCartAdd } from '../../lib/cartEvents'
 import { useTheme } from '../../context/ThemeContext'
 import { Aurora } from '../bold/Aurora'
-import { CountUp, Reveal, Tilt } from '../bold/motion'
+import { Reveal, Tilt } from '../bold/motion'
 import { ProductCard } from '../product/ProductCard'
-import { QuickOrderBox } from './QuickOrderBox'
+import { QuickOrderTable } from './QuickOrderTable'
 
 /** Top of the home page in the "BRoffice Bold" design: an aurora hero
  * with a live promo spotlight, the quick order with product preview, a
- * brand marquee, this week's promotions as a snap carousel, a bento grid
- * of categories, live numbers and a trust strip. Only rendered when that
+ * brand marquee, this week's promotions as a snap carousel and a trust
+ * strip. (The category tiles and the numbers band were taken out at the
+ * client's request; categories live in the Категории menu.) Only rendered when that
  * design is active (see HomePage). */
 export function BoldHomeIntro() {
   const { isEnabled } = useTheme()
@@ -29,8 +29,6 @@ export function BoldHomeIntro() {
       <Hero />
       {isEnabled('brand_marquee') && <BrandMarquee />}
       {isEnabled('promo_carousel') && <PromoCarousel />}
-      {isEnabled('category_tiles') && <BentoCategories />}
-      {isEnabled('numbers') && <Numbers />}
       {isEnabled('trust_strip') && <TrustStrip />}
     </div>
   )
@@ -109,7 +107,7 @@ function Hero() {
               <div>
                 <h2 className="display text-xl text-slate-900">Бърза поръчка</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Номер и количество на ред. Продуктът се показва веднага, преди да го добавиш.
+                  Номер и брой, като в Excel. Продуктът се показва веднага, преди да го добавиш.
                 </p>
               </div>
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#ff6b1f] text-[#0a1628]">
@@ -126,7 +124,7 @@ function Hero() {
                 </svg>
               </span>
             </div>
-            <QuickOrderBox />
+            <QuickOrderTable />
           </div>
         </Reveal>
       )}
@@ -248,132 +246,13 @@ function PromoCarousel() {
           {products.map((product, index) => (
             <div
               key={product.id}
-              className="w-[72vw] shrink-0 snap-start sm:w-[300px]"
+              className="w-[46vw] shrink-0 snap-start sm:w-[210px]"
               style={{ transitionDelay: `${index * 40}ms` }}
             >
               <ProductCard product={product} />
             </div>
           ))}
         </div>
-      </section>
-    </Reveal>
-  )
-}
-
-const TINTS = [
-  '#dbe7ff',
-  '#ffe1cc',
-  '#d8f3e6',
-  '#ece2ff',
-  '#fff0b8',
-  '#d9f0f7',
-  '#f3e3d6',
-  '#e4e9f2',
-]
-
-function categoryIcon(name: string) {
-  const n = name.toLowerCase()
-  if (/хартия|тетрад|бележ|плик/.test(n)) return 'M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7'
-  if (/тонер|мастил|консуматив|принтер/.test(n)) return 'M6 9V3h12v6M6 17H4v-7h16v7h-2M7 14h10v7H7z'
-  if (/пиш|химикал|маркер|молив|канцел/.test(n)) return 'M16 3l5 5L9 20H4v-5zM14 5l5 5'
-  if (/класьор|папк|архив|организ/.test(n)) return 'M3 6h6l2 2h10v12H3zM3 10h18'
-  if (/техник|калкул|електр|компют/.test(n)) return 'M3 5h18v11H3zM8 20h8M12 16v4'
-  if (/мебел|стол|бюр/.test(n)) return 'M5 11h14v4H5zM7 15v6M17 15v6M7 11V5h10v6'
-  if (/почист|хигиен|кухн|домак/.test(n)) return 'M8 3h8l-1 5H9zM7 8h10l1 13H6z'
-  return 'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10'
-}
-
-function BentoCategories() {
-  const { data: tree } = useCategoryTree()
-  const top = (tree ?? []).slice(0, 7)
-  if (top.length === 0) return null
-  return (
-    <Reveal>
-      <section className="flex flex-col gap-5">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="home-section-title text-slate-900">Категории</h2>
-          <Link
-            to="/catalog"
-            className="text-sm font-bold text-slate-900 underline underline-offset-4"
-          >
-            Всички категории
-          </Link>
-        </div>
-        <div className="grid auto-rows-[150px] grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {top.map((category, index) => {
-            const big = index === 0
-            return (
-              <Link
-                key={category.id}
-                to={`/category/${category.slug}`}
-                className={`bold-tile group relative flex flex-col justify-between overflow-hidden rounded-[22px] border-[1.5px] border-[#0a1628] p-4 text-[#0a1628] ${
-                  big ? 'col-span-2 row-span-2' : ''
-                }`}
-                style={{ background: TINTS[index % TINTS.length] }}
-              >
-                <svg
-                  className={`absolute -bottom-4 -right-4 opacity-25 transition-transform duration-500 group-hover:scale-110 group-hover:opacity-40 ${
-                    big ? 'h-56 w-56' : 'h-28 w-28'
-                  }`}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                  aria-hidden="true"
-                >
-                  <path d={categoryIcon(category.name)} />
-                </svg>
-                {big && (
-                  <span className="self-start rounded-full bg-[#0a1628] px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white">
-                    Най-търсено
-                  </span>
-                )}
-                <span className="relative">
-                  <b
-                    className={`display block leading-tight ${big ? 'text-2xl sm:text-3xl' : 'text-base'}`}
-                  >
-                    {category.name}
-                  </b>
-                  {category.children.length > 0 && (
-                    <span className="mt-1 block text-xs font-semibold text-[#0a1628]/70">
-                      {category.children.length} подкатегории
-                    </span>
-                  )}
-                </span>
-                <span className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-[#0a1628] text-white opacity-0 transition group-hover:opacity-100">
-                  →
-                </span>
-              </Link>
-            )
-          })}
-        </div>
-      </section>
-    </Reveal>
-  )
-}
-
-function Numbers() {
-  const { data: products } = useProducts({ page: 1 })
-  const { data: brands } = useBrands()
-  const { data: tree } = useCategoryTree()
-  const items = [
-    { n: products?.count ?? 0, label: 'продукта в каталога' },
-    { n: brands?.count ?? 0, label: 'марки' },
-    { n: tree?.length ?? 0, label: 'категории' },
-    { n: 1, label: 'ден до повечето градове', suffix: '-2' },
-  ].filter((i) => i.n > 0)
-  if (items.length < 3) return null
-  return (
-    <Reveal>
-      <section className="grid grid-cols-2 gap-4 rounded-[28px] bg-[#0a1628] p-6 text-white sm:p-8 lg:grid-cols-4">
-        {items.map((item) => (
-          <div key={item.label} className="flex flex-col gap-1">
-            <span className="display text-3xl text-[#ffb27a] sm:text-4xl">
-              <CountUp value={item.n} suffix={item.suffix ?? ''} />
-            </span>
-            <span className="text-sm text-white/70">{item.label}</span>
-          </div>
-        ))}
       </section>
     </Reveal>
   )
