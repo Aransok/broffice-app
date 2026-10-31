@@ -47,10 +47,110 @@ function discountPercent(banner: BannerEntry): string | null {
   return `-${Math.round((1 - price / oldPrice) * 100)}%`
 }
 
+const GROUP_COLUMNS: Record<number, string> = {
+  2: 'grid-cols-2',
+  3: 'grid-cols-3',
+  4: 'grid-cols-2 grid-rows-2',
+}
+
+function ProductArt({
+  images,
+  fallback,
+  accent,
+  active,
+}: {
+  images: string[]
+  fallback: string | null
+  accent: string
+  active: boolean
+}) {
+  const zoom = `transition-transform duration-[6000ms] ease-out ${active ? 'scale-105' : 'scale-100'}`
+  const glow = (
+    <span
+      aria-hidden="true"
+      className="absolute left-1/2 top-1/2 aspect-square w-[78%] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40 blur-3xl"
+      style={{ background: accent }}
+    />
+  )
+
+  if (images.length === 1) {
+    // One product: the background-removed cut-out floats on the slide.
+    return (
+      <div className="relative h-full w-full">
+        {glow}
+        <img
+          src={images[0]}
+          alt=""
+          className={`absolute inset-[6%] h-[88%] w-[88%] object-contain drop-shadow-[0_18px_22px_rgba(0,0,0,0.45)] ${zoom}`}
+        />
+      </div>
+    )
+  }
+
+  if (images.length > 1) {
+    // Category promo: a small collection of products from across the
+    // category, each on its own white tile, staggered like a product shelf.
+    const items = images.slice(0, 4)
+    const four = items.length === 4
+    return (
+      <div className="relative flex h-full w-full items-center justify-center">
+        {glow}
+        <div
+          className={`relative grid w-[92%] gap-2.5 sm:gap-4 ${GROUP_COLUMNS[items.length]} ${
+            four ? 'h-[80%]' : ''
+          } ${zoom}`}
+        >
+          {items.map((src, index) => (
+            <span
+              key={src}
+              className={`relative overflow-hidden rounded-xl bg-white shadow-[0_14px_30px_rgba(0,0,0,0.35)] sm:rounded-2xl ${
+                four ? 'h-full' : 'aspect-square'
+              } ${index % 2 === 1 ? 'translate-y-[6%]' : '-translate-y-[3%]'}`}
+            >
+              <img
+                src={src}
+                alt=""
+                className="absolute inset-0 h-full w-full object-contain p-2 sm:p-3"
+              />
+            </span>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (fallback) {
+    // No cut-out yet (banner from before cut-outs existed, or background
+    // removal failed): the plain photo on a white card that always fits it.
+    return (
+      <span className="relative h-[78%] w-[88%] overflow-hidden rounded-[22px] bg-white shadow-[0_24px_50px_rgba(0,0,0,0.4)]">
+        <img
+          src={fallback}
+          alt=""
+          className={`absolute inset-0 h-full w-full object-contain p-4 ${zoom}`}
+        />
+      </span>
+    )
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      className="display text-[7rem] font-extrabold leading-none opacity-20 sm:text-[9rem]"
+      style={{ color: accent }}
+    >
+      %
+    </span>
+  )
+}
+
 function Slide({ banner, index, active }: { banner: BannerEntry; index: number; active: boolean }) {
   const countdown = useCountdown(banner.ends_at)
   const [dark, accent] = PALETTES[index % PALETTES.length]
-  const subject = getImageUrl(banner.subject_image || '')
+  const cutouts = (banner.subject_images ?? [])
+    .map((path) => getImageUrl(path))
+    .filter((url): url is string => Boolean(url))
+  const fallback = getImageUrl(banner.subject_image || '')
   const isCategory = banner.type === 'category'
   const percent = discountPercent(banner)
   return (
@@ -76,60 +176,46 @@ function Slide({ banner, index, active }: { banner: BannerEntry; index: number; 
           maskImage: 'linear-gradient(90deg, black, transparent 60%)',
         }}
       />
-      <span
-        aria-hidden="true"
-        className="promo-slide-badge absolute left-5 top-5 z-10 rounded-full px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.18em] text-[#0a1628] sm:left-8 sm:top-8"
-        style={{ background: accent }}
-      >
-        {isCategory ? 'Категория' : 'Промоция'}
-        {countdown ? ` · ${countdown}` : ''}
-      </span>
 
-      <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-end gap-3 p-5 pt-14 sm:gap-4 sm:p-8 sm:pt-16 lg:max-w-[58%]">
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-between gap-2 p-5 pb-9 sm:p-8 sm:pb-10 sm:pl-16 lg:max-w-[58%]">
         <span
-          className="promo-slide-discount display text-5xl font-extrabold leading-none sm:text-7xl lg:text-8xl"
-          style={{ color: accent }}
+          aria-hidden="true"
+          className="promo-slide-badge self-start whitespace-nowrap rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#0a1628] sm:text-xs"
+          style={{ background: accent }}
         >
-          {percent ?? banner.discount_label}
+          {isCategory ? 'Категория' : 'Промоция'}
+          {countdown && <span className="hidden sm:inline"> · {countdown}</span>}
         </span>
-        <span className="promo-slide-title display line-clamp-2 text-xl font-bold leading-tight sm:text-3xl">
-          {banner.title}
-        </span>
-        <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/80">
-          {(banner.price || (percent && !/%/.test(banner.discount_label))) && (
-            <span>
-              {banner.old_price && (
-                <span className="mr-2 text-white/50 line-through">{banner.old_price}</span>
-              )}
-              <span className="text-lg font-extrabold text-white">{banner.price}</span>
-            </span>
-          )}
-          <span className="promo-slide-cta inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-[#0a1628] transition group-hover:gap-3">
-            {isCategory ? 'Виж категорията' : 'Виж продукта'} <span aria-hidden="true">→</span>
-          </span>
-        </span>
-      </div>
-
-      <div className="promo-slide-art relative hidden w-[42%] items-center justify-center p-6 sm:flex">
-        {subject ? (
-          <span className="grid h-full max-h-[260px] w-full place-items-center rounded-[28px] bg-white/95 p-6 shadow-[0_30px_60px_rgba(0,0,0,0.45)]">
-            <img
-              src={subject}
-              alt=""
-              className={`max-h-full max-w-full object-contain transition-transform duration-[6000ms] ease-out ${
-                active ? 'scale-105' : 'scale-100'
-              }`}
-            />
-          </span>
-        ) : (
+        <div className="flex flex-col gap-2 sm:gap-4">
           <span
-            aria-hidden="true"
-            className="display text-[9rem] font-extrabold leading-none opacity-20"
+            className="promo-slide-discount display text-4xl font-extrabold leading-none sm:text-7xl lg:text-8xl"
             style={{ color: accent }}
           >
-            %
+            {percent ?? banner.discount_label}
           </span>
-        )}
+          <span className="promo-slide-title display line-clamp-2 text-base font-bold leading-tight sm:text-3xl">
+            {banner.title}
+          </span>
+          <span className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/80">
+            {(banner.price || (percent && !/%/.test(banner.discount_label))) && (
+              <span>
+                {banner.old_price && (
+                  <span className="mr-2 text-white/50 line-through">{banner.old_price}</span>
+                )}
+                <span className="text-base font-extrabold text-white sm:text-lg">
+                  {banner.price}
+                </span>
+              </span>
+            )}
+            <span className="promo-slide-cta hidden items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-[#0a1628] transition group-hover:gap-3 sm:inline-flex">
+              {isCategory ? 'Виж категорията' : 'Виж продукта'} <span aria-hidden="true">→</span>
+            </span>
+          </span>
+        </div>
+      </div>
+
+      <div className="promo-slide-art relative flex w-[40%] shrink-0 items-center justify-center py-5 pr-4 sm:w-[42%] sm:p-6">
+        <ProductArt images={cutouts} fallback={fallback} accent={accent} active={active} />
       </div>
     </Link>
   )
@@ -169,7 +255,7 @@ export function BannerCarousel() {
     <section
       aria-label="Промоции"
       aria-roledescription="carousel"
-      className="promo-carousel group relative mb-10 aspect-[16/7] w-full overflow-hidden rounded-[28px] bg-[#0a1628] sm:aspect-[3/1]"
+      className="promo-carousel group relative mb-10 aspect-[16/11] w-full overflow-hidden rounded-[28px] bg-[#0a1628] sm:aspect-[3/1]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={(event) => {

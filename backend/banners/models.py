@@ -19,6 +19,11 @@ class Banner(TimeStampedModel):
     # Relative to MEDIA_ROOT, e.g. "banners/<promotion-id>.png" — same
     # convention as ProductImage.path/Category.image_path.
     image_path = models.CharField(max_length=1024)
+    # Background-removed product cut-outs (transparent PNGs, relative to
+    # MEDIA_ROOT) the live homepage carousel floats on the slide: one for a
+    # product promo, a few products from across the category for a category
+    # promo. None = not generated yet (banners from before this existed).
+    subject_paths = models.JSONField(null=True, blank=True, default=None)
 
     def __str__(self) -> str:
         return f"Banner for {self.promotion_id}"
