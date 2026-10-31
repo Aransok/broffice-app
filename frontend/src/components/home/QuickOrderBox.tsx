@@ -1,5 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import {
+  type ClipboardEvent,
+  type FormEvent,
+  type KeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { Link } from 'react-router-dom'
 import { getImageUrl } from '../../api/media'
 import { getDisplayPrice } from '../../api/pricing'
@@ -23,29 +31,67 @@ export function productNumber(product: ProductListItem) {
   return product.supplier_id || (product.item_number ? String(product.item_number) : '')
 }
 
+interface Row {
+  code: string
+  qty: string
+}
+
+const EMPTY_ROW: Row = { code: '', qty: '' }
+const START_ROWS = 3
+
+/** Always keeps one empty row at the bottom to type into, like a sheet. */
+function withTrailingBlank(rows: Row[]) {
+  const trimmed = [...rows]
+  while (
+    trimmed.length > 1 &&
+    !trimmed[trimmed.length - 1].code &&
+    !trimmed[trimmed.length - 1].qty &&
+    !trimmed[trimmed.length - 2].code &&
+    !trimmed[trimmed.length - 2].qty
+  ) {
+    trimmed.pop()
+  }
+  const last = trimmed[trimmed.length - 1]
+  if (!last || last.code || last.qty) trimmed.push({ ...EMPTY_ROW })
+  return trimmed
+}
+
+function quantityOf(row: Row) {
+  const n = Number.parseInt(row.qty, 10)
+  return Number.isFinite(n) && n > 0 ? n : 1
+}
+
 /**
- * "Бърза поръчка": type product numbers and quantities, one per line. As you
- * type, every line resolves live to the real product (number, name, photo,
- * price) so you can see it's the right thing BEFORE anything goes in the
- * cart. Each line has its own "Добави"; "Добави всички" takes the found ones.
+ * "Бърза поръчка" as a small spreadsheet: a product number and a quantity
+ * per row. Enter/arrows move between cells like Excel, and a block copied
+ * from Excel (number and quantity columns) pastes straight in. Each row
+ * resolves live to the real product (photo, name, price) so you see it's
+ * the right thing BEFORE anything goes in the cart.
  *
- * Visual-neutral: the design that embeds it supplies the frame; the inputs
- * and rows use the shared tokens so every design restyles them.
+ * Visual-neutral: the design that embeds it supplies the frame; the table
+ * uses the shared tokens so every design restyles it.
  */
 export function QuickOrderBox({
   compact = false,
-  placeholder = 'CF283A x 4\n70031 x 10',
+  placeholder = 'CF283A',
 }: {
   /** Tighter paddings for a sidebar/narrow card. */
   compact?: boolean
+  /** Example product number shown in the first empty row. */
   placeholder?: string
 }) {
   const { addItem } = useCart()
   const { displayPrice } = useVat()
-  const [text, setText] = useState('')
-  const [added, setAdded] = useState<Record<string, number>>({})
-  const lines = useMemo(() => parseQuickOrder(text), [text])
-  const codes = useMemo(() => Array.from(new Set(lines.map((l) => l.code))), [lines])
+  const [rows, setRows] = useState<Row[]>(() =>
+    Array.from({ length: START_ROWS }, () => ({ ...EMPTY_ROW })),
+  )
+  const [addedCount, setAddedCount] = useState(0)
+  const cells = useRef(new Map<string, HTMLInputElement>())
+
+  const codes = useMemo(
+    () => Array.from(new Set(rows.map((r) => r.code.trim()).filter(Boolean))),
+    [rows],
+  )
   const debouncedCodes = useDebounced(codes)
 
   const { data: found, isFetching } = useQuery({
@@ -56,134 +102,218 @@ export function QuickOrderBox({
     staleTime: 60_000,
   })
 
-  const resolved = lines.map((line) => ({
-    ...line,
-    product: found?.[line.code] ?? null,
-    pending: !found || !(line.code in found),
-  }))
+  const resolved = rows.map((row) => {
+    const code = row.code.trim()
+    return {
+      row,
+      code,
+      quantity: quantityOf(row),
+      product: code ? (found?.[code] ?? null) : null,
+      pending: Boolean(code) && (!found || !(code in found)),
+    }
+  })
   const foundLines = resolved.filter((l) => l.product)
-  const missingLines = resolved.filter((l) => !l.product && !l.pending)
+  const total = foundLines.reduce((sum, line) => {
+    const price = Number(displayPrice(getDisplayPrice(line.product!).currentEur))
+    return Number.isFinite(price) ? sum + price * line.quantity : sum
+  }, 0)
 
-  function addLine(line: (typeof resolved)[number]) {
-    if (!line.product) return
-    addItem(line.product, line.quantity)
-    announceCartAdd({ product: line.product, quantity: line.quantity })
-    setAdded((prev) => ({ ...prev, [line.code]: (prev[line.code] ?? 0) + line.quantity }))
+  function update(index: number, patch: Partial<Row>) {
+    setAddedCount(0)
+    setRows((prev) => withTrailingBlank(prev.map((r, i) => (i === index ? { ...r, ...patch } : r))))
+  }
+
+  function removeRow(index: number) {
+    setRows((prev) => withTrailingBlank(prev.filter((_, i) => i !== index)))
+  }
+
+  function focusCell(row: number, col: 'code' | 'qty') {
+    // Right away when the cell exists, so typing straight after Enter
+    // lands in it; a brand-new trailing row only exists after the render.
+    const cell = cells.current.get(`${row}:${col}`)
+    if (cell) cell.focus()
+    else requestAnimationFrame(() => cells.current.get(`${row}:${col}`)?.focus())
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>, row: number, col: 'code' | 'qty') {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      if (col === 'code') focusCell(row, 'qty')
+      else focusCell(row + 1, 'code')
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      focusCell(Math.min(row + 1, rows.length - 1), col)
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      focusCell(Math.max(row - 1, 0), col)
+    }
+  }
+
+  /** A block copied from Excel ("number<TAB>qty" per line) fills rows down
+   * from the cell it's pasted into; a single value pastes normally. */
+  function handlePaste(event: ClipboardEvent<HTMLInputElement>, row: number) {
+    const text = event.clipboardData.getData('text')
+    if (!/[\n\t]/.test(text.trim())) return
+    event.preventDefault()
+    const pasted = parseQuickOrder(text)
+    if (pasted.length === 0) return
+    setAddedCount(0)
+    setRows((prev) => {
+      const next = [...prev]
+      pasted.forEach((line, offset) => {
+        next[row + offset] = { code: line.code, qty: String(line.quantity) }
+      })
+      return withTrailingBlank(next.map((r) => r ?? { ...EMPTY_ROW }))
+    })
+    focusCell(row + pasted.length, 'code')
   }
 
   function handleAddAll(event: FormEvent) {
     event.preventDefault()
-    foundLines.forEach(addLine)
-    if (missingLines.length === 0) setText('')
+    foundLines.forEach((line) => {
+      addItem(line.product!, line.quantity)
+      announceCartAdd({ product: line.product!, quantity: line.quantity })
+    })
+    setAddedCount(foundLines.length)
+    // Rows that found nothing stay so they can be corrected.
+    setRows(withTrailingBlank(resolved.filter((l) => l.code && !l.product).map((l) => l.row)))
   }
 
-  const pad = compact ? 'px-3 py-2.5' : 'px-3.5 py-3'
+  const cell = compact ? 'px-2 py-1.5' : 'px-2.5 py-2'
+  const input = `w-full bg-transparent ${cell} font-mono text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:bg-primary/5 focus:ring-2 focus:ring-inset focus:ring-primary`
 
   return (
     <form onSubmit={handleAddAll} className="flex flex-1 flex-col gap-3">
-      <label htmlFor="quick-order" className="sr-only">
-        Номера на продукти и количества
-      </label>
-      <textarea
-        id="quick-order"
-        rows={3}
-        value={text}
-        onChange={(event) => {
-          setText(event.target.value)
-          setAdded({})
-        }}
-        placeholder={placeholder}
-        spellCheck={false}
-        className={`quick-order-input resize-y rounded-ui border border-slate-300 bg-slate-50 ${pad} font-mono text-sm leading-relaxed text-slate-900 focus:border-primary focus:outline-none`}
-      />
-
-      {resolved.length > 0 && (
-        <ul className="flex flex-col gap-1.5" aria-live="polite">
-          {resolved.map((line, index) => {
-            const product = line.product
-            const addedQty = added[line.code]
-            if (!product) {
+      <div className="quick-order-input overflow-hidden rounded-ui border border-slate-300 bg-surface">
+        <table className="w-full table-fixed border-collapse text-sm">
+          <colgroup>
+            <col className={compact ? 'w-[34%]' : 'w-[30%]'} />
+            <col className="w-[17%]" />
+            <col />
+            <col className="w-8" />
+          </colgroup>
+          <thead>
+            <tr className="bg-slate-100 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <th className={`border-b border-r border-slate-200 ${cell}`}>№ / Код</th>
+              <th className={`border-b border-r border-slate-200 ${cell}`}>Бр.</th>
+              <th className={`border-b border-slate-200 ${cell}`}>Продукт</th>
+              <th className="border-b border-slate-200" aria-label="Премахни" />
+            </tr>
+          </thead>
+          <tbody>
+            {resolved.map((line, index) => {
+              const product = line.product
+              const raw = product ? getDisplayPrice(product) : null
+              const price = raw ? displayPrice(raw.currentEur) : null
+              const image = product ? getImageUrl(product.primary_image ?? '') : null
+              const isBlank = !line.row.code && !line.row.qty
               return (
-                <li
-                  key={`${line.code}-${index}`}
-                  className={`flex items-center gap-3 rounded-ui border border-dashed px-3 py-2 text-sm ${
-                    line.pending
-                      ? 'border-slate-300 text-slate-500'
-                      : 'border-red-300 bg-red-100/40 text-red-800'
-                  }`}
+                <tr
+                  key={index}
+                  className="quick-order-row border-b border-slate-200 last:border-b-0"
                 >
-                  <span className="font-mono font-semibold">{line.code}</span>
-                  <span className="flex-1 truncate">
-                    {line.pending ? (isFetching ? 'Търсене…' : '…') : 'Няма продукт с този номер'}
-                  </span>
-                  <span className="text-xs text-slate-400">× {line.quantity}</span>
-                </li>
+                  <td className="border-r border-slate-200 p-0">
+                    <input
+                      ref={(el) => {
+                        if (el) cells.current.set(`${index}:code`, el)
+                        else cells.current.delete(`${index}:code`)
+                      }}
+                      value={line.row.code}
+                      onChange={(event) => update(index, { code: event.target.value })}
+                      onKeyDown={(event) => handleKeyDown(event, index, 'code')}
+                      onPaste={(event) => handlePaste(event, index)}
+                      placeholder={index === 0 ? placeholder : ''}
+                      aria-label={`Номер на продукт, ред ${index + 1}`}
+                      spellCheck={false}
+                      autoComplete="off"
+                      className={input}
+                    />
+                  </td>
+                  <td className="border-r border-slate-200 p-0">
+                    <input
+                      ref={(el) => {
+                        if (el) cells.current.set(`${index}:qty`, el)
+                        else cells.current.delete(`${index}:qty`)
+                      }}
+                      value={line.row.qty}
+                      onChange={(event) =>
+                        update(index, { qty: event.target.value.replace(/\D/g, '') })
+                      }
+                      onKeyDown={(event) => handleKeyDown(event, index, 'qty')}
+                      onPaste={(event) => handlePaste(event, index)}
+                      placeholder={index === 0 ? '1' : ''}
+                      inputMode="numeric"
+                      aria-label={`Количество, ред ${index + 1}`}
+                      className={`${input} text-right`}
+                    />
+                  </td>
+                  <td className={`${cell} min-w-0`} aria-live="polite">
+                    {product ? (
+                      <div className="flex min-w-0 items-center gap-2">
+                        {image && !compact && (
+                          <img
+                            src={image}
+                            alt=""
+                            className="h-8 w-8 shrink-0 rounded bg-white object-contain"
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <Link
+                            to={`/product/${product.slug}`}
+                            className="block truncate font-medium text-slate-900 hover:text-primary"
+                            title={product.name}
+                          >
+                            {product.name}
+                          </Link>
+                          <span className="block truncate text-xs text-slate-500">
+                            №{productNumber(product)} ·{' '}
+                            {price ? `${line.quantity} × €${price}` : 'цена при запитване'}
+                          </span>
+                        </div>
+                      </div>
+                    ) : line.pending ? (
+                      <span className="text-xs text-slate-400">
+                        {isFetching ? 'Търсене…' : '…'}
+                      </span>
+                    ) : line.code ? (
+                      <span className="text-xs font-medium text-red-600">Няма такъв номер</span>
+                    ) : null}
+                  </td>
+                  <td className="p-0 text-center">
+                    {!isBlank && (
+                      <button
+                        type="button"
+                        onClick={() => removeRow(index)}
+                        aria-label={`Премахни ред ${index + 1}`}
+                        className="h-full w-full px-1 py-2 text-slate-400 hover:text-red-600"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </td>
+                </tr>
               )
-            }
-            const raw = getDisplayPrice(product)
-            const price = displayPrice(raw.currentEur)
-            const image = getImageUrl(product.primary_image ?? '')
-            return (
-              <li
-                key={`${line.code}-${index}`}
-                className="quick-order-row flex items-center gap-3 rounded-ui border border-slate-200 bg-surface px-2.5 py-2 text-sm"
-              >
-                <Link
-                  to={`/product/${product.slug}`}
-                  className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-ui bg-slate-100"
-                  tabIndex={-1}
-                >
-                  {image ? (
-                    <img src={image} alt="" className="h-full w-full object-contain p-1" />
-                  ) : (
-                    <span className="text-[10px] text-slate-400">—</span>
-                  )}
-                </Link>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <span className="font-mono font-semibold text-slate-700">
-                      №{productNumber(product)}
-                    </span>
-                    {product.brand_name && <span className="truncate">{product.brand_name}</span>}
-                  </div>
-                  <Link
-                    to={`/product/${product.slug}`}
-                    className="line-clamp-1 font-medium text-slate-900 hover:text-primary"
-                    title={product.name}
-                  >
-                    {product.name}
-                  </Link>
-                  <div className="text-xs text-slate-500">
-                    {line.quantity} × {price ? `€${price}` : 'цена при запитване'}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => addLine(line)}
-                  className={`btn-buy shrink-0 rounded-ui px-3 py-1.5 text-xs font-semibold transition ${
-                    addedQty
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-primary text-white hover:opacity-90'
-                  }`}
-                  aria-label={`Добави ${line.quantity} × ${product.name}`}
-                >
-                  {addedQty ? `✓ ${addedQty}` : 'Добави'}
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      )}
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="text-xs text-slate-500">
+        Enter минава към следващата клетка. Можеш да поставиш колони „номер“ и „брой“ директно от
+        Excel.
+      </p>
 
       <button
         type="submit"
         disabled={foundLines.length === 0}
         className="btn-buy mt-auto rounded-ui bg-primary px-4 py-3 font-bold text-white hover:brightness-110 disabled:opacity-50"
       >
-        {foundLines.length > 1
-          ? `Добави всички (${foundLines.length})`
-          : foundLines.length === 1
-            ? 'Добави в количката'
+        {foundLines.length > 0
+          ? `Добави ${foundLines.length === 1 ? '1 продукт' : `${foundLines.length} продукта`}${
+              total > 0 ? ` · €${total.toFixed(2)}` : ''
+            }`
+          : addedCount > 0
+            ? `✓ Добавени ${addedCount} в количката`
             : 'Добави в количката'}
       </button>
     </form>

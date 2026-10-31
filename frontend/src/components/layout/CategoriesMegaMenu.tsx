@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useCategoryTree } from '../../api/categories'
@@ -233,6 +233,28 @@ export function CategoriesMegaMenu() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // The list (and the flyout beside it) never runs past the bottom of the
+  // window: with the header stuck to the top, the page can't scroll to the
+  // rest, so they scroll inside themselves instead.
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const [maxHeight, setMaxHeight] = useState<number>()
+  useLayoutEffect(() => {
+    if (!open) return
+    function measure() {
+      const top = dropdownRef.current?.getBoundingClientRect().top ?? 0
+      setMaxHeight(Math.max(240, window.innerHeight - top - 12))
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    window.addEventListener('scroll', measure, { passive: true })
+    return () => {
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('scroll', measure)
+    }
+  }, [open])
+
+  const activeRoot = tree?.find((root) => root.id === activeRootId)
+
   function close() {
     setOpen(false)
     setActiveRootId(null)
@@ -266,78 +288,85 @@ export function CategoriesMegaMenu() {
       </button>
 
       {tree && tree.length > 0 && (
-        <ul
+        <div
+          ref={dropdownRef}
           onMouseLeave={() => {
             if (isDesktop()) setActiveRootId(null)
           }}
           className={
             open
-              ? 'mega-menu-panel absolute left-0 top-full z-30 mt-1 w-[min(92vw,360px)] border border-[#f3f3f3] bg-white py-1.5 opacity-100 shadow-[0_0_40px_rgba(0,0,0,0.1)] transition-opacity duration-300 max-lg:max-h-[75vh] max-lg:overflow-y-auto lg:w-[250px]'
-              : 'mega-menu-panel pointer-events-none invisible absolute left-0 top-full z-30 mt-1 w-[min(92vw,360px)] border border-[#f3f3f3] bg-white py-1.5 opacity-0 shadow-[0_0_40px_rgba(0,0,0,0.1)] transition-opacity duration-300 lg:w-[250px]'
+              ? 'absolute left-0 top-full z-30 mt-1 opacity-100 transition-opacity duration-300'
+              : 'pointer-events-none invisible absolute left-0 top-full z-30 mt-1 opacity-0 transition-opacity duration-300'
           }
         >
-          <li className="px-[30px]" onMouseEnter={() => setActiveRootId(null)}>
-            <Link
-              to="/promotions"
-              onClick={close}
-              className={`${ROW_CLASS} font-bold text-[#999] hover:text-slate-900`}
-            >
-              <MenuIcon>{PROMO_ICON}</MenuIcon>
-              <span className="flex-1">Промоции</span>
-            </Link>
-          </li>
-          {tree.map((root, index) => {
-            const active = root.id === activeRootId
-            const last = index === tree.length - 1
-            return (
-              <li
-                key={root.id}
-                className="px-[30px]"
-                onMouseEnter={() => {
-                  if (isDesktop()) setActiveRootId(root.id)
-                }}
+          <ul
+            style={{ maxHeight }}
+            className="mega-menu-panel w-[min(92vw,360px)] overflow-y-auto overscroll-contain border border-[#f3f3f3] bg-white py-1.5 shadow-[0_0_40px_rgba(0,0,0,0.1)] lg:w-[250px]"
+          >
+            <li className="px-[30px]" onMouseEnter={() => setActiveRootId(null)}>
+              <Link
+                to="/promotions"
+                onClick={close}
+                className={`${ROW_CLASS} font-bold text-[#999] hover:text-slate-900`}
               >
-                <Link
-                  to={`/category/${root.slug}`}
-                  aria-expanded={active}
-                  onClick={(event) => {
-                    // Phones/tablets have no hover: first tap opens the
-                    // subcategories underneath, the heading links go on.
-                    if (!isDesktop()) {
-                      event.preventDefault()
-                      setActiveRootId(active ? null : root.id)
-                      return
-                    }
-                    close()
+                <MenuIcon>{PROMO_ICON}</MenuIcon>
+                <span className="flex-1">Промоции</span>
+              </Link>
+            </li>
+            {tree.map((root, index) => {
+              const active = root.id === activeRootId
+              const last = index === tree.length - 1
+              return (
+                <li
+                  key={root.id}
+                  className="px-[30px]"
+                  onMouseEnter={() => {
+                    if (isDesktop()) setActiveRootId(root.id)
                   }}
-                  className={`${ROW_CLASS} ${last && !active ? 'border-b-0' : ''} ${
-                    active
-                      ? 'font-medium text-slate-900'
-                      : 'font-medium text-[#999] hover:text-slate-900'
-                  }`}
                 >
-                  <MenuIcon>{ICON_PATHS[root.external_id] ?? FALLBACK_ICON}</MenuIcon>
-                  <span className="flex-1">{root.name}</span>
-                  <Chevron active={active} />
-                </Link>
+                  <Link
+                    to={`/category/${root.slug}`}
+                    aria-expanded={active}
+                    onClick={(event) => {
+                      // Phones/tablets have no hover: first tap opens the
+                      // subcategories underneath, the heading links go on.
+                      if (!isDesktop()) {
+                        event.preventDefault()
+                        setActiveRootId(active ? null : root.id)
+                        return
+                      }
+                      close()
+                    }}
+                    className={`${ROW_CLASS} ${last && !active ? 'border-b-0' : ''} ${
+                      active
+                        ? 'font-medium text-slate-900'
+                        : 'font-medium text-[#999] hover:text-slate-900'
+                    }`}
+                  >
+                    <MenuIcon>{ICON_PATHS[root.external_id] ?? FALLBACK_ICON}</MenuIcon>
+                    <span className="flex-1">{root.name}</span>
+                    <Chevron active={active} />
+                  </Link>
 
-                {active && (
-                  <>
+                  {active && (
                     <div className="border-b border-[#f3f3f3] pt-4 lg:hidden">
                       <SubmenuGrid root={root} onNavigate={close} />
                     </div>
-                    <div
-                      key={root.id}
-                      className="mega-menu-flyout animate-menu-item-in absolute left-full top-0 ml-px hidden max-h-[80vh] min-h-full w-[870px] overflow-y-auto rounded-br-3xl bg-white p-[60px] pb-[30px] shadow-[5px_5px_15px_20px_rgba(36,41,47,0.1)] lg:block 2xl:w-[990px]"
-                    >
-                      <SubmenuGrid root={root} onNavigate={close} />
-                    </div>
-                  </>
-                )}
-              </li>
-            )
-          })}
-        </ul>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+          {activeRoot && (
+            <div
+              key={activeRoot.id}
+              style={{ maxHeight }}
+              className="mega-menu-flyout animate-menu-item-in absolute left-full top-0 ml-px hidden min-h-full w-[870px] overflow-y-auto overscroll-contain rounded-br-3xl bg-white p-[60px] pb-[30px] shadow-[5px_5px_15px_20px_rgba(36,41,47,0.1)] lg:block 2xl:w-[990px]"
+            >
+              <SubmenuGrid root={activeRoot} onNavigate={close} />
+            </div>
+          )}
+        </div>
       )}
     </div>
   )

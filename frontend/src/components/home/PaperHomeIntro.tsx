@@ -81,7 +81,7 @@ function Cover() {
                 номер × количество
               </span>
             </div>
-            <QuickOrderBox compact placeholder={'70031 x 10\nCF283A x 2'} />
+            <QuickOrderBox compact placeholder="70031" />
           </div>
         )}
       </div>
