@@ -16,7 +16,6 @@ import {
   deletePriceOverride,
   usePriceOverrides,
 } from '../../api/adminPriceOverrides'
-import { orderedCategoryOptions, useCategories } from '../../api/categories'
 import { getImageUrl } from '../../api/media'
 import { previewUrl } from '../../preview'
 import {
@@ -29,6 +28,7 @@ import {
   usePromotions,
 } from '../../api/promotions'
 import type { ProductListItem } from '../../api/types'
+import { AdminCategoryPicker } from '../../components/admin/AdminCategoryPicker'
 import { AdminProductPicker } from '../../components/admin/AdminProductPicker'
 import { AdminQuickPromotionButton } from '../../components/admin/AdminQuickPromotionButton'
 import { bgnToEur, eurToBgn } from '../../utils/currency'
@@ -592,7 +592,6 @@ function PricingTab({ customerId }: { customerId: number }) {
 
 function PromotionsTab({ customerId, customerName }: { customerId: number; customerName: string }) {
   const { data, refetch } = usePromotions({ user: customerId })
-  const { data: categories } = useCategories()
   const [editingId, setEditingId] = useState<string | null>(null)
   // Product/category id carried over from the promotion being edited, kept
   // as-is unless the admin explicitly re-picks one — otherwise saving an
@@ -721,24 +720,9 @@ function PromotionsTab({ customerId, customerName }: { customerId: number; custo
         </select>
 
         {target === 'category' && (
-          <select
-            value={categoryId}
-            onChange={(event) => setCategoryId(event.target.value)}
-            className="mb-2 w-full rounded-ui border border-slate-300 px-3 py-2"
-          >
-            <option value="">Избери категория</option>
-            {orderedCategoryOptions(categories?.results ?? []).map(({ category, depth }) => (
-              <option
-                key={category.id}
-                value={category.id}
-                style={depth === 0 ? { backgroundColor: '#e0f2fe', fontWeight: 600 } : undefined}
-              >
-                {'  '.repeat(depth)}
-                {depth > 0 ? '— ' : ''}
-                {category.name}
-              </option>
-            ))}
-          </select>
+          <div className="mb-2">
+            <AdminCategoryPicker value={categoryId} onChange={setCategoryId} />
+          </div>
         )}
 
         {target === 'product' && (
