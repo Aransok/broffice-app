@@ -12,11 +12,13 @@ import { Link } from 'react-router-dom'
 import { getImageUrl } from '../../api/media'
 import { getDisplayPrice } from '../../api/pricing'
 import { useMyOrders } from '../../api/myOrders'
+import type { Order } from '../../api/types'
 import { lookupProductCodes } from '../../api/products'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import { useVat } from '../../context/VatContext'
 import { announceCartAdd } from '../../lib/cartEvents'
+import { bgnToEur } from '../../utils/currency'
 import { type QuickLine, parseQuickOrder } from './parseQuickOrder'
 import { productNumber } from './QuickOrderBox'
 
@@ -57,6 +59,88 @@ function withTrailingBlank(rows: Row[]) {
 function quantityOf(row: Row) {
   const n = Number.parseInt(row.qty, 10)
   return Number.isFinite(n) && n > 0 ? n : 1
+}
+
+const PREVIEW_ITEMS = 3
+
+/** "Поръчай отново": a past-orders list that shows what is in each order
+ * (quantity × product, the first few plus "още N"; the whole list on
+ * hover), instead of a plain dropdown of order numbers that says nothing
+ * about the contents. Picking one fills the table. */
+function ReorderMenu({ orders, onPick }: { orders: Order[]; onPick: (number: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClickOutside(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative min-w-0 flex-1">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-2 rounded-ui border border-slate-300 bg-surface px-3 py-1.5 font-medium text-slate-700 hover:border-primary hover:text-primary"
+      >
+        <span>↻ Поръчай отново…</span>
+        <span aria-hidden="true" className="text-xs">
+          ▾
+        </span>
+      </button>
+      {open && (
+        <ul className="absolute right-0 top-full z-30 mt-1 max-h-96 w-[min(92vw,440px)] overflow-y-auto rounded-ui border border-slate-200 bg-surface py-1 shadow-xl">
+          {orders.map((order) => {
+            const extra = order.items.length - PREVIEW_ITEMS
+            const total = bgnToEur(order.total_bgn)
+            return (
+              <li key={order.number}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onPick(order.number)
+                    setOpen(false)
+                  }}
+                  title={order.items
+                    .map((item) => `${item.quantity} × ${item.product_name}`)
+                    .join('\n')}
+                  className="block w-full px-3 py-2.5 text-left hover:bg-primary/10"
+                >
+                  <span className="flex items-baseline justify-between gap-2 text-sm">
+                    <b className="text-slate-900">Поръчка № {order.number}</b>
+                    <span className="shrink-0 text-xs text-slate-500">
+                      {new Date(order.created_at).toLocaleDateString('bg-BG')}
+                      {total && ` · €${total}`}
+                    </span>
+                  </span>
+                  <span className="mt-1 flex flex-col gap-0.5 text-xs text-slate-600">
+                    {order.items.slice(0, PREVIEW_ITEMS).map((item) => (
+                      <span
+                        key={item.id}
+                        className={`truncate ${item.product_number ? '' : 'text-slate-400 line-through'}`}
+                      >
+                        {item.quantity} × {item.product_name}
+                      </span>
+                    ))}
+                    {extra > 0 && (
+                      <span className="text-slate-500">
+                        + още {extra} {extra === 1 ? 'продукт' : 'продукта'}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
 }
 
 /**
@@ -232,20 +316,7 @@ export function QuickOrderTable({
           📋 Постави списък
         </button>
         {user && myOrders && myOrders.results.length > 0 && (
-          <select
-            value=""
-            onChange={(event) => handleReorder(event.target.value)}
-            aria-label="Поръчай отново"
-            className="min-w-0 flex-1 rounded-ui border border-slate-300 bg-surface px-2 py-1.5 font-medium text-slate-700"
-          >
-            <option value="">↻ Поръчай отново…</option>
-            {myOrders.results.slice(0, 20).map((order) => (
-              <option key={order.number} value={order.number}>
-                Поръчка № {order.number} · {new Date(order.created_at).toLocaleDateString('bg-BG')}{' '}
-                · {order.items.length} {order.items.length === 1 ? 'продукт' : 'продукта'}
-              </option>
-            ))}
-          </select>
+          <ReorderMenu orders={myOrders.results.slice(0, 20)} onPick={handleReorder} />
         )}
       </div>
 
