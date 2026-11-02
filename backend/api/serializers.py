@@ -617,6 +617,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
         source="product.slug", read_only=True, default=None
     )
     profit_bgn = serializers.SerializerMethodField()
+    product_number = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
@@ -624,6 +625,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "id",
             "product",
             "product_name",
+            "product_number",
             "product_external_id",
             "product_sku",
             "product_slug",
@@ -634,6 +636,18 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "line_total",
             "discount_label",
             "profit_bgn",
+        )
+
+    def get_product_number(self, obj):
+        """The "№" the site shows for this product today (supplier id, else
+        the shop's own item number) - what the quick order table looks
+        products up by, so "Поръчай отново" can refill it from an order.
+        Empty when the product no longer exists."""
+        product = obj.product
+        if product is None:
+            return ""
+        return product.supplier_id or (
+            str(product.item_number) if product.item_number else ""
         )
 
     def get_profit_bgn(self, obj):

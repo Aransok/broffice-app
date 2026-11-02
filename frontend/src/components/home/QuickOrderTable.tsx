@@ -11,11 +11,13 @@ import {
 import { Link } from 'react-router-dom'
 import { getImageUrl } from '../../api/media'
 import { getDisplayPrice } from '../../api/pricing'
+import { useMyOrders } from '../../api/myOrders'
 import { lookupProductCodes } from '../../api/products'
+import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import { useVat } from '../../context/VatContext'
 import { announceCartAdd } from '../../lib/cartEvents'
-import { parseQuickOrder } from './parseQuickOrder'
+import { type QuickLine, parseQuickOrder } from './parseQuickOrder'
 import { productNumber } from './QuickOrderBox'
 
 function useDebounced<T>(value: T, delay = 350) {
@@ -82,6 +84,11 @@ export function QuickOrderTable({
     Array.from({ length: START_ROWS }, () => ({ ...EMPTY_ROW })),
   )
   const [addedCount, setAddedCount] = useState(0)
+  const [bulkOpen, setBulkOpen] = useState(false)
+  const [bulkText, setBulkText] = useState('')
+  const [reorderNote, setReorderNote] = useState('')
+  const { user } = useAuth()
+  const { data: myOrders } = useMyOrders(Boolean(user))
   const cells = useRef(new Map<string, HTMLInputElement>())
 
   const codes = useMemo(
@@ -164,6 +171,41 @@ export function QuickOrderTable({
     focusCell(row + pasted.length, 'code')
   }
 
+  /** Puts lines into the table: after what's already typed ("append", the
+   * bulk paste box) or instead of it ("replace", order again). */
+  function loadLines(lines: QuickLine[], mode: 'append' | 'replace') {
+    if (lines.length === 0) return
+    setAddedCount(0)
+    setRows((prev) => {
+      const kept = mode === 'append' ? prev.filter((r) => r.code || r.qty) : []
+      return withTrailingBlank([
+        ...kept,
+        ...lines.map((line) => ({ code: line.code, qty: String(line.quantity) })),
+      ])
+    })
+  }
+
+  function handleBulkAdd() {
+    loadLines(parseQuickOrder(bulkText), 'append')
+    setReorderNote('')
+    setBulkText('')
+    setBulkOpen(false)
+  }
+
+  function handleReorder(orderNumber: string) {
+    const order = myOrders?.results.find((o) => o.number === orderNumber)
+    if (!order) return
+    const lines = order.items
+      .filter((item) => item.product_number)
+      .map((item) => ({ code: item.product_number, quantity: item.quantity }))
+    setReorderNote(
+      order.items.length > lines.length
+        ? `${order.items.length - lines.length} от продуктите в тази поръчка вече не се предлагат.`
+        : '',
+    )
+    loadLines(lines, 'replace')
+  }
+
   function handleAddAll(event: FormEvent) {
     event.preventDefault()
     foundLines.forEach((line) => {
@@ -180,6 +222,73 @@ export function QuickOrderTable({
 
   return (
     <form onSubmit={handleAddAll} className="flex flex-1 flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <button
+          type="button"
+          onClick={() => setBulkOpen((open) => !open)}
+          aria-expanded={bulkOpen}
+          className="rounded-ui border border-slate-300 px-3 py-1.5 font-medium text-slate-700 hover:border-primary hover:text-primary"
+        >
+          📋 Постави списък
+        </button>
+        {user && myOrders && myOrders.results.length > 0 && (
+          <select
+            value=""
+            onChange={(event) => handleReorder(event.target.value)}
+            aria-label="Поръчай отново"
+            className="min-w-0 flex-1 rounded-ui border border-slate-300 bg-surface px-2 py-1.5 font-medium text-slate-700"
+          >
+            <option value="">↻ Поръчай отново…</option>
+            {myOrders.results.slice(0, 20).map((order) => (
+              <option key={order.number} value={order.number}>
+                Поръчка № {order.number} · {new Date(order.created_at).toLocaleDateString('bg-BG')}{' '}
+                · {order.items.length} {order.items.length === 1 ? 'продукт' : 'продукта'}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {bulkOpen && (
+        <div className="flex flex-col gap-2 rounded-ui border border-slate-200 bg-slate-50 p-3">
+          <label htmlFor="quick-order-bulk" className="text-xs text-slate-600">
+            Поставете целия списък: номер и брой на ред (или колоните от Excel). Например „1896 5“.
+          </label>
+          <textarea
+            id="quick-order-bulk"
+            rows={5}
+            value={bulkText}
+            onChange={(event) => setBulkText(event.target.value)}
+            placeholder={'1896 5\n1914 3\nCF283A x 2'}
+            spellCheck={false}
+            autoFocus
+            className="resize-y rounded-ui border border-slate-300 bg-surface px-3 py-2 font-mono text-sm text-slate-900 focus:border-primary focus:outline-none"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleBulkAdd}
+              disabled={parseQuickOrder(bulkText).length === 0}
+              className="rounded-ui bg-primary px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              Добави {parseQuickOrder(bulkText).length || ''} в таблицата
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setBulkOpen(false)
+                setBulkText('')
+              }}
+              className="rounded-ui px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900"
+            >
+              Отказ
+            </button>
+          </div>
+        </div>
+      )}
+
+      {reorderNote && <p className="text-xs text-amber-700">{reorderNote}</p>}
+
       <div className="quick-order-input overflow-hidden rounded-ui border border-slate-300 bg-surface">
         <table className="w-full table-fixed border-collapse text-sm">
           <colgroup>

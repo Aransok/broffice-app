@@ -185,6 +185,8 @@ export interface OrderItemDto {
   id: string
   product: string | null
   product_name: string
+  /** The № the site shows for the product today; '' if it's gone. */
+  product_number: string
   product_external_id: string
   product_sku: string
   product_slug: string | null

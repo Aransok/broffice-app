@@ -4132,3 +4132,25 @@ def test_admin_design_features_per_design(api_client, admin_user):
     public = api_client.get("/api/v1/design/").data
     assert public["features"] == {"fresh": {"quick_order": False}}
     assert public["design"] == "classic"
+
+
+@pytest.mark.django_db
+def test_my_order_items_carry_the_product_number(api_client, sample_product):
+    """ "Поръчай отново" in the quick order table refills it from an order's
+    lines by the № the site shows (supplier id, else item number)."""
+    owner = User.objects.create_user(username="reorder-owner", password="pass12345")
+    Product.objects.filter(pk=sample_product.pk).update(supplier_id="SUP-77")
+    api_client.force_authenticate(user=owner)
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "owner@example.com",
+            "items": [{"product_external_id": "272", "quantity": 3}],
+        },
+        format="json",
+    )
+    number = resp.data["number"]
+
+    item = api_client.get(f"/api/v1/my-orders/{number}/").data["items"][0]
+    assert item["product_number"] == "SUP-77"
+    assert item["quantity"] == 3
