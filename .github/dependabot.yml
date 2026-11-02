@@ -37,6 +37,11 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # A new Python version (3.12 -> 3.15) can break libraries like rembg/
+      # onnxruntime that ship per-Python builds, and CI doesn't build the
+      # image - upgrade Python deliberately, not via a bot PR.
+      - dependency-name: "python"
+        update-types: ["version-update:semver-minor"]
     groups:
       docker:
         patterns: ["*"]
