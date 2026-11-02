@@ -75,7 +75,16 @@ export function Header() {
         </div>
       )}
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3">
-        <Link to="/">
+        <Link
+          to="/"
+          // Already on the home page: just glide back to the top.
+          onClick={(event) => {
+            if (window.location.pathname === '/') {
+              event.preventDefault()
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }
+          }}
+        >
           <img src={logoSrc} alt="BRoffice" className="h-12 w-auto" />
         </Link>
         <div ref={searchWrapRef} className="relative min-w-[200px] flex-1">

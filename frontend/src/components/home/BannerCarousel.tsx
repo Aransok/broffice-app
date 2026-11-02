@@ -82,10 +82,12 @@ function discountPercent(banner: BannerEntry): string | null {
   return `-${Math.round((1 - price / oldPrice) * 100)}%`
 }
 
-const GROUP_COLUMNS: Record<number, string> = {
-  2: 'grid-cols-2',
-  3: 'grid-cols-3',
-  4: 'grid-cols-2 grid-rows-2',
+/** Height of each product in a category lineup (percent of the art area),
+ * by how many there are: the middle ones stand a little taller. */
+const LINEUP_HEIGHTS: Record<number, number[]> = {
+  2: [80, 86],
+  3: [70, 86, 72],
+  4: [64, 82, 84, 66],
 }
 
 function ProductArt({
@@ -143,32 +145,42 @@ function ProductArt({
   }
 
   if (images.length > 1) {
-    // Category promo: a small collection of products from across the
-    // category, each on its own white tile, staggered like a product shelf.
+    // Category promo: a few products from across the category lined up
+    // side by side on the slide itself (cut-outs, slightly overlapping, the
+    // middle ones larger), like a product family shot. A picture that is a
+    // plain photo (its background couldn't be removed) keeps a white tile.
     const items = images.slice(0, 4)
-    const four = items.length === 4
+    const heights = LINEUP_HEIGHTS[items.length]
     return (
       <div className="relative flex h-full w-full items-center justify-center">
         {glow}
         <div
-          className={`relative grid w-[92%] gap-2.5 sm:gap-4 ${GROUP_COLUMNS[items.length]} ${
-            four ? 'h-[80%]' : ''
-          } ${zoom}`}
+          className={`relative flex h-full w-full items-end justify-center pb-8 sm:pb-[6%] ${zoom}`}
         >
-          {items.map((src, index) => (
-            <span
-              key={src}
-              className={`relative overflow-hidden rounded-xl bg-white shadow-[0_14px_30px_rgba(0,0,0,0.35)] sm:rounded-2xl ${
-                four ? 'h-full' : 'aspect-square'
-              } ${index % 2 === 1 ? 'translate-y-[6%]' : '-translate-y-[3%]'}`}
-            >
-              <img
-                src={src}
-                alt=""
-                className="absolute inset-0 h-full w-full object-contain p-2 sm:p-3"
-              />
-            </span>
-          ))}
+          {items.map((src, index) => {
+            const isPhoto = /-photo-\d+\.png$/.test(src)
+            return (
+              // Each product gets its own equal column, so a wide one can't
+              // squeeze its neighbours; it fits inside it bottom-aligned.
+              <div
+                key={src}
+                className="flex items-end justify-center px-[1%]"
+                style={{ width: `${Math.floor(96 / items.length)}%`, height: `${heights[index]}%` }}
+              >
+                {isPhoto ? (
+                  <span className="aspect-square w-full overflow-hidden rounded-2xl bg-white shadow-[0_14px_30px_rgba(0,0,0,0.35)]">
+                    <img src={src} alt="" className="h-full w-full object-contain p-2" />
+                  </span>
+                ) : (
+                  <img
+                    src={src}
+                    alt=""
+                    className="max-h-full max-w-full object-contain drop-shadow-[0_18px_20px_rgba(0,0,0,0.45)]"
+                  />
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
     )
