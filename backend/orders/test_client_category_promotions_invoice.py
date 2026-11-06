@@ -131,3 +131,79 @@ def test_client_promotions_do_not_apply_without_the_client_account(
         for item in order.items.all():
             assert item.original_unit_price is None
             assert item.discount_label == ""
+
+
+@pytest.fixture
+def admin_api(db):
+    from rest_framework.test import APIClient
+
+    admin = User.objects.create_user(
+        username="boss", password="pass12345", is_staff=True, is_superuser=True
+    )
+    api = APIClient()
+    api.force_authenticate(user=admin)
+    return api
+
+
+@pytest.mark.django_db
+def test_confirm_applies_promotions_added_after_the_order_came_in(
+    client_with_category_promos, admin_api
+):
+    """Order 91: the client's promotions were added while her order was
+    already waiting - confirming it must put them on the invoice."""
+    client, _, clip, note = client_with_category_promos
+    Promotion.objects.filter(user=client).update(active=False)
+    order = _order(client, client.email, clip, note)
+    assert all(i.original_unit_price is None for i in order.items.all())
+
+    Promotion.objects.filter(user=client).update(active=True)
+    resp = admin_api.post(f"/api/v1/admin/orders/{order.number}/confirm/")
+    assert resp.status_code == 200
+
+    order.refresh_from_db()
+    lines = {i.product_id: i for i in order.items.all()}
+    assert lines[clip.id].unit_price == Decimal("0.69")
+    assert lines[clip.id].discount_label == "КЛАМЕРИ"
+    assert lines[note.id].unit_price == Decimal("0.80")
+    assert lines[note.id].discount_label == "ЛИСТЧЕТА"
+    assert order.subtotal_bgn == Decimal("0.69") * 3 + Decimal("0.80") * 4
+
+
+@pytest.mark.django_db
+def test_confirm_never_raises_a_price_when_a_promotion_ended(
+    client_with_category_promos, admin_api
+):
+    client, _, clip, note = client_with_category_promos
+    order = _order(client, client.email, clip, note)
+    Promotion.objects.filter(user=client).update(active=False)
+
+    admin_api.post(f"/api/v1/admin/orders/{order.number}/confirm/")
+
+    lines = {i.product_id: i for i in order.items.all()}
+    assert lines[clip.id].unit_price == Decimal("0.69")
+    assert lines[note.id].unit_price == Decimal("0.80")
+
+
+@pytest.mark.django_db
+def test_reprice_and_confirm_keep_a_free_gift_free(
+    client_with_category_promos, admin_api
+):
+    from orders.services import add_item_to_pending_order
+
+    client, _, clip, note = client_with_category_promos
+    order = create_order(
+        user=client,
+        customer_email=client.email,
+        items=[{"product_id": clip.id, "quantity": 1}],
+    )
+    add_item_to_pending_order(order, note, 2, unit_price=Decimal("0.00"))
+
+    resp = admin_api.post(f"/api/v1/admin/orders/{order.number}/reprice/")
+    assert resp.status_code == 200
+    gift = order.items.get(product=note)
+    assert gift.unit_price == Decimal("0.00")
+
+    admin_api.post(f"/api/v1/admin/orders/{order.number}/confirm/")
+    gift = order.items.get(product=note)
+    assert gift.unit_price == Decimal("0.00")
+    assert gift.quantity == 2
