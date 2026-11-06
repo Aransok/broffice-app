@@ -586,6 +586,84 @@ def _create_order_item(order: Order, product, line: dict) -> OrderItem:
     )
 
 
+MANUAL_PRICE_LABEL = "Ръчна корекция"
+
+
+def _manual_price_product_ids(order: Order) -> set:
+    """Products with an admin-set price on this order (add-item with an
+    explicit unit_price, e.g. a free gift). Those prices are a deliberate
+    override - repricing must never quietly turn a free gift back into a
+    paid line."""
+    return set(
+        order.items.filter(
+            product__isnull=False, discount_label=MANUAL_PRICE_LABEL
+        ).values_list("product_id", flat=True)
+    )
+
+
+def _pricing_context(order: Order) -> dict:
+    pricing_user = order.user if order.user_id is not None else None
+    active_promotions = get_active_promotions()
+    return {
+        "pricing_user": pricing_user,
+        "active_promotions": active_promotions,
+        "user_overrides": get_user_overrides(pricing_user),
+        "category_descendant_map": build_promo_category_descendant_map(
+            active_promotions
+        ),
+    }
+
+
+@transaction.atomic
+def apply_current_discounts_to_pending_order(order: Order) -> bool:
+    """Run on confirm: re-prices each product line of a still-pending order
+    with the client's *current* promotions/individual prices and keeps the
+    new price only where it is cheaper. Real report (order 91): the admin
+    added category promotions for a client after her order came in and
+    confirmed it - the invoice went out at full price with no % shown,
+    because prices were frozen at checkout and only a manual "Преизчисли"
+    would have picked them up. Never raises a price (a promotion that ended
+    since checkout doesn't cost the customer more) and never touches an
+    admin-set manual price. Returns True if anything changed."""
+    if order.status != Order.STATUS_PENDING:
+        return False
+    ctx = _pricing_context(order)
+    manual = _manual_price_product_ids(order)
+
+    by_product: dict = {}
+    for item in order.items.select_related("product").all():
+        if item.product_id is None or item.product_id in manual:
+            continue
+        by_product.setdefault(item.product_id, []).append(item)
+
+    changed = False
+    for items in by_product.values():
+        product = items[0].product
+        qty = sum(i.quantity for i in items)
+        current_total = sum((i.line_total for i in items), Decimal(0))
+        lines = _price_order_item_lines(
+            product,
+            qty,
+            ctx["pricing_user"],
+            ctx["active_promotions"],
+            ctx["user_overrides"],
+            ctx["category_descendant_map"],
+        )
+        new_total = sum((ln["unit_price"] * ln["quantity"] for ln in lines), Decimal(0))
+        if new_total >= current_total:
+            continue
+        for item in items:
+            item.delete()
+        for line in lines:
+            _create_order_item(order, product, line)
+        changed = True
+
+    if changed:
+        order.refresh_from_db()
+        recalc_order_total(order)
+    return changed
+
+
 @transaction.atomic
 def reprice_pending_order(order: Order) -> Order:
     """Re-runs the exact same pricing logic used at checkout against a
@@ -598,11 +676,9 @@ def reprice_pending_order(order: Order) -> Order:
     if order.status != Order.STATUS_PENDING:
         raise ValueError("Only a pending order can be repriced.")
 
-    is_authenticated = order.user_id is not None
-    pricing_user = order.user if is_authenticated else None
-    active_promotions = get_active_promotions()
-    user_overrides = get_user_overrides(pricing_user)
-    category_descendant_map = build_promo_category_descendant_map(active_promotions)
+    ctx = _pricing_context(order)
+    # Admin-set prices (free gift, manual correction) stay exactly as set.
+    manual = _manual_price_product_ids(order)
 
     # Group by product first — the order's existing lines may already be
     # split (e.g. a max_quantity cap applied at checkout), so repricing must
@@ -611,22 +687,22 @@ def reprice_pending_order(order: Order) -> Order:
     quantities: dict = {}
     products: dict = {}
     for item in order.items.select_related("product").all():
-        if item.product_id is None:
-            continue  # product was deleted since order creation — nothing to reprice against
+        if item.product_id is None or item.product_id in manual:
+            continue  # deleted product / manual price — nothing to reprice
         quantities[item.product_id] = quantities.get(item.product_id, 0) + item.quantity
         products[item.product_id] = item.product
 
-    order.items.filter(product__isnull=False).delete()
+    order.items.filter(product_id__in=list(quantities)).delete()
 
     for product_id, qty in quantities.items():
         product = products[product_id]
         lines = _price_order_item_lines(
             product,
             qty,
-            pricing_user,
-            active_promotions,
-            user_overrides,
-            category_descendant_map,
+            ctx["pricing_user"],
+            ctx["active_promotions"],
+            ctx["user_overrides"],
+            ctx["category_descendant_map"],
         )
         for line in lines:
             _create_order_item(order, product, line)
@@ -664,7 +740,7 @@ def add_item_to_pending_order(
             "quantity": quantity,
             "unit_price": unit_price,
             "original_unit_price": None,
-            "discount_label": "Ръчна корекция",
+            "discount_label": MANUAL_PRICE_LABEL,
             "applied_promotion": None,
             "cost_price_bgn": product.admin_price,
         }

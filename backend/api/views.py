@@ -61,6 +61,7 @@ from navigation.models import Menu
 from orders.models import Order, OrderItem, OrderNotification
 from orders.services import (
     add_item_to_pending_order,
+    apply_current_discounts_to_pending_order,
     calculate_pigeon_express_price_table,
     calculate_pigeon_express_quote,
     calculate_speedy_price_table,
@@ -1193,6 +1194,10 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(
                 {"detail": "Order is not pending"}, status=status.HTTP_400_BAD_REQUEST
             )
+        # Promotions/individual prices added for this client after the
+        # order came in (e.g. while the admin was reviewing it) reach the
+        # invoice - only where they make a line cheaper, never dearer.
+        apply_current_discounts_to_pending_order(order)
         order.status = Order.STATUS_CONFIRMED
         order.save(update_fields=["status", "updated_at"])
         # Handled — done here, not in a separate request from the browser
