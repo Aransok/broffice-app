@@ -170,5 +170,22 @@ jobs:
         # step invokes powershell.exe with no bypass - confirmed directly
         # (2026-08-12): a real deploy attempt failed with "running scripts
         # is disabled on this system" until this was added.
+        #
+        # Before `up`: remove containers left behind by an earlier
+        # recreate that was cut off halfway. Compose renames the old
+        # container to "<12-hex-id>_<name>" while swapping in the new one;
+        # if that never finishes, the renamed one stays and the next deploy
+        # fails with "The container name ... is already in use" (real
+        # failure, 2026-11-06, celery-worker). Only app containers - never
+        # postgres/redis - and `up` recreates them right after.
         shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
-        run: docker compose -f docker-compose.prod.yml up -d --build
+        run: |
+          $stale = docker ps -a --filter "label=com.docker.compose.project=broffice-app" --format "{{.ID}} {{.Names}}" |
+            Where-Object { $_ -match '^\S+ [0-9a-f]{12}_broffice-app-(backend|celery-worker|celery-beat|frontend)-\d+$' }
+          foreach ($line in $stale) {
+            $id = ($line -split ' ')[0]
+            Write-Host "Removing leftover container: $line"
+            docker rm -f $id
+          }
+          docker compose -f docker-compose.prod.yml up -d --build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
