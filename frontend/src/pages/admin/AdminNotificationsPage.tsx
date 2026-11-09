@@ -48,7 +48,7 @@ function supplierNumericId(externalId: string): string | null {
 
 function supplierProductUrl(externalId: string): string | null {
   const id = supplierNumericId(externalId)
-  return id ? `https://officecenter-bg.com/product/${id}/x` : null
+  return id ? `https://dealers.officecenter-bg.com/product/${id}/x` : null
 }
 
 const STATUS_FILTERS: { value: OrderStatusFilter; label: string }[] = [
