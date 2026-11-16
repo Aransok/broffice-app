@@ -472,7 +472,7 @@ html[data-theme='fresh'] body {
   --bold-menu-btn-text: #0a1628;
   /* Dropdowns (categories menu, live search). */
   --bold-panel: #143566;
-  --bold-panel-text: #e6ebf5;
+  --bold-panel-text: #ffffff;
   --bold-panel-muted: #aab6cc;
   --bold-panel-accent: #ffb27a;
   /* Footer. */
@@ -511,7 +511,7 @@ html[data-theme='fresh'] body {
   --bold-menu-btn-bg: #ffffff;
   --bold-menu-btn-text: #0a1628;
   --bold-panel: #0f1a2e;
-  --bold-panel-text: #e6ebf5;
+  --bold-panel-text: #ffffff;
   --bold-panel-muted: #aab6cc;
   --bold-panel-accent: #ffb27a;
   --bold-foot-bg: #070d18;
@@ -608,7 +608,7 @@ html[data-theme='fresh'] body {
   --bold-nav-accent: #ffb199;
   --bold-menu-btn-text: #3a1c3d;
   --bold-panel: #47224b;
-  --bold-panel-text: #fbeee6;
+  --bold-panel-text: #ffffff;
   --bold-panel-muted: #d8bfc4;
   --bold-panel-accent: #ffb199;
   --bold-foot-bg: #3a1c3d;
@@ -647,7 +647,7 @@ html[data-theme='fresh'] body {
   --bold-nav-accent: #b8f03c;
   --bold-menu-btn-text: #0d3b33;
   --bold-panel: #124a40;
-  --bold-panel-text: #e6f4ee;
+  --bold-panel-text: #ffffff;
   --bold-panel-muted: #a9cbbb;
   --bold-panel-accent: #b8f03c;
   --bold-foot-bg: #0d3b33;
@@ -796,7 +796,9 @@ html[data-family='bold'] body {
   color: var(--bold-panel-accent);
 }
 :root[data-family='bold'] .site-header .mega-menu-panel .text-\[\#999\] {
-  color: var(--bold-panel-muted);
+  /* The main categories: grey until hovered in the light designs, but on
+   * Bold's dark panel that grey was too dim to read (client), so white. */
+  color: var(--bold-panel-text);
 }
 :root[data-family='bold'] .site-header .mega-menu-panel svg.text-\[\#c5c5c5\] {
   color: rgba(255, 255, 255, 0.35);
