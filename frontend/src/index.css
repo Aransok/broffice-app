@@ -772,26 +772,33 @@ html[data-family='bold'] body {
 :root[data-family='bold'] .mega-menu-flyout {
   border-radius: 0 18px 18px 0;
 }
-:root[data-family='bold'] .mega-menu-panel a,
-:root[data-family='bold'] .mega-menu-panel .text-black,
-:root[data-family='bold'] .mega-menu-panel .text-slate-500,
-:root[data-family='bold'] .mega-menu-panel .text-slate-900,
-:root[data-family='bold'] .mega-menu-flyout a,
-:root[data-family='bold'] .mega-menu-flyout .text-black,
-:root[data-family='bold'] .mega-menu-flyout .text-slate-500,
-:root[data-family='bold'] .mega-menu-flyout .text-slate-900 {
+:root[data-family='bold'] .site-header .mega-menu-panel a,
+:root[data-family='bold'] .site-header .mega-menu-panel .text-black,
+:root[data-family='bold'] .site-header .mega-menu-panel .text-slate-500,
+:root[data-family='bold'] .site-header .mega-menu-panel .text-slate-900,
+:root[data-family='bold'] .site-header .mega-menu-flyout a,
+:root[data-family='bold'] .site-header .mega-menu-flyout .text-black,
+:root[data-family='bold'] .site-header .mega-menu-flyout .text-slate-500,
+:root[data-family='bold'] .site-header .mega-menu-flyout .text-slate-900,
+:root[data-family='bold'] .site-header .mega-menu-panel .text-slate-600,
+:root[data-family='bold'] .site-header .mega-menu-panel .text-slate-700,
+:root[data-family='bold'] .site-header .mega-menu-flyout .text-slate-600,
+:root[data-family='bold'] .site-header .mega-menu-flyout .text-slate-700 {
+  /* Under .site-header so these beat the header's own grey-text rule
+   * (.site-header .text-slate-500), which otherwise turned the menu's
+   * links dark grey on the dark panel. */
   color: var(--bold-panel-text);
   border-color: rgba(255, 255, 255, 0.08);
 }
-:root[data-family='bold'] .mega-menu-panel a:hover,
-:root[data-family='bold'] .mega-menu-flyout a:hover,
-:root[data-family='bold'] .mega-menu-panel a[aria-expanded='true'] {
+:root[data-family='bold'] .site-header .mega-menu-panel a:hover,
+:root[data-family='bold'] .site-header .mega-menu-flyout a:hover,
+:root[data-family='bold'] .site-header .mega-menu-panel a[aria-expanded='true'] {
   color: var(--bold-panel-accent);
 }
-:root[data-family='bold'] .mega-menu-panel .text-\[\#999\] {
+:root[data-family='bold'] .site-header .mega-menu-panel .text-\[\#999\] {
   color: var(--bold-panel-muted);
 }
-:root[data-family='bold'] .mega-menu-panel svg.text-\[\#c5c5c5\] {
+:root[data-family='bold'] .site-header .mega-menu-panel svg.text-\[\#c5c5c5\] {
   color: rgba(255, 255, 255, 0.35);
 }
 :root[data-family='bold'] [role='listbox'][aria-label='Резултати от търсенето'] {
