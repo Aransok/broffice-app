@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # "Run workflow" button on the Actions tab: redeploys main without a new
+  # commit, e.g. after the self-hosted runner got stuck on a deploy.
+  workflow_dispatch:
 
 jobs:
   backend-test:
@@ -69,7 +72,7 @@ jobs:
   # that the workflow YAML parses.
   deploy:
     needs: [backend-test, frontend-test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: self-hosted
     steps:
       # clean: false is load-bearing — actions/checkout defaults to `git
