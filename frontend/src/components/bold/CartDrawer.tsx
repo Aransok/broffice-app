@@ -104,8 +104,10 @@ export function CartDrawer() {
         role="dialog"
         aria-label="Количка"
         aria-hidden={!open}
-        className={`fixed inset-y-0 right-0 z-[70] flex w-full max-w-md flex-col bg-surface text-slate-900 shadow-[-20px_0_60px_rgba(0,0,0,0.35)] transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
-          open ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed inset-y-0 right-0 z-[70] flex w-full max-w-md flex-col bg-surface text-slate-900 transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
+          // The shadow only while open: on the closed drawer it leaked a
+          // grey band onto the right edge of every page.
+          open ? 'translate-x-0 shadow-[-20px_0_60px_rgba(0,0,0,0.35)]' : 'translate-x-full'
         }`}
       >
         <header className="flex items-center justify-between border-b border-slate-200 px-5 py-4">

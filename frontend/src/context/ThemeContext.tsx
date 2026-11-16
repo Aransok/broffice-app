@@ -8,7 +8,30 @@ import {
 
 export type ColorMode = 'light' | 'dark'
 export type DesignPreset =
-  'classic' | 'modern' | 'compact' | 'premium' | 'soft' | 'brand' | 'fresh' | 'bold' | 'paper'
+  | 'classic'
+  | 'modern'
+  | 'compact'
+  | 'premium'
+  | 'soft'
+  | 'brand'
+  | 'fresh'
+  | 'bold'
+  | 'bold_sky'
+  | 'bold_sunset'
+  | 'bold_mint'
+  | 'paper'
+
+/** Designs built on Bold's layout (hero, quick order, marquee, offset-shadow
+ * cards, phone bar): same components, each with its own colors. They share
+ * every `[data-family='bold']` rule in index.css. */
+export const BOLD_FAMILY: DesignPreset[] = ['bold', 'bold_sky', 'bold_sunset', 'bold_mint']
+
+export function isBoldFamily(design: DesignPreset) {
+  return BOLD_FAMILY.includes(design)
+}
+
+/** Designs that draw their own home-page intro instead of the classic layout. */
+export const INTRO_DESIGNS: DesignPreset[] = ['fresh', 'paper', ...BOLD_FAMILY]
 
 export interface PresetOption {
   value: DesignPreset
@@ -32,8 +55,32 @@ export const PRESET_OPTIONS: PresetOption[] = [
     value: 'bold',
     label: 'BRoffice Bold',
     description:
-      'Пълен редизайн: тъмна лента, едри заглавия, живи цветове, категории в мозайка, бърза поръчка с преглед на продукта и лента за телефон.',
-    swatch: ['#f4f1ea', '#ffffff', '#0a1628', '#ff6b1f'],
+      'Пълен редизайн: светла горна лента, синя лента с категориите, едри заглавия, живи цветове, бърза поръчка с преглед на продукта и лента за телефон.',
+    swatch: ['#f4f1ea', '#ffffff', '#0f2a52', '#ff6b1f'],
+    radius: 18,
+  },
+  {
+    value: 'bold_sky',
+    label: 'BRoffice Bold Sky',
+    description:
+      'Като Bold, но изцяло светъл: бяла лента, небесносин герой с тъмен текст, сини акценти и оранжеви бутони.',
+    swatch: ['#f2f6fc', '#ffffff', '#2f5fd6', '#ff6b1f'],
+    radius: 18,
+  },
+  {
+    value: 'bold_sunset',
+    label: 'BRoffice Bold Sunset',
+    description:
+      'Като Bold, в топли тонове: кремав фон, тъмносливова лента и герой, коралови бутони.',
+    swatch: ['#fbf4ec', '#ffffff', '#3a1c3d', '#ff5a4e'],
+    radius: 18,
+  },
+  {
+    value: 'bold_mint',
+    label: 'BRoffice Bold Mint',
+    description:
+      'Като Bold, в свежо зелено: ментов фон, тъмнозелена лента и герой, лаймови бутони.',
+    swatch: ['#eff6f2', '#ffffff', '#0d3b33', '#b8f03c'],
     radius: 18,
   },
   {
@@ -113,6 +160,9 @@ const ALL_DESIGNS: DesignPreset[] = [
   'brand',
   'fresh',
   'bold',
+  'bold_sky',
+  'bold_sunset',
+  'bold_mint',
   'paper',
 ]
 
@@ -127,39 +177,39 @@ export const FEATURES: FeatureOption[] = [
     key: 'quick_order',
     label: 'Бърза поръчка',
     description: 'Поле за номера и количества с преглед на продукта преди добавяне.',
-    defaultOn: ['fresh', 'bold', 'paper'],
+    defaultOn: ['fresh', 'paper', ...BOLD_FAMILY],
   },
   {
     key: 'instant_search',
     label: 'Търсене на живо',
     description: 'Резултати със снимка и цена под търсачката, докато пишеш.',
-    defaultOn: ['bold', 'paper'],
+    defaultOn: ['paper', ...BOLD_FAMILY],
   },
   {
     key: 'cart_drawer',
     label: 'Количка отстрани',
     description:
       'Малка количка отстрани, която се отваря от иконата на количката, без да напускаш страницата.',
-    defaultOn: ['bold', 'paper'],
+    defaultOn: ['paper', ...BOLD_FAMILY],
   },
   {
     key: 'promo_carousel',
     label: 'Лента с промоции',
     description: 'Промоциите на седмицата в хоризонтална лента горе.',
-    defaultOn: ['bold', 'paper'],
+    defaultOn: ['paper', ...BOLD_FAMILY],
   },
   {
     key: 'brand_marquee',
     label: 'Лента с марки',
     description: 'Движеща се лента с марките от каталога.',
-    defaultOn: ['bold', 'paper'],
+    defaultOn: ['paper', ...BOLD_FAMILY],
   },
   {
     key: 'category_tiles',
     label: 'Плочки с категории',
     description: 'Категориите като големи плочки на началната страница.',
     // Taken out of Bold at the client's request.
-    designs: ALL_DESIGNS.filter((d) => d !== 'bold'),
+    designs: ALL_DESIGNS.filter((d) => !isBoldFamily(d)),
     defaultOn: ['fresh', 'paper'],
   },
   {
@@ -167,7 +217,7 @@ export const FEATURES: FeatureOption[] = [
     label: 'Числа',
     description: 'Брой продукти, марки и категории, броящи се нагоре.',
     // Taken out of Bold at the client's request.
-    designs: ALL_DESIGNS.filter((d) => d !== 'bold'),
+    designs: ALL_DESIGNS.filter((d) => !isBoldFamily(d)),
     defaultOn: [],
   },
   {
@@ -175,14 +225,14 @@ export const FEATURES: FeatureOption[] = [
     label: 'Лента с предимства',
     description: 'Доставка, фактура, цени в € и лв.',
     // Taken out of Bold at the client's request.
-    designs: ALL_DESIGNS.filter((d) => d !== 'bold'),
+    designs: ALL_DESIGNS.filter((d) => !isBoldFamily(d)),
     defaultOn: ['fresh', 'paper'],
   },
   {
     key: 'mobile_bar',
     label: 'Долна лента на телефон',
     description: 'Начало, промоции, търсене и количка, залепени долу на телефон.',
-    defaultOn: ['bold', 'paper'],
+    defaultOn: ['paper', ...BOLD_FAMILY],
   },
 ]
 
@@ -337,6 +387,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', preset)
+    if (isBoldFamily(preset)) document.documentElement.setAttribute('data-family', 'bold')
+    else document.documentElement.removeAttribute('data-family')
     // Each design loads only its own fonts (free, Google Fonts, Cyrillic),
     // so the other designs pay nothing for them.
     const fonts: Partial<Record<DesignPreset, string>> = {
@@ -344,8 +396,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       bold: 'Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700;800',
       paper: 'Playfair+Display:ital,wght@0,500;0,700;1,500&family=Inter:wght@400;500;600;700',
     }
-    const family = fonts[preset]
-    const id = `font-${preset}`
+    const fontKey: DesignPreset = isBoldFamily(preset) ? 'bold' : preset
+    const family = fonts[fontKey]
+    const id = `font-${fontKey}`
     if (family && !document.getElementById(id)) {
       const link = document.createElement('link')
       link.id = id

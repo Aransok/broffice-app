@@ -13,12 +13,12 @@ function focusSearch() {
 export function BoldMobileBar() {
   const { itemCount } = useCart()
   const item =
-    'flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-semibold text-slate-300'
-  const active = 'text-white'
+    'flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-semibold text-[var(--bold-bar-text,#cbd5e1)]'
+  const active = 'text-[var(--bold-bar-active,#ffffff)]'
   return (
     <nav
       aria-label="Бърза навигация"
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-white/10 bg-[#0a1628] pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-[var(--bold-bar-border,rgba(255,255,255,0.1))] bg-[var(--bold-bar-bg,#0a1628)] pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       <NavLink to="/" end className={({ isActive }) => `${item} ${isActive ? active : ''}`}>
         <svg
@@ -85,7 +85,7 @@ export function BoldMobileBar() {
         </svg>
         Количка
         {itemCount > 0 && (
-          <span className="absolute right-[calc(50%-20px)] top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ff6b1f] px-1 text-[10px] font-bold text-[#0a1628]">
+          <span className="absolute right-[calc(50%-20px)] top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-buy,#ff6b1f)] px-1 text-[10px] font-bold text-[var(--color-buy-ink,#0a1628)]">
             {itemCount}
           </span>
         )}

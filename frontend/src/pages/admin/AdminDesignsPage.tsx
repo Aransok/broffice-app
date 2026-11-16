@@ -225,7 +225,7 @@ export function AdminDesignsPage() {
                       Активен
                     </span>
                   )}
-                  {['fresh', 'bold', 'paper'].includes(option.value) && !isLive && (
+                  {['bold_sky', 'bold_sunset', 'bold_mint'].includes(option.value) && !isLive && (
                     <span className="rounded-full bg-amber-400 px-2 py-0.5 text-xs font-semibold text-slate-900">
                       Нов
                     </span>

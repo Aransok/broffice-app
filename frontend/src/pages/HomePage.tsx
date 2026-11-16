@@ -14,7 +14,7 @@ import {
 } from '../components/home/blocks'
 import { ProductCard } from '../components/product/ProductCard'
 import { Seo } from '../components/Seo'
-import { useTheme } from '../context/ThemeContext'
+import { INTRO_DESIGNS, isBoldFamily, useTheme } from '../context/ThemeContext'
 
 const HOME_JSON_LD = [
   {
@@ -74,16 +74,16 @@ export function HomePage() {
       {isError && <p className="text-red-600">Продуктите не могат да бъдат заредени в момента.</p>}
 
       {preset === 'fresh' && <FreshHomeIntro />}
-      {preset === 'bold' && <BoldHomeIntro />}
+      {isBoldFamily(preset) && <BoldHomeIntro />}
       {preset === 'paper' && <PaperHomeIntro />}
       {/* Optional blocks (admin Дизайн → Елементи). Bold/Paper/Fresh draw
           their own versions of some inside their intros; everything else,
           when switched on, comes from the shared blocks here. */}
       {/* Classic designs: the banner leads, then the optional blocks. */}
-      {isEnabled('banner_carousel') && !['fresh', 'bold', 'paper'].includes(preset) && (
+      {isEnabled('banner_carousel') && !INTRO_DESIGNS.includes(preset) && (
         <BannerCarousel />
       )}
-      {!['fresh', 'bold', 'paper'].includes(preset) && (
+      {!INTRO_DESIGNS.includes(preset) && (
         <div className="mb-10 flex flex-col gap-8">
           {isEnabled('quick_order') && <QuickOrderBlock />}
           {isEnabled('brand_marquee') && <BrandMarqueeBlock />}
@@ -106,7 +106,7 @@ export function HomePage() {
         </div>
       )}
 
-      {isEnabled('banner_carousel') && ['fresh', 'bold', 'paper'].includes(preset) && (
+      {isEnabled('banner_carousel') && INTRO_DESIGNS.includes(preset) && (
         <BannerCarousel />
       )}
 

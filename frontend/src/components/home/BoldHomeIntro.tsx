@@ -32,7 +32,7 @@ function Hero() {
   return (
     <section className="grid gap-5 lg:grid-cols-12">
       <div
-        className={`relative isolate flex min-h-[520px] flex-col justify-between gap-10 overflow-hidden rounded-[32px] bg-[#070f1e] p-7 text-white sm:p-10 ${
+        className={`relative isolate flex min-h-[520px] flex-col justify-between gap-10 overflow-hidden rounded-[32px] bg-[image:var(--bold-hero-bg)] p-7 text-[var(--bold-hero-text)] sm:p-10 ${
           quickOrder ? 'lg:col-span-7' : 'lg:col-span-12'
         }`}
       >
@@ -42,15 +42,15 @@ function Hero() {
           className="absolute inset-0 -z-0 opacity-[0.07]"
           style={{
             backgroundImage:
-              'linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)',
+              'linear-gradient(var(--bold-hero-grid) 1px, transparent 1px), linear-gradient(90deg, var(--bold-hero-grid) 1px, transparent 1px)',
             backgroundSize: '48px 48px',
             maskImage: 'radial-gradient(ellipse at 30% 40%, black, transparent 70%)',
           }}
         />
-        <div className="relative flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.22em] text-white/70">
+        <div className="relative flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--bold-hero-muted)]">
           <span className="relative flex h-2.5 w-2.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff6b1f] opacity-75" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#ff6b1f]" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-buy)] opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[var(--color-buy)]" />
           </span>
           Офис консумативи · доставка в цяла България
         </div>
@@ -59,12 +59,12 @@ function Hero() {
             <span className="bold-word block" style={{ animationDelay: '0ms' }}>
               Офисът.
             </span>
-            <span className="bold-word block text-[#ff6b1f]" style={{ animationDelay: '140ms' }}>
+            <span className="bold-word block text-[var(--bold-hero-accent)]" style={{ animationDelay: '140ms' }}>
               Зареден.
             </span>
           </h1>
           <p
-            className="bold-word max-w-lg text-base leading-relaxed text-white/75 sm:text-lg"
+            className="bold-word max-w-lg text-base leading-relaxed text-[var(--bold-hero-muted)] sm:text-lg"
             style={{ animationDelay: '280ms' }}
           >
             Хартия, тонери, канцеларски материали и техника на фирмени цени. Търси по номер, име или
@@ -77,13 +77,13 @@ function Hero() {
         >
           <Link
             to="/promotions"
-            className="bold-shine rounded-full bg-[#ff6b1f] px-6 py-3.5 font-extrabold text-[#0a1628] transition hover:brightness-105"
+            className="bold-shine rounded-full bg-[var(--color-buy)] px-6 py-3.5 font-extrabold text-[var(--color-buy-ink)] transition hover:brightness-105"
           >
             Промоции
           </Link>
           <Link
             to={user ? '/account/orders' : '/register'}
-            className="rounded-full border border-white/30 bg-white/5 px-6 py-3.5 font-bold text-white backdrop-blur transition hover:bg-white/10"
+            className="rounded-full border border-current/30 bg-current/5 px-6 py-3.5 font-bold backdrop-blur transition hover:bg-current/10"
           >
             {user ? 'Моите поръчки' : 'Фирмен акаунт'}
           </Link>
@@ -92,7 +92,7 @@ function Hero() {
 
       {quickOrder && (
         <Reveal delay={120} className="lg:col-span-5">
-          <div className="flex h-full flex-col gap-4 rounded-[32px] border-[1.5px] border-[#0a1628] bg-surface p-6 shadow-[6px_6px_0_#0a1628] sm:p-7">
+          <div className="flex h-full flex-col gap-4 rounded-[32px] border-[1.5px] border-[var(--bold-line)] bg-surface p-6 shadow-[6px_6px_0_var(--bold-shadow)] sm:p-7">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="display text-xl text-slate-900">Бърза поръчка</h2>
@@ -100,7 +100,7 @@ function Hero() {
                   Номер и брой, като в Excel. Продуктът се показва веднага, преди да го добавиш.
                 </p>
               </div>
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#ff6b1f] text-[#0a1628]">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[var(--color-buy)] text-[var(--color-buy-ink)]">
                 <svg
                   width="22"
                   height="22"
@@ -136,7 +136,7 @@ function BrandMarquee() {
           <Link
             key={`${brand.id}-${index}`}
             to={`/search?q=${encodeURIComponent(brand.name)}`}
-            className="display rounded-full border-[1.5px] border-[#0a1628]/20 bg-surface px-5 py-2 text-xs uppercase tracking-[0.16em] text-slate-700 transition hover:border-[#0a1628] hover:bg-[#0a1628] hover:text-white"
+            className="display rounded-full border-[1.5px] border-[var(--bold-line)]/20 bg-surface px-5 py-2 text-xs uppercase tracking-[0.16em] text-slate-700 transition hover:border-[var(--bold-line)] hover:bg-[var(--bold-line)] hover:text-white"
           >
             {brand.name}
           </Link>
@@ -155,7 +155,7 @@ function PromoCarousel() {
       <section className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <span className="display text-[11px] uppercase tracking-[0.2em] text-[#e85a12]">
+            <span className="display text-[11px] uppercase tracking-[0.2em] text-[var(--bold-kicker)]">
               Само тази седмица
             </span>
             <h2 className="home-section-title mt-1 text-slate-900">Промоции</h2>
