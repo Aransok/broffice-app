@@ -21,6 +21,29 @@ export function Aurora({ className = '' }: { className?: string }) {
       { c: [20, 184, 166], r: 0.4, x: 0.6, y: 0.2, sx: 1.2, sy: 0.8, p: 4 },
       { c: [168, 85, 247], r: 0.35, x: 0.4, y: 0.9, sx: 0.8, sy: 0.5, p: 1 },
     ]
+    // Each Bold-family design sets its own colors in index.css:
+    // --bold-aurora: "r g b, r g b, ..."; --bold-aurora-alpha; and
+    // --bold-aurora-blend ("lighter" on a dark hero, "source-over" on a
+    // light one, where adding light would just wash it out to white).
+    let alpha = 0.75
+    let blend: GlobalCompositeOperation = 'lighter'
+    function readColors() {
+      const style = getComputedStyle(canvas!)
+      const colors = style
+        .getPropertyValue('--bold-aurora')
+        .split(',')
+        .map((part) => part.trim().split(/\s+/).map(Number))
+        .filter((rgb) => rgb.length === 3 && rgb.every((n) => Number.isFinite(n)))
+      colors.forEach((rgb, index) => {
+        if (blobs[index]) blobs[index].c = rgb
+      })
+      const a = Number.parseFloat(style.getPropertyValue('--bold-aurora-alpha'))
+      if (Number.isFinite(a)) alpha = a
+      const b = style.getPropertyValue('--bold-aurora-blend').trim()
+      blend = b === 'source-over' || b === 'multiply' ? b : 'lighter'
+    }
+    readColors()
+    let frames = 0
     let w = 0
     let h = 0
     let raf = 0
@@ -41,14 +64,16 @@ export function Aurora({ className = '' }: { className?: string }) {
       const time = reduced ? 0 : t / 1000
       mouse.x += (mouse.tx - mouse.x) * 0.04
       mouse.y += (mouse.ty - mouse.y) * 0.04
+      // Picks up a design switch (admin preview) without a remount.
+      if (++frames % 60 === 0) readColors()
       ctx!.clearRect(0, 0, w, h)
-      ctx!.globalCompositeOperation = 'lighter'
+      ctx!.globalCompositeOperation = blend
       for (const b of blobs) {
         const x = (b.x + Math.sin(time * 0.25 * b.sx + b.p) * 0.12 + (mouse.x - 0.5) * 0.12) * w
         const y = (b.y + Math.cos(time * 0.2 * b.sy + b.p) * 0.12 + (mouse.y - 0.5) * 0.12) * h
         const r = b.r * Math.max(w, h)
         const g = ctx!.createRadialGradient(x, y, 0, x, y, r)
-        g.addColorStop(0, `rgba(${b.c.join(',')},0.75)`)
+        g.addColorStop(0, `rgba(${b.c.join(',')},${alpha})`)
         g.addColorStop(1, `rgba(${b.c.join(',')},0)`)
         ctx!.fillStyle = g
         ctx!.fillRect(x - r, y - r, r * 2, r * 2)

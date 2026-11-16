@@ -80,6 +80,37 @@ select option {
   color: var(--color-slate-900);
 }
 
+/* Sticky header (every design): logo, search, cart and the categories
+ * strip stay on screen while scrolling. Once the page has scrolled
+ * (Header adds .is-scrolled) the phone-number line folds away, and on
+ * phones the logo and the small toggles do too, leaving search, cart and
+ * categories, so the header never eats the screen. */
+.site-header {
+  transition: box-shadow 0.2s ease;
+}
+.site-header.is-scrolled {
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+.site-header.is-scrolled .site-header-phone {
+  display: none;
+}
+@media (max-width: 767px) {
+  .site-header.is-scrolled .site-header-logo,
+  .site-header.is-scrolled .site-header-tools > :not([data-cart-target]) {
+    display: none;
+  }
+  .site-header.is-scrolled > div {
+    padding-block: 0.5rem;
+  }
+  .site-header.is-scrolled .site-nav > div {
+    padding-block: 0.5rem;
+  }
+  :root .site-header.is-scrolled .mega-menu-button {
+    padding: 0.45rem 1rem;
+    font-size: 0.95rem;
+  }
+}
+
 /* Staggered reveal for menu columns — mirrors the live site's own mega-menu
  * CSS (.department-submenu:nth-child(1n/2n/3n){transition-delay:...}), just
  * done as a real @keyframes animation instead of a transition so it replays
@@ -385,16 +416,19 @@ html[data-theme='fresh'] body {
   }
 }
 
-/* 8. BRoffice Bold ("bold") — the "go wild" redesign. Ink-navy header and
- * footer, warm paper background, Unbounded display headings with Manrope
- * body, cards with a hard offset shadow that lifts on hover, orange only
- * on "buy" actions, and a sticky bottom bar on phones. HomePage renders
- * <BoldHomeIntro> (hero, live quick order, bento categories) when it's on.
- * Every `bold-*` hook below is a no-op in the other designs. */
-:root[data-theme='bold'] {
-  --color-primary: #0f2140;
-  --color-ink: #0a1628;
-  --color-paper: #f4f1ea;
+/* 8. The Bold family: "bold" (BRoffice Bold) plus three colorways built on
+ * the same layout, "bold_sky", "bold_sunset" and "bold_mint". ThemeContext
+ * puts data-family="bold" on <html> for all four, so every rule below is
+ * shared and each design only sets the --bold-* tokens. Unbounded display
+ * headings with Manrope body, cards with a hard offset shadow that lifts
+ * on hover, the buy colour only on "buy" actions, and a bottom bar on
+ * phones. HomePage renders <BoldHomeIntro> (hero, live quick order,
+ * marquee, promo strip) for all of them.
+ *
+ * Bold itself was made lighter at the client's request: a white top bar
+ * with a lighter navy category strip under it (was all near-black), a
+ * blue hero instead of a near-black one, and softer card shadows. */
+:root[data-family='bold'] {
   --color-buy: #ff6b1f;
   --color-buy-ink: #0a1628;
   --radius-ui: 18px;
@@ -404,8 +438,14 @@ html[data-theme='fresh'] body {
   --color-red-500: #ff6b1f;
   --color-red-600: #e85a12;
   --color-red-800: #9d3a06;
+  --bold-kicker: #e85a12;
+  --bold-aurora: 64 120 235, 255 122 54, 34 197 180, 168 110 247;
+  --bold-aurora-alpha: 0.7;
+  --bold-aurora-blend: lighter;
 }
-:root[data-theme='bold']:not([data-mode='dark']) {
+:root[data-family='bold']:not([data-mode='dark']) {
+  --color-primary: #0f2a52;
+  --color-paper: #f4f1ea;
   --color-surface: #ffffff;
   --color-slate-50: #f4f1ea;
   --color-slate-100: #ebe7de;
@@ -413,198 +453,414 @@ html[data-theme='fresh'] body {
   --color-slate-300: #b9b3a4;
   --color-slate-500: #5d6474;
   --color-slate-900: #0a1628;
+  /* Card borders and the hard offset shadow under cards/panels. */
+  --bold-line: #0f2a52;
+  --bold-shadow: #9fb0cc;
+  /* Top bar (logo, search, account, cart). */
+  --bold-head-bg: #ffffff;
+  --bold-head-text: #0a1628;
+  --bold-head-muted: #4b5568;
+  --bold-head-accent: #e85a12;
+  --bold-head-border: #e6e1d6;
+  --bold-search-bg: #f4f1ea;
+  --bold-search-text: #0a1628;
+  /* Category strip under it. */
+  --bold-nav-bg: #143566;
+  --bold-nav-text: #eef2fa;
+  --bold-nav-accent: #ffb27a;
+  --bold-menu-btn-bg: #ffffff;
+  --bold-menu-btn-text: #0a1628;
+  /* Dropdowns (categories menu, live search). */
+  --bold-panel: #143566;
+  --bold-panel-text: #e6ebf5;
+  --bold-panel-muted: #aab6cc;
+  --bold-panel-accent: #ffb27a;
+  /* Footer. */
+  --bold-foot-bg: #143566;
+  --bold-foot-text: #c3cde0;
+  --bold-foot-head: #ffffff;
+  /* Hero. */
+  --bold-hero-bg: linear-gradient(135deg, #1a4589 0%, #143566 55%, #1d2f63 100%);
+  --bold-hero-text: #ffffff;
+  --bold-hero-muted: rgba(255, 255, 255, 0.8);
+  --bold-hero-accent: #ff8a4c;
+  --bold-hero-grid: rgba(255, 255, 255, 0.6);
+  /* Phone bottom bar. */
+  --bold-bar-bg: #143566;
+  --bold-bar-text: #c3cde0;
+  --bold-bar-active: #ffffff;
+  --bold-bar-border: rgba(255, 255, 255, 0.1);
 }
-:root[data-theme='bold'][data-mode='dark'] {
+:root[data-family='bold'][data-mode='dark'] {
   --color-primary: #7fa6f0;
-  --color-ink: #05090f;
   --color-paper: #0b1220;
   --color-surface: #121b2d;
   --color-slate-50: #0b1220;
-  --color-buy: #ff7a36;
+  --bold-line: #2a3a5a;
+  --bold-shadow: #2a3a5a;
+  --bold-head-bg: #0d1626;
+  --bold-head-text: #e6ebf5;
+  --bold-head-muted: #aab6cc;
+  --bold-head-accent: #ffb27a;
+  --bold-head-border: rgba(255, 255, 255, 0.08);
+  --bold-search-bg: #1a2538;
+  --bold-search-text: #e6ebf5;
+  --bold-nav-bg: #070d18;
+  --bold-nav-text: #e6ebf5;
+  --bold-nav-accent: #ffb27a;
+  --bold-menu-btn-bg: #ffffff;
+  --bold-menu-btn-text: #0a1628;
+  --bold-panel: #0f1a2e;
+  --bold-panel-text: #e6ebf5;
+  --bold-panel-muted: #aab6cc;
+  --bold-panel-accent: #ffb27a;
+  --bold-foot-bg: #070d18;
+  --bold-foot-text: #aab6cc;
+  --bold-foot-head: #ffffff;
+  --bold-hero-bg: linear-gradient(135deg, #0f2347 0%, #070f1e 100%);
+  --bold-hero-text: #ffffff;
+  --bold-hero-muted: rgba(255, 255, 255, 0.75);
+  --bold-hero-accent: #ff8a4c;
+  --bold-hero-grid: rgba(255, 255, 255, 0.6);
+  --bold-bar-bg: #070d18;
+  --bold-bar-text: #aab6cc;
+  --bold-bar-active: #ffffff;
+  --bold-bar-border: rgba(255, 255, 255, 0.1);
+  --bold-aurora-alpha: 0.75;
+  --bold-aurora-blend: lighter;
 }
-html[data-theme='bold'] body {
+
+/* 8a. Bold Sky: the whole thing light. White bar, pale blue strip and
+ * footer, a sky-blue hero with dark text, blue accents, orange buy. */
+:root[data-theme='bold_sky'] {
+  --bold-kicker: #2f5fd6;
+  --color-buy-ink: #0c1a33;
+  --color-red-600: #e2560f;
+}
+:root[data-theme='bold_sky']:not([data-mode='dark']) {
+  --color-primary: #2f5fd6;
+  --color-paper: #f2f6fc;
+  --color-slate-50: #f2f6fc;
+  --color-slate-100: #e7eef9;
+  --color-slate-200: #d5e0f2;
+  --color-slate-300: #b4c4e0;
+  --color-slate-500: #56637a;
+  --color-slate-900: #0c1a33;
+  --bold-line: #1d3f73;
+  --bold-shadow: #b3c7ee;
+  --bold-head-accent: #2f5fd6;
+  --bold-head-border: #dfe7f4;
+  --bold-search-bg: #f2f6fc;
+  --bold-search-text: #0c1a33;
+  --bold-nav-bg: #e4edfc;
+  --bold-nav-text: #0c1a33;
+  --bold-nav-accent: #e2560f;
+  --bold-menu-btn-bg: #2f5fd6;
+  --bold-menu-btn-text: #ffffff;
+  --bold-panel: #183f86;
+  --bold-panel-accent: #ffc59e;
+  --bold-foot-bg: #e4edfc;
+  --bold-foot-text: #44536e;
+  --bold-foot-head: #0c1a33;
+  --bold-hero-bg: linear-gradient(135deg, #dce8ff 0%, #eef4ff 50%, #ffe7d8 100%);
+  --bold-hero-text: #0c1a33;
+  --bold-hero-muted: rgba(12, 26, 51, 0.72);
+  --bold-hero-accent: #2f5fd6;
+  --bold-hero-grid: rgba(12, 26, 51, 0.3);
+  --bold-aurora: 120 160 255, 255 170 120, 120 220 210, 190 165 255;
+  --bold-aurora-alpha: 0.5;
+  --bold-aurora-blend: source-over;
+  --bold-bar-bg: #ffffff;
+  --bold-bar-text: #56637a;
+  --bold-bar-active: #2f5fd6;
+  --bold-bar-border: #d5e0f2;
+}
+
+/* 8b. Bold Sunset: warm cream, deep plum strip, hero and footer, coral buy. */
+:root[data-theme='bold_sunset'] {
+  --color-buy: #ff5a4e;
+  --color-buy-ink: #2a1230;
+  --bold-kicker: #d9473c;
+  --bold-aurora: 255 90 78, 255 170 80, 214 80 160, 120 70 200;
+  --color-red-100: #ffe4e1;
+  --color-red-300: #ffaba3;
+  --color-red-500: #ff5a4e;
+  --color-red-600: #d9473c;
+  --color-red-800: #8a2219;
+}
+:root[data-theme='bold_sunset']:not([data-mode='dark']) {
+  --color-primary: #3a1c3d;
+  --color-paper: #fbf4ec;
+  --color-slate-50: #fbf4ec;
+  --color-slate-100: #f3e8dc;
+  --color-slate-200: #e5d5c4;
+  --color-slate-300: #cdb8a3;
+  --color-slate-500: #6e5a5c;
+  --color-slate-900: #2a1230;
+  --bold-line: #3a1c3d;
+  --bold-shadow: #d9b9b0;
+  --bold-head-accent: #d9473c;
+  --bold-head-border: #efe2d4;
+  --bold-search-bg: #fbf4ec;
+  --bold-search-text: #2a1230;
+  --bold-nav-bg: #3a1c3d;
+  --bold-nav-text: #fbeee6;
+  --bold-nav-accent: #ffb199;
+  --bold-menu-btn-text: #3a1c3d;
+  --bold-panel: #47224b;
+  --bold-panel-text: #fbeee6;
+  --bold-panel-muted: #d8bfc4;
+  --bold-panel-accent: #ffb199;
+  --bold-foot-bg: #3a1c3d;
+  --bold-foot-text: #e6cfd0;
+  --bold-hero-bg: linear-gradient(135deg, #5a2550 0%, #3a1c3d 50%, #7a2e3a 100%);
+  --bold-hero-accent: #ff9a88;
+  --bold-bar-bg: #3a1c3d;
+  --bold-bar-text: #e6cfd0;
+}
+
+/* 8c. Bold Mint: soft mint, deep green strip, hero and footer, lime buy. */
+:root[data-theme='bold_mint'] {
+  --color-buy: #b8f03c;
+  --color-buy-ink: #0a2a24;
+  --bold-kicker: #0f7a5c;
+  --bold-aurora: 20 184 166, 184 240 60, 56 189 248, 16 140 100;
+  --bold-aurora-alpha: 0.6;
+}
+:root[data-theme='bold_mint']:not([data-mode='dark']) {
+  --color-primary: #0d3b33;
+  --color-paper: #eff6f2;
+  --color-slate-50: #eff6f2;
+  --color-slate-100: #e1eee7;
+  --color-slate-200: #cadfd3;
+  --color-slate-300: #a6c5b4;
+  --color-slate-500: #4f6a60;
+  --color-slate-900: #0a2a24;
+  --bold-line: #0d3b33;
+  --bold-shadow: #a9cbbb;
+  --bold-head-accent: #0f7a5c;
+  --bold-head-border: #dcebe3;
+  --bold-search-bg: #eff6f2;
+  --bold-search-text: #0a2a24;
+  --bold-nav-bg: #0d3b33;
+  --bold-nav-text: #e6f4ee;
+  --bold-nav-accent: #b8f03c;
+  --bold-menu-btn-text: #0d3b33;
+  --bold-panel: #124a40;
+  --bold-panel-text: #e6f4ee;
+  --bold-panel-muted: #a9cbbb;
+  --bold-panel-accent: #b8f03c;
+  --bold-foot-bg: #0d3b33;
+  --bold-foot-text: #bfd8cd;
+  --bold-hero-bg: linear-gradient(135deg, #12594b 0%, #0d3b33 55%, #134434 100%);
+  --bold-hero-accent: #b8f03c;
+  --bold-bar-bg: #0d3b33;
+  --bold-bar-text: #bfd8cd;
+}
+:root[data-theme='bold_mint'][data-mode='dark'] {
+  --bold-head-accent: #b8f03c;
+  --bold-nav-accent: #b8f03c;
+  --bold-panel-accent: #b8f03c;
+  --bold-hero-accent: #b8f03c;
+}
+
+/* Shared Bold-family rules. */
+html[data-family='bold'] body {
   font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
   background: var(--color-paper);
 }
-:root[data-theme='bold'] h1,
-:root[data-theme='bold'] h2,
-:root[data-theme='bold'] .display {
+:root[data-family='bold'] h1,
+:root[data-family='bold'] h2,
+:root[data-family='bold'] .display {
   font-family: 'Unbounded', 'Manrope', system-ui, sans-serif;
   font-weight: 700;
   letter-spacing: -0.03em;
 }
-:root[data-theme='bold'] .home-section-title {
+:root[data-family='bold'] .home-section-title {
   font-size: 1.6rem;
   text-transform: uppercase;
   letter-spacing: -0.02em;
 }
 @media (min-width: 640px) {
-  :root[data-theme='bold'] .home-section-title {
+  :root[data-family='bold'] .home-section-title {
     font-size: 2rem;
   }
 }
 
-/* Header: ink-navy bar, white search pill, orange cart. */
-:root[data-theme='bold'] .site-header {
-  background: var(--color-ink);
+/* Header: light top bar with a search pill and buy-coloured cart, then
+ * the coloured category strip. */
+:root[data-family='bold'] .site-header {
+  background: var(--bold-head-bg);
   border-bottom: 0;
-  color: #e6ebf5;
+  color: var(--bold-head-text);
 }
-:root[data-theme='bold'] .site-header .text-slate-600,
-:root[data-theme='bold'] .site-header .text-slate-500,
-:root[data-theme='bold'] .site-header .text-slate-700,
-:root[data-theme='bold'] .site-header a.hover\:text-primary {
-  color: #c7d0e0;
+:root[data-family='bold'] .site-header-phone,
+:root[data-family='bold'] .site-header .text-slate-600,
+:root[data-family='bold'] .site-header .text-slate-500,
+:root[data-family='bold'] .site-header .text-slate-700,
+:root[data-family='bold'] .site-header a.hover\:text-primary {
+  color: var(--bold-head-muted);
 }
-:root[data-theme='bold'] .site-header .text-primary {
-  color: #ffb27a;
+:root[data-family='bold'] .site-header .text-primary {
+  color: var(--bold-head-accent);
 }
-:root[data-theme='bold'] .site-header select,
-:root[data-theme='bold'] .site-header button[aria-pressed] {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.18);
-  color: #e6ebf5;
+:root[data-family='bold'] .site-header select,
+:root[data-family='bold'] .site-header button[aria-pressed] {
+  background: transparent;
+  border-color: var(--bold-head-border);
+  color: var(--bold-head-text);
 }
-:root[data-theme='bold'] .site-search input {
-  background: #ffffff;
-  border: 0;
-  color: #0a1628;
+:root[data-family='bold'] .site-search input {
+  background: var(--bold-search-bg);
+  border: 1.5px solid var(--bold-head-border);
+  border-right: 0;
+  color: var(--bold-search-text);
   padding-block: 0.85rem;
   font-size: 1rem;
   border-radius: 999px 0 0 999px;
   padding-left: 1.25rem;
 }
-:root[data-theme='bold'] .site-search button {
+:root[data-family='bold'] .site-search input:focus {
+  border-color: var(--bold-line);
+}
+:root[data-family='bold'] .site-search button {
   background: var(--color-buy);
   color: var(--color-buy-ink);
   border-radius: 0 999px 999px 0;
   padding-inline: 1.5rem;
   font-weight: 800;
 }
-:root[data-theme='bold'] .site-nav {
-  background: var(--color-ink);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+:root[data-family='bold'] .site-nav {
+  background: var(--bold-nav-bg);
+  border-top: 0;
 }
-:root[data-theme='bold'] .site-nav a {
-  color: #e6ebf5;
+:root[data-family='bold'] .site-nav a,
+:root[data-family='bold'] .site-header .site-nav a.text-slate-700 {
+  color: var(--bold-nav-text);
 }
-:root[data-theme='bold'] .site-nav a.text-red-600 {
-  color: #ffb27a;
+:root[data-family='bold'] .site-nav a.text-red-600,
+:root[data-family='bold'] .site-header .site-nav a.text-primary {
+  color: var(--bold-nav-accent);
 }
-:root[data-theme='bold'] .mega-menu-button {
-  background: #ffffff;
-  color: #0a1628;
+:root[data-family='bold'] .mega-menu-button {
+  background: var(--bold-menu-btn-bg);
+  color: var(--bold-menu-btn-text);
   border-radius: 999px;
   padding-block: 0.7rem;
   font-size: 1rem;
 }
-:root[data-theme='bold'] .site-header a[aria-label^='Количка'] {
+:root[data-family='bold'] .site-header a[aria-label^='Количка'] {
   background: var(--color-buy);
   color: var(--color-buy-ink);
   border-radius: 999px;
   padding: 0.5rem 0.75rem;
 }
-:root[data-theme='bold'] .site-header a[aria-label^='Количка'] span {
-  background: #0a1628;
+:root[data-family='bold'] .site-header a[aria-label^='Количка'] span {
+  background: var(--bold-line);
   color: #ffffff;
 }
 
-/* Categories menu: ink panels with light text, orange on hover, so the
- * header's light-text overrides above never land on a white panel. */
-:root[data-theme='bold'] .mega-menu-panel,
-:root[data-theme='bold'] .mega-menu-flyout {
-  background: #0f2140;
+/* Categories menu and live search: panels in the design's dark colour
+ * with light text and the accent on hover. */
+:root[data-family='bold'] .mega-menu-panel,
+:root[data-family='bold'] .mega-menu-flyout {
+  background: var(--bold-panel);
   border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
   border-radius: 18px;
 }
-:root[data-theme='bold'] .mega-menu-flyout {
+:root[data-family='bold'] .mega-menu-flyout {
   border-radius: 0 18px 18px 0;
 }
-:root[data-theme='bold'] .mega-menu-panel a,
-:root[data-theme='bold'] .mega-menu-panel .text-black,
-:root[data-theme='bold'] .mega-menu-panel .text-slate-500,
-:root[data-theme='bold'] .mega-menu-panel .text-slate-900,
-:root[data-theme='bold'] .mega-menu-flyout a,
-:root[data-theme='bold'] .mega-menu-flyout .text-black,
-:root[data-theme='bold'] .mega-menu-flyout .text-slate-500,
-:root[data-theme='bold'] .mega-menu-flyout .text-slate-900 {
-  color: #e6ebf5;
+:root[data-family='bold'] .mega-menu-panel a,
+:root[data-family='bold'] .mega-menu-panel .text-black,
+:root[data-family='bold'] .mega-menu-panel .text-slate-500,
+:root[data-family='bold'] .mega-menu-panel .text-slate-900,
+:root[data-family='bold'] .mega-menu-flyout a,
+:root[data-family='bold'] .mega-menu-flyout .text-black,
+:root[data-family='bold'] .mega-menu-flyout .text-slate-500,
+:root[data-family='bold'] .mega-menu-flyout .text-slate-900 {
+  color: var(--bold-panel-text);
   border-color: rgba(255, 255, 255, 0.08);
 }
-:root[data-theme='bold'] .mega-menu-panel a:hover,
-:root[data-theme='bold'] .mega-menu-flyout a:hover,
-:root[data-theme='bold'] .mega-menu-panel a[aria-expanded='true'] {
-  color: #ffb27a;
+:root[data-family='bold'] .mega-menu-panel a:hover,
+:root[data-family='bold'] .mega-menu-flyout a:hover,
+:root[data-family='bold'] .mega-menu-panel a[aria-expanded='true'] {
+  color: var(--bold-panel-accent);
 }
-:root[data-theme='bold'] .mega-menu-panel .text-\[\#999\] {
-  color: #aab6cc;
+:root[data-family='bold'] .mega-menu-panel .text-\[\#999\] {
+  color: var(--bold-panel-muted);
 }
-:root[data-theme='bold'] .mega-menu-panel svg.text-\[\#c5c5c5\] {
+:root[data-family='bold'] .mega-menu-panel svg.text-\[\#c5c5c5\] {
   color: rgba(255, 255, 255, 0.35);
 }
-
-/* Footer: ink-navy. */
-:root[data-theme='bold'] .site-footer {
-  background: var(--color-ink);
-  border-top: 0;
-  color: #aab6cc;
+:root[data-family='bold'] [role='listbox'][aria-label='Резултати от търсенето'] {
+  background: var(--bold-panel);
+  color: var(--bold-panel-text);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
 }
-:root[data-theme='bold'] .site-footer h3 {
-  color: #ffffff;
+:root[data-family='bold'] [role='listbox'][aria-label='Резултати от търсенето'] .text-\[\#ffb27a\] {
+  color: var(--bold-panel-accent);
+}
+
+/* Footer. */
+:root[data-family='bold'] .site-footer {
+  background: var(--bold-foot-bg);
+  border-top: 0;
+  color: var(--bold-foot-text);
+}
+:root[data-family='bold'] .site-footer .text-slate-500,
+:root[data-family='bold'] .site-footer .text-slate-600,
+:root[data-family='bold'] .site-footer .text-slate-700 {
+  color: var(--bold-foot-text);
+}
+:root[data-family='bold'] .site-footer h3 {
+  color: var(--bold-foot-head);
   font-family: 'Unbounded', system-ui, sans-serif;
   font-size: 0.8rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-:root[data-theme='bold'] .site-footer .border-t {
-  border-color: rgba(255, 255, 255, 0.1);
+:root[data-family='bold'] .site-footer .border-t {
+  border-color: color-mix(in srgb, var(--bold-foot-text) 25%, transparent);
 }
 
 /* Cards: hard offset shadow that lifts on hover. */
-:root[data-theme='bold'] .product-card {
-  border: 1.5px solid var(--color-ink);
-  border-radius: 20px;
-  box-shadow: 4px 4px 0 var(--color-ink);
+:root[data-family='bold'] .product-card {
+  border: 1.5px solid var(--bold-line);
+  border-radius: 18px;
+  box-shadow: 3px 3px 0 var(--bold-shadow);
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
 }
-:root[data-theme='bold'] .product-card:hover {
+:root[data-family='bold'] .product-card:hover {
   transform: translate(-2px, -2px);
-  box-shadow: 8px 8px 0 var(--color-ink);
+  box-shadow: 6px 6px 0 var(--bold-shadow);
 }
-:root[data-theme='bold'][data-mode='dark'] .product-card {
-  border-color: #2a3a5a;
-  box-shadow: 4px 4px 0 #2a3a5a;
-}
-:root[data-theme='bold'] .product-price {
+:root[data-family='bold'] .product-price {
   font-family: 'Unbounded', system-ui, sans-serif;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   letter-spacing: -0.02em;
 }
-:root[data-theme='bold'] .btn-buy {
+:root[data-family='bold'] .btn-buy {
   background: var(--color-buy);
   color: var(--color-buy-ink);
   font-weight: 800;
   border-radius: 999px;
 }
-:root[data-theme='bold'] .btn-buy:hover {
+:root[data-family='bold'] .btn-buy:hover {
   opacity: 1;
   filter: brightness(1.06);
 }
-:root[data-theme='bold'] .quick-order-input {
-  border: 1.5px solid var(--color-ink);
-  background: #ffffff;
+:root[data-family='bold'] .quick-order-input {
+  border: 1.5px solid var(--bold-line);
+  background: var(--color-surface);
   border-radius: 14px;
-}
-:root[data-theme='bold'][data-mode='dark'] .quick-order-input {
-  background: #0b1220;
-  border-color: #2a3a5a;
 }
 
 /* Bold motion: scroll reveals, headline words, floating spotlight, tilt,
- * marquee, and a sticky blurred header that stays out of the way. */
+ * marquee. */
 .reveal {
   opacity: 0;
   transform: translateY(18px);
@@ -704,68 +960,43 @@ html[data-theme='bold'] body {
 }
 .bold-tile:hover {
   transform: translate(-2px, -2px);
-  box-shadow: 8px 8px 0 var(--color-ink, #0a1628);
+  box-shadow: 8px 8px 0 var(--bold-shadow, #0a1628);
 }
-/* Sticky, blurred header from tablet up; on phones it would eat the
- * screen, and the bottom bar covers search and cart there anyway. */
-@media (min-width: 768px) {
-  :root[data-theme='bold'] .site-header {
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    background: rgba(10, 22, 40, 0.86);
-    backdrop-filter: blur(14px) saturate(1.4);
-    -webkit-backdrop-filter: blur(14px) saturate(1.4);
-  }
-}
-:root[data-theme='bold'] .product-card .aspect-square {
+:root[data-family='bold'] .product-card .aspect-square {
   overflow: hidden;
 }
-:root[data-theme='bold'] .product-card img {
+:root[data-family='bold'] .product-card .aspect-square img {
+  padding: 0.75rem;
+}
+:root[data-family='bold'] .product-card img {
   transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-:root[data-theme='bold'] .product-card:hover img {
+:root[data-family='bold'] .product-card:hover img {
   transform: scale(1.08) rotate(-1deg);
 }
-:root[data-theme='bold'] .product-card .btn-buy {
+:root[data-family='bold'] .product-card .btn-buy {
   position: relative;
   overflow: hidden;
 }
-:root[data-theme='bold'] .product-card .btn-buy::before {
+:root[data-family='bold'] .product-card .btn-buy::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: #0a1628;
+  background: var(--bold-line);
   transform: translateY(100%);
   transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-:root[data-theme='bold'] .product-card .btn-buy:hover {
+:root[data-family='bold'] .product-card .btn-buy:hover {
   color: #ffffff;
 }
-:root[data-theme='bold'] .product-card .btn-buy:hover::before {
+:root[data-family='bold'] .product-card .btn-buy:hover::before {
   transform: translateY(0);
 }
-:root[data-theme='bold'] .product-card .btn-buy > * {
+:root[data-family='bold'] .product-card .btn-buy > * {
   position: relative;
 }
-/* Card size (client: the original Bold cards were too big, the first
- * compact pass too small): square photo, five to a row, a lighter price
- * and offset shadow than the original. */
-:root[data-theme='bold'] .product-card .aspect-square img {
-  padding: 0.75rem;
-}
-:root[data-theme='bold'] .product-card {
-  border-radius: 18px;
-  box-shadow: 3px 3px 0 var(--color-ink);
-}
-:root[data-theme='bold'] .product-card:hover {
-  box-shadow: 6px 6px 0 var(--color-ink);
-}
-:root[data-theme='bold'] .product-price {
-  font-size: 1.1rem;
-}
-/* Room for the sticky bottom bar on phones. */
-html[data-theme='bold'] body {
+/* Room for the bottom bar on phones. */
+html[data-family='bold'] body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 @media (prefers-reduced-motion: reduce) {

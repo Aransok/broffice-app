@@ -233,7 +233,10 @@ function Slide({
       to={banner.target_url}
       aria-hidden={!active}
       tabIndex={active ? 0 : -1}
-      className="promo-slide absolute inset-0 flex items-stretch overflow-hidden text-white transition-opacity duration-700"
+      // Every slide sits in the same grid cell (see BannerCarousel), so the
+      // banner is as tall as its tallest slide instead of a fixed ratio
+      // that cut off the price and button on tablets and small laptops.
+      className="promo-slide relative flex items-stretch overflow-hidden text-white transition-opacity duration-700 [grid-area:1/1]"
       style={{
         opacity: active ? 1 : 0,
         zIndex: active ? 1 : 0,
@@ -337,7 +340,7 @@ export function BannerCarousel() {
     <section
       aria-label="Промоции"
       aria-roledescription="carousel"
-      className="promo-carousel group relative mb-10 aspect-[16/11] w-full overflow-hidden rounded-[28px] bg-[#0a1628] sm:aspect-[3/1]"
+      className="promo-carousel group relative mb-10 grid w-full grid-cols-[minmax(0,1fr)] overflow-hidden rounded-[28px] bg-[#0a1628]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={(event) => {
@@ -350,6 +353,9 @@ export function BannerCarousel() {
         if (Math.abs(dx) > 40) go(activeIndex + (dx < 0 ? 1 : -1))
       }}
     >
+      {/* Sets the banner's usual shape; a slide with more text than fits
+          makes the whole banner taller rather than being clipped. */}
+      <div aria-hidden="true" className="aspect-[16/11] [grid-area:1/1] sm:aspect-[3/1]" />
       {banners.map((banner, index) => (
         <Slide
           key={banner.id}

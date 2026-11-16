@@ -6,13 +6,29 @@ import logoLight from '../../assets/logo-light.png'
 import logo from '../../assets/logo.png'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
-import { useTheme } from '../../context/ThemeContext'
+import { isBoldFamily, useTheme } from '../../context/ThemeContext'
 import { useVat } from '../../context/VatContext'
 import { getPreviewUser } from '../../preview'
 import { playNotificationSound } from '../../utils/notificationSound'
 import { CategoriesMegaMenu } from './CategoriesMegaMenu'
 import { InstantSearch } from '../bold/InstantSearch'
 import { requestCartOpen } from '../../lib/cartEvents'
+
+/** True once the page is scrolled past the top. Two thresholds so the
+ * header doesn't flicker when its own height change moves the page. */
+function useScrolled() {
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    function onScroll() {
+      const y = window.scrollY
+      setScrolled((was) => (was ? y > 8 : y > 96))
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+  return scrolled
+}
 
 export function Header() {
   const [query, setQuery] = useState('')
@@ -23,9 +39,10 @@ export function Header() {
   const { showInclVat, setShowInclVat } = useVat()
   const { data: config } = usePublicConfig()
   const { mode, setMode, preset, isEnabled } = useTheme()
-  // Bold has an ink-navy header, where the blue 'BR' would vanish: a white
-  // 'BR' + the same orange 'office' keeps the logo readable without a box.
-  const logoSrc = preset === 'bold' ? logoLight : logo
+  // The Bold family's header goes dark in dark mode, where the blue 'BR'
+  // would vanish: a white 'BR' + the same orange 'office' keeps it readable.
+  const logoSrc = isBoldFamily(preset) && mode === 'dark' ? logoLight : logo
+  const scrolled = useScrolled()
   const searchRef = useRef<HTMLInputElement>(null)
   const searchWrapRef = useRef<HTMLDivElement>(null)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -62,9 +79,13 @@ export function Header() {
   }
 
   return (
-    <header className="site-header border-b border-slate-200 bg-surface">
+    <header
+      className={`site-header sticky top-0 z-40 border-b border-slate-200 bg-surface ${
+        scrolled ? 'is-scrolled' : ''
+      }`}
+    >
       {config?.company_phone && (
-        <div className="mx-auto max-w-7xl px-4 py-2 text-sm text-slate-600">
+        <div className="site-header-phone mx-auto max-w-7xl px-4 py-2 text-sm text-slate-600">
           Номер за поръчки:{' '}
           <a
             href={`tel:${config.company_phone.replace(/\s/g, '')}`}
@@ -77,6 +98,7 @@ export function Header() {
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3">
         <Link
           to="/"
+          className="site-header-logo"
           // Already on the home page: just glide back to the top.
           onClick={(event) => {
             if (window.location.pathname === '/') {
@@ -110,7 +132,7 @@ export function Header() {
             <InstantSearch query={query} inputRef={searchRef} onClose={closeSearch} />
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500 sm:gap-4">
+        <div className="site-header-tools flex flex-wrap items-center gap-2 text-sm text-slate-500 sm:gap-4">
           <button
             type="button"
             onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}
