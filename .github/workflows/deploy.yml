@@ -74,6 +74,17 @@ jobs:
     needs: [backend-test, frontend-test]
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: self-hosted
+    # A normal deploy takes ~2 minutes. On 2026-11-16 the runner took the
+    # job and then hung before even checking out the code, and with no
+    # limit the job sat "in progress" for 18+ minutes and blocked every
+    # later deploy until it was cancelled by hand. Now a hung deploy fails
+    # on its own, so the next push (or "Run workflow") can go through.
+    timeout-minutes: 15
+    # One deploy at a time; a newer push waits for the running one instead
+    # of two `docker compose up --build` fighting over the same checkout.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     steps:
       # clean: false is load-bearing — actions/checkout defaults to `git
       # clean -ffdx` before checking out, which would wipe .env (never
