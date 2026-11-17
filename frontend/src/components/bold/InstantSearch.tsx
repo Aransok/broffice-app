@@ -46,7 +46,7 @@ export function InstantSearch({
     staleTime: 60_000,
   })
   const results = (data?.results ?? []).slice(0, MAX)
-  const total = data?.results.length ?? 0
+  const total = data?.count ?? data?.results.length ?? 0
 
   // Reset the highlight whenever the query changes (derived, not an effect).
   const [activeFor, setActiveFor] = useState(q)

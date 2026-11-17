@@ -1,29 +1,14 @@
-import { type FormEvent, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { type CategoryTreeNode, useCategory, useCategoryTree } from '../api/categories'
 import { useCategoryBrands, useProducts } from '../api/products'
-import { PriceRangeSlider } from '../components/PriceRangeSlider'
+import { BrandFilter, Pagination, PriceFilter, SortSelect } from '../components/catalog/Filters'
+import { orderingFor } from '../components/catalog/sort'
 import { ProductCard } from '../components/product/ProductCard'
 import { Seo } from '../components/Seo'
-import { BGN_PER_EUR, eurToBgn } from '../utils/currency'
+import { eurToBgn } from '../utils/currency'
 
 const PAGE_SIZE = 24
-// Static bounds for the slider track, in EUR (what the inputs collect) — a
-// convenience on top of the manual inputs (which accept any value,
-// including outside this range).
-const PRICE_BOUNDS: [number, number] = [0, Math.round(5000 / BGN_PER_EUR)]
-
-const SORT_OPTIONS: { value: string; label: string; ordering: string }[] = [
-  { value: 'default', label: 'По подразбиране', ordering: '' },
-  { value: 'name', label: 'Име (А-Я)', ordering: 'name' },
-  { value: 'price_asc', label: 'Цена: ниска към висока', ordering: 'price_bgn' },
-  { value: 'price_desc', label: 'Цена: висока към ниска', ordering: '-price_bgn' },
-  { value: 'brand', label: 'Марка (А-Я)', ordering: 'brand__name,name' },
-  { value: 'brand_desc', label: 'Марка (Я-А)', ordering: '-brand__name,name' },
-]
-
-/** Brands shown before "Покажи всички" in the sidebar. */
-const BRANDS_COLLAPSED = 8
 
 export function CategoryPage() {
   const { slug = '' } = useParams()
@@ -32,11 +17,8 @@ export function CategoryPage() {
   const sort = searchParams.get('sort') ?? 'default'
   const minParam = searchParams.get('min') ?? ''
   const maxParam = searchParams.get('max') ?? ''
-  const [minInput, setMinInput] = useState(minParam)
-  const [maxInput, setMaxInput] = useState(maxParam)
   const brandParam = searchParams.get('brand') ?? ''
   const selectedBrands = useMemo(() => brandParam.split(',').filter(Boolean), [brandParam])
-  const [showAllBrands, setShowAllBrands] = useState(false)
   const { data: brandFacets } = useCategoryBrands(slug)
 
   const { data: category, isLoading: categoryLoading, isError: categoryError } = useCategory(slug)
@@ -68,7 +50,7 @@ export function CategoryPage() {
     return found.node.children.length > 0 ? found.node.children : (found.parent?.children ?? [])
   }, [categoryTree, category])
 
-  const ordering = SORT_OPTIONS.find((option) => option.value === sort)?.ordering
+  const ordering = orderingFor(sort)
   const {
     data: products,
     isLoading: productsLoading,
@@ -76,7 +58,7 @@ export function CategoryPage() {
   } = useProducts({
     category__slug: slug,
     page,
-    ordering: ordering || undefined,
+    ordering,
     price_bgn__gte: minParam ? eurToBgn(minParam) : undefined,
     price_bgn__lte: maxParam ? eurToBgn(maxParam) : undefined,
     brands: brandParam || undefined,
@@ -88,12 +70,6 @@ export function CategoryPage() {
       : [...selectedBrands, brandSlug]
     updateFilters({ brand: next.join(',') })
   }
-
-  const visibleBrands =
-    brandFacets && !showAllBrands && brandFacets.length > BRANDS_COLLAPSED + 2
-      ? // Keep ticked brands visible even when collapsed.
-        brandFacets.filter((b, i) => i < BRANDS_COLLAPSED || selectedBrands.includes(b.slug))
-      : (brandFacets ?? [])
 
   function updateFilters(next: Record<string, string>) {
     const merged = new URLSearchParams(searchParams)
@@ -109,25 +85,6 @@ export function CategoryPage() {
     const merged = new URLSearchParams(searchParams)
     merged.set('page', String(page))
     setSearchParams(merged)
-  }
-
-  function handlePriceFilterSubmit(event: FormEvent) {
-    event.preventDefault()
-    updateFilters({ min: minInput, max: maxInput })
-  }
-
-  const sliderValue: [number, number] = [
-    minInput ? Number(minInput) : PRICE_BOUNDS[0],
-    maxInput ? Number(maxInput) : PRICE_BOUNDS[1],
-  ]
-
-  function handleSliderChange(next: [number, number]) {
-    setMinInput(String(next[0]))
-    setMaxInput(String(next[1]))
-  }
-
-  function commitSliderFilter() {
-    updateFilters({ min: minInput, max: maxInput })
   }
 
   if (categoryError) {
@@ -193,112 +150,25 @@ export function CategoryPage() {
           )}
 
           {brandFacets && brandFacets.length > 1 && (
-            <div className="mb-6">
-              <h2 className="mb-5 flex items-baseline justify-between border-b-2 border-slate-200 pb-2.5 text-lg font-medium text-slate-900">
-                Марка
-                {selectedBrands.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => updateFilters({ brand: '' })}
-                    className="text-xs font-medium text-primary hover:underline"
-                  >
-                    Изчисти
-                  </button>
-                )}
-              </h2>
-              <ul className="flex flex-col">
-                {visibleBrands.map((brand) => {
-                  const checked = selectedBrands.includes(brand.slug)
-                  return (
-                    <li key={brand.slug}>
-                      <label className="flex cursor-pointer items-center gap-2.5 py-1.5 text-sm font-medium text-slate-700 hover:text-primary">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleBrand(brand.slug)}
-                          className="h-4 w-4 accent-[var(--color-primary)]"
-                        />
-                        <span className={`flex-1 ${checked ? 'text-primary' : ''}`}>
-                          {brand.name}
-                        </span>
-                        <span className="text-xs text-slate-400 tabular-nums">{brand.count}</span>
-                      </label>
-                    </li>
-                  )
-                })}
-              </ul>
-              {brandFacets.length > BRANDS_COLLAPSED + 2 && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllBrands((v) => !v)}
-                  className="mt-1 text-sm font-medium text-primary hover:underline"
-                >
-                  {showAllBrands ? 'Покажи по-малко' : `Покажи всички (${brandFacets.length})`}
-                </button>
-              )}
-            </div>
+            <BrandFilter
+              facets={brandFacets}
+              selected={selectedBrands}
+              onToggle={toggleBrand}
+              onClear={() => updateFilters({ brand: '' })}
+            />
           )}
 
-          <div>
-            <h2 className="mb-5 border-b-2 border-slate-200 pb-2.5 text-lg font-medium text-slate-900">
-              Цена
-            </h2>
-            <form onSubmit={handlePriceFilterSubmit} className="flex flex-col gap-3">
-              <div className="flex items-end gap-2">
-                <label className="text-sm text-slate-700">
-                  От (€)
-                  <input
-                    type="number"
-                    min={0}
-                    value={minInput}
-                    onChange={(event) => setMinInput(event.target.value)}
-                    className="mt-1 block w-full rounded-ui border border-slate-300 px-2 py-1.5"
-                  />
-                </label>
-                <label className="text-sm text-slate-700">
-                  До (€)
-                  <input
-                    type="number"
-                    min={0}
-                    value={maxInput}
-                    onChange={(event) => setMaxInput(event.target.value)}
-                    className="mt-1 block w-full rounded-ui border border-slate-300 px-2 py-1.5"
-                  />
-                </label>
-              </div>
-              <div className="px-1" onMouseUp={commitSliderFilter} onTouchEnd={commitSliderFilter}>
-                <PriceRangeSlider
-                  bounds={PRICE_BOUNDS}
-                  value={sliderValue}
-                  onChange={handleSliderChange}
-                />
-              </div>
-              <button
-                type="submit"
-                className="rounded-ui bg-primary px-3 py-1.5 text-sm font-medium text-white"
-              >
-                Приложи
-              </button>
-            </form>
-          </div>
+          <PriceFilter
+            key={`${minParam}-${maxParam}`}
+            min={minParam}
+            max={maxParam}
+            onApply={(min, max) => updateFilters({ min, max })}
+          />
         </aside>
 
         <div className="min-w-0 flex-1">
           <div className="mb-4 flex justify-end">
-            <label className="text-sm text-slate-700">
-              Подреди по
-              <select
-                value={sort}
-                onChange={(event) => updateFilters({ sort: event.target.value })}
-                className="ml-2 rounded-ui border border-slate-300 px-2 py-1.5"
-              >
-                {SORT_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <SortSelect value={sort} onChange={(value) => updateFilters({ sort: value })} />
           </div>
 
           {productsLoading && <p className="text-slate-500">Зареждане на продукти...</p>}
@@ -316,24 +186,7 @@ export function CategoryPage() {
             </div>
           )}
 
-          {totalPages > 1 && (
-            <div className="mt-8 flex justify-center gap-2">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => goToPage(p)}
-                  className={
-                    p === page
-                      ? 'rounded-ui bg-primary px-3 py-1 text-sm text-white'
-                      : 'rounded-ui border border-slate-300 px-3 py-1 text-sm text-slate-700'
-                  }
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-          )}
+          <Pagination page={page} totalPages={totalPages} onPage={goToPage} />
         </div>
       </div>
     </div>
