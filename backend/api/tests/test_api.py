@@ -1974,6 +1974,59 @@ def test_search_matches_brand_and_category(api_client):
 
 
 @pytest.mark.django_db
+def test_search_sort_filters_facets_and_pages(api_client):
+    from brands.models import Brand
+
+    acme = Brand.objects.create(external_id="b1", slug="acme", name="Acme")
+    zeta = Brand.objects.create(external_id="b2", slug="zeta", name="Zeta")
+    pens = Category.objects.create(external_id="c1", slug="pens", name="Химикалки")
+    gel = Category.objects.create(
+        external_id="c2", slug="gel", name="Гел химикалки", parent=pens
+    )
+    other = Category.objects.create(external_id="c3", slug="other", name="Други")
+    for i, (brand, cat, price) in enumerate(
+        [(acme, pens, "3.00"), (zeta, gel, "1.00"), (acme, other, "9.00")]
+    ):
+        Product.objects.create(
+            external_id=f"p{i}",
+            slug=f"pen-{i}",
+            name=f"Химикалка {i}",
+            brand=brand,
+            category=cat,
+            price_bgn=Decimal(price),
+        )
+
+    def slugs(**params):
+        resp = api_client.get("/api/v1/search/", {"q": "Химикалка", **params})
+        assert resp.status_code == 200
+        return [r["slug"] for r in resp.data["results"]], resp.data
+
+    found, data = slugs(ordering="price_bgn")
+    assert found == ["pen-1", "pen-0", "pen-2"]
+    assert data["count"] == 3
+    assert {b["slug"]: b["count"] for b in data["brands"]} == {"acme": 2, "zeta": 1}
+    assert {c["slug"] for c in data["categories"]} == {"pens", "gel", "other"}
+
+    assert slugs(ordering="-price_bgn")[0] == ["pen-2", "pen-0", "pen-1"]
+    assert slugs(ordering="-brand__name,name")[0] == ["pen-1", "pen-0", "pen-2"]
+
+    # Brand filter; the brand facet still lists every brand.
+    found, data = slugs(brands="acme", ordering="price_bgn")
+    assert found == ["pen-0", "pen-2"]
+    assert {b["slug"] for b in data["brands"]} == {"acme", "zeta"}
+
+    # Category includes its subcategories.
+    assert set(slugs(category="pens")[0]) == {"pen-0", "pen-1"}
+    assert slugs(category="missing")[0] == []
+
+    assert slugs(price_bgn__gte="2", price_bgn__lte="5")[0] == ["pen-0"]
+    assert slugs(price_bgn__gte="nonsense")[1]["count"] == 3
+
+    found, data = slugs(page="2")
+    assert found == [] and data["count"] == 3 and data["page"] == 2
+
+
+@pytest.mark.django_db
 def test_order_flow(api_client, admin_user, sample_product):
     resp = api_client.post(
         "/api/v1/orders/",

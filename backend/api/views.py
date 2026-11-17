@@ -583,13 +583,37 @@ class ContactView(APIView):
         return Response({"detail": "Съобщението е изпратено успешно."})
 
 
+# Search page sort options -> order_by(). "relevance" (the default) keeps
+# the ranking below; the others match the category page's sort dropdown.
+SEARCH_ORDERINGS = {
+    "name": ("name",),
+    "-name": ("-name",),
+    "price_bgn": ("price_bgn", "name"),
+    "-price_bgn": ("-price_bgn", "name"),
+    "brand__name": ("brand__name", "name"),
+    "-brand__name": ("-brand__name", "name"),
+}
+SEARCH_PAGE_SIZE = 24
+
+
+def _decimal_param(value):
+    try:
+        return Decimal(str(value).replace(",", "."))
+    except (InvalidOperation, ValueError):
+        return None
+
+
 class SearchView(APIView):
+    """Product search. Besides `q`, takes the same filters as the category
+    page: `ordering`, `price_bgn__gte` / `price_bgn__lte`, `brands`
+    (comma-separated slugs), `category` (slug, incl. its subcategories) and
+    `page`. Returns `count` and brand/category facets for the filter
+    sidebar; each facet ignores its own filter, so ticking one brand keeps
+    the others listed."""
+
     permission_classes = [AllowAny]
 
-    def get(self, request):
-        q = (
-            request.query_params.get("q") or request.query_params.get("search") or ""
-        ).strip()
+    def _matches(self, q):
         qs = (
             Product.objects.select_related("category", "brand")
             .prefetch_related("images")
@@ -636,28 +660,104 @@ class SearchView(APIView):
                     output_field=IntegerField(),
                 )
             ).order_by("-relevance", "name")
-        page = self.paginate(qs[:100])
+        return qs
+
+    def get(self, request):
+        params = request.query_params
+        q = (params.get("q") or params.get("search") or "").strip()
+        matches = self._matches(q)
+
+        brand_slugs = [s for s in params.get("brands", "").split(",") if s.strip()]
+        brand_q = Q(brand__slug__in=brand_slugs) if brand_slugs else Q()
+
+        category_q = Q()
+        category_slug = params.get("category", "").strip()
+        if category_slug:
+            category = Category.objects.filter(slug=category_slug).first()
+            category_q = (
+                Q(category_id__in=get_descendant_category_ids(category))
+                if category
+                else Q(pk__in=[])
+            )
+
+        price_q = Q()
+        low = _decimal_param(params.get("price_bgn__gte", ""))
+        high = _decimal_param(params.get("price_bgn__lte", ""))
+        if params.get("price_bgn__gte") and low is not None:
+            price_q &= Q(price_bgn__gte=low)
+        if params.get("price_bgn__lte") and high is not None:
+            price_q &= Q(price_bgn__lte=high)
+
+        qs = matches.filter(brand_q & category_q & price_q)
+        # "brand__name,name" (the category page's form) -> its first field.
+        ordering = SEARCH_ORDERINGS.get(params.get("ordering", "").split(",")[0])
+        if ordering:
+            qs = qs.order_by(*ordering)
+
+        count = qs.count()
+        try:
+            page_number = max(1, int(params.get("page", "1")))
+        except ValueError:
+            page_number = 1
+        offset = (page_number - 1) * SEARCH_PAGE_SIZE
+        page = list(qs[offset : offset + SEARCH_PAGE_SIZE])
+
+        brand_rows = (
+            matches.filter(category_q & price_q, brand__isnull=False)
+            .order_by()
+            .values("brand__slug", "brand__name")
+            .annotate(count=Count("id"))
+            .order_by("brand__name")
+        )
+        category_rows = (
+            matches.filter(brand_q & price_q, category__isnull=False)
+            .order_by()
+            .values("category__slug", "category__name")
+            .annotate(count=Count("id"))
+            .order_by("-count", "category__name")[:15]
+        )
+
         active_promotions = get_active_promotions()
+        pricing_user = get_pricing_user(request)
         serializer = ProductListSerializer(
             page,
             many=True,
             context={
                 "request": request,
-                "pricing_user": get_pricing_user(request),
+                "pricing_user": pricing_user,
                 "active_promotions": active_promotions,
                 "category_descendant_map": build_promo_category_descendant_map(
                     active_promotions
                 ),
-                "user_overrides": get_user_overrides(get_pricing_user(request)),
-                "favorite_product_ids": get_favorited_product_ids(
-                    get_pricing_user(request)
-                ),
+                "user_overrides": get_user_overrides(pricing_user),
+                "favorite_product_ids": get_favorited_product_ids(pricing_user),
             },
         )
-        return Response({"results": serializer.data, "query": q})
-
-    def paginate(self, qs):
-        return list(qs[:24])
+        return Response(
+            {
+                "results": serializer.data,
+                "query": q,
+                "count": count,
+                "page": page_number,
+                "page_size": SEARCH_PAGE_SIZE,
+                "brands": [
+                    {
+                        "slug": row["brand__slug"],
+                        "name": row["brand__name"],
+                        "count": row["count"],
+                    }
+                    for row in brand_rows
+                ],
+                "categories": [
+                    {
+                        "slug": row["category__slug"],
+                        "name": row["category__name"],
+                        "count": row["count"],
+                    }
+                    for row in category_rows
+                ],
+            }
+        )
 
 
 def _invoice_pdf_response(order: Order, *, include_profit: bool = False):

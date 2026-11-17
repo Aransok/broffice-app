@@ -99,9 +99,22 @@ export interface Menu {
   items: MenuItem[]
 }
 
+export interface SearchFacet {
+  slug: string
+  name: string
+  count: number
+}
+
 export interface SearchResponse {
   results: ProductListItem[]
   query: string
+  /** All matches after filters (results is one page of 24). */
+  count?: number
+  page?: number
+  page_size?: number
+  /** Brands / categories among the matches, for the filter sidebar. */
+  brands?: SearchFacet[]
+  categories?: SearchFacet[]
 }
 
 export interface Address {
