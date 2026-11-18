@@ -150,6 +150,9 @@ export function CartDrawer() {
           {items.map((item) => {
             const image = getImageUrl(item.image ?? '')
             const price = item.price ? displayPrice(bgnToEur(item.price)) : null
+            const lineTotal = item.price
+              ? displayPrice(bgnToEur(String(Number(item.price) * item.quantity)))
+              : null
             return (
               <li key={item.productId} className="flex items-center gap-3 px-5 py-3">
                 <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100">
@@ -172,7 +175,14 @@ export function CartDrawer() {
                       >
                         −
                       </button>
-                      <span className="min-w-6 text-center font-semibold">{item.quantity}</span>
+                      <QuantityInput
+                        // Remount on outside changes (−/+, other tab) so the
+                        // box shows the new number.
+                        key={item.quantity}
+                        quantity={item.quantity}
+                        label={`Брой ${item.name}`}
+                        onCommit={(quantity) => setQuantity(item.productId, quantity)}
+                      />
                       <button
                         type="button"
                         aria-label="Увеличи"
@@ -191,7 +201,12 @@ export function CartDrawer() {
                     </button>
                   </span>
                 </span>
-                <span className="shrink-0 text-sm font-extrabold">{price ? `€${price}` : ''}</span>
+                <span className="flex shrink-0 flex-col items-end">
+                  <span className="text-sm font-extrabold">{lineTotal ? `€${lineTotal}` : ''}</span>
+                  {price && item.quantity > 1 && (
+                    <span className="text-[11px] text-slate-500">€{price} / бр.</span>
+                  )}
+                </span>
               </li>
             )
           })}
@@ -221,5 +236,47 @@ export function CartDrawer() {
         </footer>
       </aside>
     </>
+  )
+}
+
+/** Typeable quantity between the −/+ buttons. Saves on Enter or when the
+ * box loses focus, not on every keystroke (each save is a server call for
+ * logged-in customers), and lets the box be empty while typing. Anything
+ * that isn't a whole number of 1 or more puts the old quantity back. */
+function QuantityInput({
+  quantity,
+  label,
+  onCommit,
+}: {
+  quantity: number
+  label: string
+  onCommit: (quantity: number) => void
+}) {
+  const [draft, setDraft] = useState(String(quantity))
+
+  function commit() {
+    const next = Number(draft)
+    if (Number.isInteger(next) && next >= 1) {
+      if (next !== quantity) onCommit(next)
+    } else {
+      setDraft(String(quantity))
+    }
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      aria-label={label}
+      value={draft}
+      onChange={(event) => setDraft(event.target.value.replace(/[^0-9]/g, ''))}
+      onFocus={(event) => event.target.select()}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur()
+      }}
+      className="w-12 bg-transparent text-center font-semibold focus:outline-none"
+    />
   )
 }
