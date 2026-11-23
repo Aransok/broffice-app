@@ -4,6 +4,7 @@ import { Seo } from '../components/Seo'
 import { useCart } from '../context/CartContext'
 import { useVat } from '../context/VatContext'
 import { bgnToEur } from '../utils/currency'
+import { InclVatLine } from '../components/product/InclVatLine'
 
 export function CartPage() {
   const { items, totalPrice, removeItem, setQuantity } = useCart()
@@ -63,6 +64,12 @@ export function CartPage() {
                       return `€${lineBgn ? bgnToEur(lineBgn) : '-'}`
                     })()
                   : '-'}
+                {item.price && (
+                  <InclVatLine
+                    eur={bgnToEur(String(Number(item.price) * item.quantity))}
+                    className="text-xs font-normal text-slate-500"
+                  />
+                )}
               </div>
               <button
                 type="button"
@@ -79,6 +86,10 @@ export function CartPage() {
       <div className="mt-6 flex items-center justify-between">
         <span className="text-lg font-semibold text-slate-900">
           Общо: €{bgnToEur(displayPrice(totalPrice.toFixed(2)) ?? '')}
+          <InclVatLine
+            eur={bgnToEur(totalPrice.toFixed(2))}
+            className="text-sm font-normal text-slate-500"
+          />
         </span>
         <Link
           to="/checkout"

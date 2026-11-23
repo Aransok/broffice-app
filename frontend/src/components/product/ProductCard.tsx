@@ -8,6 +8,8 @@ import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import { useVat } from '../../context/VatContext'
 import { announceCartAdd } from '../../lib/cartEvents'
+import { InclVatLine } from './InclVatLine'
+import { NameWithBrand } from './NameWithBrand'
 import { computeProfitBgn, formatEur } from '../../utils/currency'
 
 export function ProductCard({ product }: { product: ProductListItem }) {
@@ -95,16 +97,9 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         </div>
       </Link>
       <div className="flex flex-1 flex-col gap-1 p-3">
-        {/* Brand left, item number top-right on its own row, so the
-         * number never eats into the (2-line) product name. */}
-        {(product.brand_name || product.supplier_id || product.item_number) && (
-          <div className="flex items-start justify-between gap-2 text-xs">
-            <span className="min-w-0 truncate text-slate-500">{product.brand_name}</span>
-            {(product.supplier_id || product.item_number) && (
-              <span className="shrink-0 whitespace-nowrap font-medium text-slate-400 tabular-nums">
-                №{product.supplier_id || product.item_number}
-              </span>
-            )}
+        {(product.supplier_id || product.item_number) && (
+          <div className="text-right text-xs font-medium text-slate-400 tabular-nums">
+            №{product.supplier_id || product.item_number}
           </div>
         )}
         <Link to={`/product/${product.slug}`}>
@@ -112,7 +107,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
             className="line-clamp-2 flex-1 text-sm text-slate-800 hover:text-primary"
             title={product.name}
           >
-            {product.name}
+            <NameWithBrand name={product.name} brand={product.brand_name} />
           </h3>
         </Link>
 
@@ -127,6 +122,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
           >
             {currentEur ? `€${currentEur}` : 'Цена при запитване'}
           </div>
+          <InclVatLine eur={raw.currentEur} />
           {/* admin_price only ever comes back non-null when the viewer is an
            * admin (see ProductListSerializer.get_admin_price on the backend)
            * — no separate frontend role check needed, its mere presence is

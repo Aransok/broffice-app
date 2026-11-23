@@ -12,6 +12,11 @@ interface VatContextValue {
    * conversion happens, so every listing/cart/checkout view stays consistent
    * (spec #9) instead of each page doing its own VAT math. */
   displayPrice: (base: string | null | undefined) => string | null
+  /** The same base price always converted to incl. VAT, whatever the
+   * toggle says. Used for the "с ДДС" line shown under every price while
+   * the visitor browses without VAT, so nobody orders thinking the
+   * without-VAT number is what they will pay. */
+  inclVatPrice: (base: string | null | undefined) => string | null
 }
 
 const VatContext = createContext<VatContextValue | null>(null)
@@ -31,20 +36,26 @@ export function VatProvider({ children }: { children: ReactNode }) {
   const vatRatePercent = config ? Number(config.vat_rate_percent) : 20
   const baseIncludesVat = config?.prices_include_vat ?? false
 
-  const displayPrice = useMemo(() => {
-    return (base: string | null | undefined) => {
+  const { displayPrice, inclVatPrice } = useMemo(() => {
+    const convert = (base: string | null | undefined, inclVat: boolean) => {
       if (base === null || base === undefined || base === '') return null
       const value = Number(base)
       if (Number.isNaN(value)) return null
-      if (showInclVat === baseIncludesVat) return value.toFixed(2)
+      if (inclVat === baseIncludesVat) return value.toFixed(2)
       const rate = vatRatePercent / 100
-      const converted = showInclVat ? value * (1 + rate) : value / (1 + rate)
+      const converted = inclVat ? value * (1 + rate) : value / (1 + rate)
       return converted.toFixed(2)
+    }
+    return {
+      displayPrice: (base: string | null | undefined) => convert(base, showInclVat),
+      inclVatPrice: (base: string | null | undefined) => convert(base, true),
     }
   }, [showInclVat, baseIncludesVat, vatRatePercent])
 
   return (
-    <VatContext.Provider value={{ showInclVat, setShowInclVat, vatRatePercent, displayPrice }}>
+    <VatContext.Provider
+      value={{ showInclVat, setShowInclVat, vatRatePercent, displayPrice, inclVatPrice }}
+    >
       {children}
     </VatContext.Provider>
   )

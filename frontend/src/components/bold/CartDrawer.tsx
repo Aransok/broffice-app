@@ -5,6 +5,7 @@ import { useCart } from '../../context/CartContext'
 import { useVat } from '../../context/VatContext'
 import { type CartAddDetail, onCartAdd, onCartOpen } from '../../lib/cartEvents'
 import { bgnToEur } from '../../utils/currency'
+import { InclVatLine } from '../product/InclVatLine'
 
 /** Sends a copy of the product image flying into the header cart icon. */
 function flyToCart(source: HTMLElement | null | undefined) {
@@ -203,6 +204,12 @@ export function CartDrawer() {
                 </span>
                 <span className="flex shrink-0 flex-col items-end">
                   <span className="text-sm font-extrabold">{lineTotal ? `€${lineTotal}` : ''}</span>
+                  {item.price && (
+                    <InclVatLine
+                      eur={bgnToEur(String(Number(item.price) * item.quantity))}
+                      className="text-[11px] text-slate-500"
+                    />
+                  )}
                   {price && item.quantity > 1 && (
                     <span className="text-[11px] text-slate-500">€{price} / бр.</span>
                   )}
@@ -215,7 +222,10 @@ export function CartDrawer() {
         <footer className="border-t border-slate-200 p-5">
           <div className="mb-3 flex items-baseline justify-between">
             <span className="text-sm font-semibold text-slate-500">Общо</span>
-            <span className="display text-2xl">€{total ?? '0.00'}</span>
+            <span className="text-right">
+              <span className="display block text-2xl">€{total ?? '0.00'}</span>
+              <InclVatLine eur={bgnToEur(String(totalPrice))} className="text-sm text-slate-500" />
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Link

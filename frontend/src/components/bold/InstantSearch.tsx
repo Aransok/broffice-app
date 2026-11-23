@@ -5,6 +5,8 @@ import { getImageUrl } from '../../api/media'
 import { getDisplayPrice } from '../../api/pricing'
 import { fetchSearch } from '../../api/search'
 import { useVat } from '../../context/VatContext'
+import { InclVatLine } from '../product/InclVatLine'
+import { NameWithBrand } from '../product/NameWithBrand'
 
 function useDebounced<T>(value: T, delay = 220) {
   const [debounced, setDebounced] = useState(value)
@@ -118,16 +120,21 @@ export function InstantSearch({
                     )}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">{product.name}</span>
-                    <span className="block text-xs text-white/60">
-                      {number && <span className="font-mono">№{number}</span>}
-                      {product.brand_name && <span> · {product.brand_name}</span>}
+                    <span className="block truncate text-sm font-semibold">
+                      <NameWithBrand name={product.name} brand={product.brand_name} />
                     </span>
+                    {number && (
+                      <span className="block font-mono text-xs text-white/60">№{number}</span>
+                    )}
                   </span>
                   <span
                     className={`shrink-0 text-sm font-extrabold ${raw.onSale ? 'text-[#ffb27a]' : ''}`}
                   >
                     {price ? `€${price}` : ''}
+                    <InclVatLine
+                      eur={raw.currentEur}
+                      className="text-[11px] font-normal text-white/60"
+                    />
                   </span>
                 </Link>
               </li>

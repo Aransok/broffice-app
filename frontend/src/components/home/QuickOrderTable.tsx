@@ -21,6 +21,8 @@ import { announceCartAdd } from '../../lib/cartEvents'
 import { bgnToEur } from '../../utils/currency'
 import { type QuickLine, parseQuickOrder } from './parseQuickOrder'
 import { productNumber } from './QuickOrderBox'
+import { InclVatLine } from '../product/InclVatLine'
+import { NameWithBrand } from '../product/NameWithBrand'
 
 function useDebounced<T>(value: T, delay = 350) {
   const [debounced, setDebounced] = useState(value)
@@ -439,12 +441,16 @@ export function QuickOrderTable({
                             className="block truncate font-medium text-slate-900 hover:text-primary"
                             title={product.name}
                           >
-                            {product.name}
+                            <NameWithBrand name={product.name} brand={product.brand_name} />
                           </Link>
                           <span className="block truncate text-xs text-slate-500">
                             №{productNumber(product)} ·{' '}
                             {price ? `${line.quantity} × €${price}` : 'цена при запитване'}
                           </span>
+                          <InclVatLine
+                            eur={raw?.currentEur}
+                            className="truncate text-xs text-slate-500"
+                          />
                         </div>
                       </div>
                     ) : line.pending ? (
