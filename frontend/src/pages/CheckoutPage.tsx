@@ -1290,7 +1290,7 @@ export function CheckoutPage() {
           </div>
           {!showInclVat && (
             <div className="mt-1 flex justify-between text-sm font-semibold text-slate-700">
-              <span>Общо с ДДС (сума по фактура)</span>
+              <span>Общо с ДДС</span>
               <span>
                 {(() => {
                   const productsBgn = inclVatPrice((totalPrice - couponPreviewDiscount).toFixed(2))
