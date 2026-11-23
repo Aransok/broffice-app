@@ -9,6 +9,8 @@ import { useCart } from '../../context/CartContext'
 import { useVat } from '../../context/VatContext'
 import { announceCartAdd } from '../../lib/cartEvents'
 import { parseQuickOrder } from './parseQuickOrder'
+import { InclVatLine } from '../product/InclVatLine'
+import { NameWithBrand } from '../product/NameWithBrand'
 
 function useDebounced<T>(value: T, delay = 350) {
   const [debounced, setDebounced] = useState(value)
@@ -144,17 +146,17 @@ export function QuickOrderBox({
                     <span className="font-mono font-semibold text-slate-700">
                       №{productNumber(product)}
                     </span>
-                    {product.brand_name && <span className="truncate">{product.brand_name}</span>}
                   </div>
                   <Link
                     to={`/product/${product.slug}`}
                     className="line-clamp-1 font-medium text-slate-900 hover:text-primary"
                     title={product.name}
                   >
-                    {product.name}
+                    <NameWithBrand name={product.name} brand={product.brand_name} />
                   </Link>
                   <div className="text-xs text-slate-500">
                     {line.quantity} × {price ? `€${price}` : 'цена при запитване'}
+                    <InclVatLine eur={raw.currentEur} inline className="text-slate-500" />
                   </div>
                 </div>
                 <button

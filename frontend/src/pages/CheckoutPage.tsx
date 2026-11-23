@@ -592,7 +592,7 @@ const COURIERS: {
 
 export function CheckoutPage() {
   const { items, totalPrice, clear } = useCart()
-  const { displayPrice, showInclVat } = useVat()
+  const { displayPrice, inclVatPrice, showInclVat } = useVat()
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -1288,6 +1288,18 @@ export function CheckoutPage() {
               })()}
             </span>
           </div>
+          {!showInclVat && (
+            <div className="mt-1 flex justify-between text-sm font-semibold text-slate-700">
+              <span>Общо с ДДС</span>
+              <span>
+                {(() => {
+                  const productsBgn = inclVatPrice((totalPrice - couponPreviewDiscount).toFixed(2))
+                  const totalBgn = (Number(productsBgn ?? 0) + Number(shippingCost ?? 0)).toFixed(2)
+                  return `€${bgnToEur(totalBgn)}`
+                })()}
+              </span>
+            </div>
+          )}
           <p className="mt-1 text-xs text-slate-400">
             {showInclVat ? 'Поръчвате с цени с ДДС. ' : 'Поръчвате с цени без ДДС. '}
             {PIGEON_EXPRESS_METHODS.includes(shippingMethod)

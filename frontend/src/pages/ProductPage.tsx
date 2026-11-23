@@ -10,6 +10,7 @@ import { Seo } from '../components/Seo'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { useVat } from '../context/VatContext'
+import { InclVatLine } from '../components/product/InclVatLine'
 
 export function ProductPage() {
   const { slug = '' } = useParams()
@@ -142,6 +143,7 @@ export function ProductPage() {
               {currentEur ? `€${currentEur}` : 'Цена при запитване'}
             </span>
           </div>
+          <InclVatLine eur={raw.currentEur} className="mt-0.5 text-sm text-slate-500" />
           {product.pack_quantity && product.pack_quantity > 1 && (
             <p className="mt-1 text-sm text-slate-500">Опаковка: {product.pack_quantity} бр.</p>
           )}

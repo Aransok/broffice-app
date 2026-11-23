@@ -10,6 +10,7 @@ import { useVat } from '../../context/VatContext'
 import { Reveal } from '../bold/motion'
 import { ProductCard } from '../product/ProductCard'
 import { QuickOrderBox } from './QuickOrderBox'
+import { InclVatLine } from '../product/InclVatLine'
 
 /** Top of the home page in the "BRoffice Paper" design: a magazine cover
  * (vertical kicker, serif headline, one large product photo), the quick
@@ -112,7 +113,12 @@ function Cover() {
                   {featured.name}
                 </span>
               </span>
-              {price && <span className="display shrink-0 text-xl text-slate-900">€{price}</span>}
+              {price && (
+                <span className="shrink-0 text-right">
+                  <span className="display block text-xl text-slate-900">€{price}</span>
+                  <InclVatLine eur={getDisplayPrice(featured).currentEur} />
+                </span>
+              )}
             </span>
           )}
         </Link>
