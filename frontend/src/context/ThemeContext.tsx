@@ -19,12 +19,19 @@ export type DesignPreset =
   | 'bold_sky'
   | 'bold_sunset'
   | 'bold_mint'
+  | 'bold_christmas'
   | 'paper'
 
 /** Designs built on Bold's layout (hero, quick order, marquee, offset-shadow
  * cards, phone bar): same components, each with its own colors. They share
  * every `[data-family='bold']` rule in index.css. */
-export const BOLD_FAMILY: DesignPreset[] = ['bold', 'bold_sky', 'bold_sunset', 'bold_mint']
+export const BOLD_FAMILY: DesignPreset[] = [
+  'bold',
+  'bold_sky',
+  'bold_sunset',
+  'bold_mint',
+  'bold_christmas',
+]
 
 export function isBoldFamily(design: DesignPreset) {
   return BOLD_FAMILY.includes(design)
@@ -81,6 +88,14 @@ export const PRESET_OPTIONS: PresetOption[] = [
     description:
       'Като Bold, в свежо зелено: ментов фон, тъмнозелена лента и герой, лаймови бутони.',
     swatch: ['#eff6f2', '#ffffff', '#0d3b33', '#b8f03c'],
+    radius: 18,
+  },
+  {
+    value: 'bold_christmas',
+    label: 'BRoffice Bold Коледа',
+    description:
+      'Като Bold, за празниците: падащ сняг, борово зелено и коледно червено, зимна шапка на логото и чимшир върху продуктовите карти.',
+    swatch: ['#f3f0ea', '#ffffff', '#12452f', '#d42a35'],
     radius: 18,
   },
   {
@@ -163,6 +178,7 @@ const ALL_DESIGNS: DesignPreset[] = [
   'bold_sky',
   'bold_sunset',
   'bold_mint',
+  'bold_christmas',
   'paper',
 ]
 
@@ -328,7 +344,10 @@ export function resolveFeature(
 ): boolean {
   const option = FEATURES.find((f) => f.key === key)
   if (!option || (option.designs && !option.designs.includes(design))) return false
-  const value = overrides[design]?.[key]
+  // A seasonal design starts from whatever the owner switched for Bold
+  // itself, so turning it on for the holidays keeps the live site's blocks.
+  const value =
+    overrides[design]?.[key] ?? (design === 'bold_christmas' ? overrides.bold?.[key] : undefined)
   return value ?? option.defaultOn.includes(design)
 }
 

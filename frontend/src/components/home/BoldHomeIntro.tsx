@@ -5,6 +5,7 @@ import type { ProductListItem } from '../../api/types'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { Aurora } from '../bold/Aurora'
+import { Snowfall } from '../bold/Snowfall'
 import { Reveal } from '../bold/motion'
 import { ProductCard } from '../product/ProductCard'
 import { QuickOrderTable } from './QuickOrderTable'
@@ -27,7 +28,7 @@ export function BoldHomeIntro() {
 
 function Hero() {
   const { user } = useAuth()
-  const { isEnabled } = useTheme()
+  const { isEnabled, preset } = useTheme()
   const quickOrder = isEnabled('quick_order')
   return (
     <section className="grid gap-5 lg:grid-cols-12">
@@ -37,6 +38,7 @@ function Hero() {
         }`}
       >
         <Aurora />
+        {preset === 'bold_christmas' && <Snowfall variant="hero" />}
         <div
           aria-hidden="true"
           className="absolute inset-0 -z-0 opacity-[0.07]"
@@ -59,7 +61,10 @@ function Hero() {
             <span className="bold-word block" style={{ animationDelay: '0ms' }}>
               Офисът.
             </span>
-            <span className="bold-word block text-[var(--bold-hero-accent)]" style={{ animationDelay: '140ms' }}>
+            <span
+              className="bold-word block text-[var(--bold-hero-accent)]"
+              style={{ animationDelay: '140ms' }}
+            >
               Зареден.
             </span>
           </h1>

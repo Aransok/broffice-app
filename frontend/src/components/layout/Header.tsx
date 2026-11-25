@@ -107,7 +107,35 @@ export function Header() {
             }
           }}
         >
-          <img src={logoSrc} alt="BRoffice" className="h-12 w-auto" />
+          {preset === 'bold_christmas' ? (
+            <span className="xmas-logo relative inline-block">
+              <img src={logoSrc} alt="BRoffice" className="h-12 w-auto" />
+              <SantaHat />
+              <span
+                aria-hidden="true"
+                className="xmas-logo-flake"
+                style={{ left: '62%', top: '-6px' }}
+              >
+                ❄
+              </span>
+              <span
+                aria-hidden="true"
+                className="xmas-logo-flake"
+                style={{ left: '88%', top: '2px' }}
+              >
+                ❄
+              </span>
+              <span
+                aria-hidden="true"
+                className="xmas-logo-flake"
+                style={{ left: '40%', top: '40px' }}
+              >
+                ❄
+              </span>
+            </span>
+          ) : (
+            <img src={logoSrc} alt="BRoffice" className="h-12 w-auto" />
+          )}
         </Link>
         <div ref={searchWrapRef} className="relative min-w-[200px] flex-1">
           <form onSubmit={handleSearchSubmit} className="site-search flex">
@@ -264,5 +292,32 @@ export function Header() {
         </div>
       </nav>
     </header>
+  )
+}
+
+/** Santa hat sitting on the "B" of the logo (Bold Коледа design only). */
+function SantaHat() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 64 50" className="xmas-logo-hat">
+      <path
+        d="M6 38 C 9 20 22 6 38 6 C 48 6 55 12 58 22 L 52.5 25 C 50 19 46 16.5 42 17 C 43 24 45 31 47 38 Z"
+        fill="#d42a35"
+      />
+      <path
+        d="M38 6 C 48 6 55 12 58 22 L 52.5 25 C 51 20 48 17 44 16 C 44 11 42 8 38 6 Z"
+        fill="#a51b26"
+      />
+      <rect
+        x="2"
+        y="34"
+        width="50"
+        height="12"
+        rx="6"
+        fill="#ffffff"
+        stroke="#e4e8ee"
+        strokeWidth="1"
+      />
+      <circle cx="56" cy="26" r="6" fill="#ffffff" stroke="#e4e8ee" strokeWidth="1" />
+    </svg>
   )
 }

@@ -17,6 +17,7 @@ STOREFRONT_DESIGN_CHOICES = [
     ("bold_sky", "BRoffice Bold Sky"),
     ("bold_sunset", "BRoffice Bold Sunset"),
     ("bold_mint", "BRoffice Bold Mint"),
+    ("bold_christmas", "BRoffice Bold Коледа"),
     ("paper", "BRoffice Paper"),
 ]
 DEFAULT_STOREFRONT_DESIGN = "classic"

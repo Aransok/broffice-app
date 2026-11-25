@@ -3,15 +3,17 @@ import { CookieConsentBanner } from '../components/CookieConsentBanner'
 import { DesignPreviewBanner } from '../components/DesignPreviewBanner'
 import { PreviewBanner } from '../components/PreviewBanner'
 import { CartDrawer } from '../components/bold/CartDrawer'
+import { Snowfall } from '../components/bold/Snowfall'
 import { BoldMobileBar } from '../components/layout/BoldMobileBar'
 import { Footer } from '../components/layout/Footer'
 import { Header } from '../components/layout/Header'
 import { useTheme } from '../context/ThemeContext'
 
 export function RootLayout() {
-  const { isEnabled } = useTheme()
+  const { isEnabled, preset } = useTheme()
   return (
     <div className="flex min-h-svh flex-col">
+      {preset === 'bold_christmas' && <Snowfall />}
       <DesignPreviewBanner />
       <PreviewBanner />
       <Header />
