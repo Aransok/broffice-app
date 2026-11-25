@@ -22,15 +22,16 @@ const SHOW_UNTIL = new Date('2027-01-07T00:00:00')
 export function ChristmasGift() {
   const { user, isLoading } = useAuth()
   const { liveDesign, previewDesign } = useTheme()
-  const [visible, setVisible] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
   const [open, setOpen] = useState(false)
 
-  useEffect(() => {
-    if (isLoading || !user?.is_admin_portal) return
-    if (new Date() >= SHOW_UNTIL) return
-    if (previewDesign === DESIGN || user.christmas_gift_opened) return
-    setVisible(true)
-  }, [isLoading, user, liveDesign, previewDesign])
+  const visible =
+    !isLoading &&
+    Boolean(user?.is_admin_portal) &&
+    !user?.christmas_gift_opened &&
+    previewDesign !== DESIGN &&
+    new Date() < SHOW_UNTIL &&
+    !dismissed
 
   useEffect(() => {
     if (!visible) return
@@ -52,7 +53,7 @@ export function ChristmasGift() {
 
   function close() {
     void markOpened()
-    setVisible(false)
+    setDismissed(true)
   }
 
   async function goToPreview() {
