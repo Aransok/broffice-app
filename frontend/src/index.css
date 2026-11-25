@@ -1415,3 +1415,156 @@ html[data-theme='paper'] body {
     animation: none;
   }
 }
+
+/* 9. "Подарък от Доан": the one-time Christmas gift for admin accounts
+ * (components/ChristmasGift.tsx). A wrapped box that wobbles, opens on
+ * click, and the Christmas design rises out of it. Works on any design. */
+.gift-overlay {
+  background:
+    radial-gradient(ellipse at 50% 30%, rgb(165 27 38 / 0.55), transparent 60%),
+    linear-gradient(160deg, #0d3322 0%, #071a12 100%);
+  animation: gift-fade 0.4s ease both;
+}
+.gift-title {
+  font-family: 'Unbounded', 'Manrope', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #f5c451;
+  text-shadow: 0 2px 18px rgb(245 196 81 / 0.35);
+}
+.gift {
+  position: relative;
+  margin-top: 1.25rem;
+  width: 260px;
+  height: 400px;
+}
+.gift-box {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 200px;
+  height: 210px;
+  margin-left: -100px;
+  cursor: pointer;
+  z-index: 2;
+  animation: gift-wobble 2.4s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+.gift-box:focus-visible {
+  outline: 3px solid #f5c451;
+  outline-offset: 6px;
+  border-radius: 12px;
+}
+.gift-body {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 200px;
+  height: 150px;
+  border-radius: 10px;
+  background:
+    linear-gradient(90deg, transparent 43%, #f5c451 43%, #f5c451 57%, transparent 57%),
+    linear-gradient(180deg, #d42a35 0%, #a51b26 100%);
+  box-shadow:
+    inset 0 -14px 24px rgb(0 0 0 / 0.18),
+    0 22px 40px rgb(0 0 0 / 0.45);
+}
+.gift-lid {
+  position: absolute;
+  bottom: 140px;
+  left: -10px;
+  width: 220px;
+  height: 46px;
+  border-radius: 10px;
+  z-index: 1;
+  background:
+    linear-gradient(90deg, transparent 44%, #f5c451 44%, #f5c451 56%, transparent 56%),
+    linear-gradient(180deg, #e03440 0%, #b71f2a 100%);
+  box-shadow: 0 6px 10px rgb(0 0 0 / 0.25);
+  transition:
+    transform 0.7s cubic-bezier(0.2, 0.8, 0.3, 1.2),
+    opacity 0.7s ease;
+}
+.gift-bow {
+  position: absolute;
+  left: 50%;
+  bottom: 38px;
+  width: 92px;
+  margin-left: -46px;
+}
+.gift-reveal {
+  position: absolute;
+  left: 0;
+  bottom: 60px;
+  width: 260px;
+  z-index: 1;
+  padding: 12px;
+  border-radius: 20px;
+  background: #ffffff;
+  text-align: center;
+  box-shadow: 0 18px 50px rgb(0 0 0 / 0.45);
+  opacity: 0;
+  transform: translateY(40px) scale(0.5);
+  pointer-events: none;
+  transition:
+    transform 0.8s cubic-bezier(0.2, 0.9, 0.25, 1.15) 0.25s,
+    opacity 0.4s ease 0.25s;
+}
+.gift-cta {
+  background: #d42a35;
+  color: #ffffff;
+}
+.gift-reveal:hover .gift-cta {
+  background: #b71f2a;
+}
+.gift-open .gift-box {
+  animation: none;
+  cursor: default;
+}
+.gift-open .gift-lid {
+  transform: translate(120px, -150px) rotate(38deg);
+  opacity: 0;
+}
+.gift-open .gift-reveal {
+  opacity: 1;
+  transform: translateY(-70px) scale(1);
+  pointer-events: auto;
+  z-index: 3;
+  box-shadow:
+    0 18px 50px rgb(0 0 0 / 0.45),
+    0 0 60px rgb(245 196 81 / 0.45);
+}
+@keyframes gift-wobble {
+  0%,
+  60%,
+  100% {
+    transform: rotate(0deg);
+  }
+  68% {
+    transform: rotate(-4deg);
+  }
+  76% {
+    transform: rotate(4deg);
+  }
+  84% {
+    transform: rotate(-2deg);
+  }
+  92% {
+    transform: rotate(1deg);
+  }
+}
+@keyframes gift-fade {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gift-overlay,
+  .gift-box {
+    animation: none;
+  }
+  .gift-lid,
+  .gift-reveal {
+    transition: none;
+  }
+}

@@ -1,4 +1,5 @@
 import { Outlet, ScrollRestoration } from 'react-router-dom'
+import { ChristmasGift } from '../components/ChristmasGift'
 import { CookieConsentBanner } from '../components/CookieConsentBanner'
 import { DesignPreviewBanner } from '../components/DesignPreviewBanner'
 import { PreviewBanner } from '../components/PreviewBanner'
@@ -24,6 +25,7 @@ export function RootLayout() {
       {isEnabled('mobile_bar') && <BoldMobileBar />}
       {isEnabled('cart_drawer') && <CartDrawer />}
       <CookieConsentBanner />
+      <ChristmasGift />
       {/* Every new page starts at the top; Back returns to where you were. */}
       <ScrollRestoration />
     </div>
