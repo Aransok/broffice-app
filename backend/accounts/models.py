@@ -18,6 +18,10 @@ class Profile(TimeStampedModel):
     # has somewhere to record its result instead of silently pretending every
     # self-registered account is already verified.
     email_verified = models.BooleanField(default=False)
+    # The one-time "Подарък от Доан" Christmas gift for admins
+    # (frontend/src/components/ChristmasGift.tsx). Set the first time the
+    # admin opens or closes it, on any device, so it never shows again.
+    christmas_gift_opened_at = models.DateTimeField(null=True, blank=True)
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self) -> str:

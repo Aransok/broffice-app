@@ -664,6 +664,140 @@ html[data-theme='fresh'] body {
   --bold-hero-accent: #b8f03c;
 }
 
+/* 8d. Bold Коледа: the Bold layout dressed for the holidays. Pine-green
+ * strip, hero and footer, berry-red buy buttons, gold accents. Snow falls
+ * behind the page and over the hero (<Snowfall>), the logo wears a Santa
+ * hat (Header), and every product card gets a snow drift along its top
+ * edge and a holly sprig in the corner (rules at the end of this block). */
+:root[data-theme='bold_christmas'] {
+  --color-buy: #d42a35;
+  --color-buy-ink: #ffffff;
+  --bold-kicker: #b71f2a;
+  --bold-aurora: 212 42 53, 245 196 81, 34 139 84, 255 255 255;
+  --bold-aurora-alpha: 0.45;
+  --color-red-100: #fde3e5;
+  --color-red-300: #f3a1a7;
+  --color-red-500: #d42a35;
+  --color-red-600: #b71f2a;
+  --color-red-800: #7a121a;
+}
+:root[data-theme='bold_christmas']:not([data-mode='dark']) {
+  --color-primary: #12452f;
+  --color-paper: #f3f0ea;
+  --color-slate-50: #f3f0ea;
+  --color-slate-100: #e9e4da;
+  --color-slate-200: #d8d1c3;
+  --color-slate-300: #bdb4a2;
+  --color-slate-500: #5b6259;
+  --color-slate-900: #0d2a1d;
+  --bold-line: #12452f;
+  --bold-shadow: #e3a8ad;
+  --bold-head-accent: #b71f2a;
+  --bold-head-border: #e6e0d4;
+  --bold-search-bg: #f3f0ea;
+  --bold-search-text: #0d2a1d;
+  --bold-nav-bg: #12452f;
+  --bold-nav-text: #eef6f0;
+  --bold-nav-accent: #f5c451;
+  --bold-menu-btn-text: #12452f;
+  --bold-panel: #14533a;
+  --bold-panel-text: #ffffff;
+  --bold-panel-muted: #b5cfc0;
+  --bold-panel-accent: #f5c451;
+  --bold-foot-bg: #12452f;
+  --bold-foot-text: #c6dbcf;
+  --bold-hero-bg: linear-gradient(135deg, #a51b26 0%, #7e1420 50%, #12452f 100%);
+  --bold-hero-accent: #f5c451;
+  --bold-bar-bg: #12452f;
+  --bold-bar-text: #c6dbcf;
+}
+:root[data-theme='bold_christmas'][data-mode='dark'] {
+  --bold-head-accent: #f5c451;
+  --bold-nav-accent: #f5c451;
+  --bold-panel-accent: #f5c451;
+  --bold-hero-accent: #f5c451;
+  --bold-hero-bg: linear-gradient(135deg, #5e0f17 0%, #2a0a10 50%, #0b2a1c 100%);
+}
+
+/* Product cards: snow drift on the top edge, holly in the top-left corner
+ * (the favourite heart is top-right). Pure decoration, never takes clicks. */
+:root[data-theme='bold_christmas'] .product-card {
+  position: relative;
+}
+:root[data-theme='bold_christmas'] .product-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 16px;
+  z-index: 5;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 16' preserveAspectRatio='none'%3E%3Cpath d='M0 0H200V6C192 8 186 6 179 8C174 9 172 14 169 14C166 14 166 9 160 9C150 9 143 6 132 8C125 9 123 12 120 12C117 12 117 8 109 8C97 8 89 5 77 7C70 8 68 13 65 13C62 13 62 8 54 8C42 8 33 5 23 7C17 8 15 11 12 11C9 11 9 7 0 7Z' fill='%23ffffff'/%3E%3Cpath d='M0 7C9 7 9 11 12 11C15 11 17 8 23 7C33 5 42 8 54 8C62 8 62 13 65 13C68 13 70 8 77 7C89 5 97 8 109 8C117 8 117 12 120 12C123 12 125 9 132 8C143 6 150 9 160 9C166 9 166 14 169 14C172 14 174 9 179 8C186 6 192 8 200 6' fill='none' stroke='%23c9d6e3' stroke-width='1.2'/%3E%3C/svg%3E")
+    top / 100% 100% no-repeat;
+}
+:root[data-theme='bold_christmas'] .product-card::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 44px;
+  height: 44px;
+  z-index: 6;
+  pointer-events: none;
+  transform-origin: 30% 30%;
+  transition: transform 0.3s ease;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cpath d='M20 22C15 13 9 10 3 11L6 14L2 16L6 18L3 21L8 21L6 25C11 26 16 25 20 22Z' fill='%23187a40'/%3E%3Cpath d='M20 22C13 19 8 17 4 15' stroke='%230e5a2c' stroke-width='1' fill='none'/%3E%3Cpath d='M22 20C31 15 34 9 33 3L30 6L28 2L26 6L23 3L23 8L19 6C18 11 19 16 22 20Z' fill='%2322904c'/%3E%3Cpath d='M22 20C25 13 27 8 29 4' stroke='%230e5a2c' stroke-width='1' fill='none'/%3E%3Ccircle cx='21' cy='24' r='4.2' fill='%23d42a35'/%3E%3Ccircle cx='27' cy='25' r='3.6' fill='%23c0202b'/%3E%3Ccircle cx='24' cy='29.5' r='3.8' fill='%23e03440'/%3E%3Ccircle cx='19.8' cy='22.6' r='1.2' fill='%23ffffff' fill-opacity='.8'/%3E%3Ccircle cx='23' cy='28.2' r='1.1' fill='%23ffffff' fill-opacity='.8'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+:root[data-theme='bold_christmas'] .product-card:hover::after {
+  transform: rotate(-12deg) scale(1.08);
+}
+
+/* Logo: Santa hat on the "B" and a few twinkling flakes. */
+.xmas-logo-hat {
+  position: absolute;
+  left: 2px;
+  top: -9px;
+  width: 32px;
+  transform: rotate(-16deg);
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.18));
+  pointer-events: none;
+}
+.xmas-logo-flake {
+  position: absolute;
+  font-size: 11px;
+  line-height: 1;
+  color: #8fb3d9;
+  pointer-events: none;
+  animation: xmas-twinkle 2.6s ease-in-out infinite;
+}
+.xmas-logo-flake:nth-of-type(2) {
+  animation-delay: 0.9s;
+}
+.xmas-logo-flake:nth-of-type(3) {
+  animation-delay: 1.7s;
+  font-size: 9px;
+}
+@keyframes xmas-twinkle {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1) rotate(30deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xmas-logo-flake {
+    animation: none;
+    opacity: 0.8;
+  }
+  :root[data-theme='bold_christmas'] .product-card::after {
+    transition: none;
+  }
+}
+
 /* Shared Bold-family rules. */
 html[data-family='bold'] body {
   font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
@@ -1279,5 +1413,158 @@ html[data-theme='paper'] body {
 @media (prefers-reduced-motion: reduce) {
   .paper-fade {
     animation: none;
+  }
+}
+
+/* 9. "Подарък от Доан": the one-time Christmas gift for admin accounts
+ * (components/ChristmasGift.tsx). A wrapped box that wobbles, opens on
+ * click, and the Christmas design rises out of it. Works on any design. */
+.gift-overlay {
+  background:
+    radial-gradient(ellipse at 50% 30%, rgb(165 27 38 / 0.55), transparent 60%),
+    linear-gradient(160deg, #0d3322 0%, #071a12 100%);
+  animation: gift-fade 0.4s ease both;
+}
+.gift-title {
+  font-family: 'Unbounded', 'Manrope', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #f5c451;
+  text-shadow: 0 2px 18px rgb(245 196 81 / 0.35);
+}
+.gift {
+  position: relative;
+  margin-top: 1.25rem;
+  width: 260px;
+  height: 400px;
+}
+.gift-box {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 200px;
+  height: 210px;
+  margin-left: -100px;
+  cursor: pointer;
+  z-index: 2;
+  animation: gift-wobble 2.4s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+.gift-box:focus-visible {
+  outline: 3px solid #f5c451;
+  outline-offset: 6px;
+  border-radius: 12px;
+}
+.gift-body {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 200px;
+  height: 150px;
+  border-radius: 10px;
+  background:
+    linear-gradient(90deg, transparent 43%, #f5c451 43%, #f5c451 57%, transparent 57%),
+    linear-gradient(180deg, #d42a35 0%, #a51b26 100%);
+  box-shadow:
+    inset 0 -14px 24px rgb(0 0 0 / 0.18),
+    0 22px 40px rgb(0 0 0 / 0.45);
+}
+.gift-lid {
+  position: absolute;
+  bottom: 140px;
+  left: -10px;
+  width: 220px;
+  height: 46px;
+  border-radius: 10px;
+  z-index: 1;
+  background:
+    linear-gradient(90deg, transparent 44%, #f5c451 44%, #f5c451 56%, transparent 56%),
+    linear-gradient(180deg, #e03440 0%, #b71f2a 100%);
+  box-shadow: 0 6px 10px rgb(0 0 0 / 0.25);
+  transition:
+    transform 0.7s cubic-bezier(0.2, 0.8, 0.3, 1.2),
+    opacity 0.7s ease;
+}
+.gift-bow {
+  position: absolute;
+  left: 50%;
+  bottom: 38px;
+  width: 92px;
+  margin-left: -46px;
+}
+.gift-reveal {
+  position: absolute;
+  left: 0;
+  bottom: 60px;
+  width: 260px;
+  z-index: 1;
+  padding: 12px;
+  border-radius: 20px;
+  background: #ffffff;
+  text-align: center;
+  box-shadow: 0 18px 50px rgb(0 0 0 / 0.45);
+  opacity: 0;
+  transform: translateY(40px) scale(0.5);
+  pointer-events: none;
+  transition:
+    transform 0.8s cubic-bezier(0.2, 0.9, 0.25, 1.15) 0.25s,
+    opacity 0.4s ease 0.25s;
+}
+.gift-cta {
+  background: #d42a35;
+  color: #ffffff;
+}
+.gift-reveal:hover .gift-cta {
+  background: #b71f2a;
+}
+.gift-open .gift-box {
+  animation: none;
+  cursor: default;
+}
+.gift-open .gift-lid {
+  transform: translate(120px, -150px) rotate(38deg);
+  opacity: 0;
+}
+.gift-open .gift-reveal {
+  opacity: 1;
+  transform: translateY(-70px) scale(1);
+  pointer-events: auto;
+  z-index: 3;
+  box-shadow:
+    0 18px 50px rgb(0 0 0 / 0.45),
+    0 0 60px rgb(245 196 81 / 0.45);
+}
+@keyframes gift-wobble {
+  0%,
+  60%,
+  100% {
+    transform: rotate(0deg);
+  }
+  68% {
+    transform: rotate(-4deg);
+  }
+  76% {
+    transform: rotate(4deg);
+  }
+  84% {
+    transform: rotate(-2deg);
+  }
+  92% {
+    transform: rotate(1deg);
+  }
+}
+@keyframes gift-fade {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gift-overlay,
+  .gift-box {
+    animation: none;
+  }
+  .gift-lid,
+  .gift-reveal {
+    transition: none;
   }
 }

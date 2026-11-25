@@ -10,6 +10,8 @@ export interface Me {
   is_staff: boolean
   is_admin_portal: boolean
   is_developer: boolean
+  /** Whether this account already opened the one-time Christmas gift. */
+  christmas_gift_opened: boolean
 }
 
 export interface RegisterPayload {
@@ -35,6 +37,11 @@ export function fetchMe() {
 
 export function updateMe(payload: ProfileUpdatePayload) {
   return apiClient.patch<Me>('/me/', payload).then((res) => res.data)
+}
+
+/** Marks the one-time Christmas gift as opened for this account. */
+export function markChristmasGiftOpened() {
+  return apiClient.post<Me>('/me/christmas-gift/').then((res) => res.data)
 }
 
 export function register(payload: RegisterPayload) {
