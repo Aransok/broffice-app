@@ -1626,6 +1626,7 @@ def serialize_user(user):
         "is_staff": user.is_staff,
         "is_admin_portal": bool(profile and profile.is_admin_portal) or user.is_staff,
         "is_developer": user.username in settings.DEVELOPER_USERNAMES,
+        "christmas_gift_opened": bool(profile and profile.christmas_gift_opened_at),
     }
 
 
@@ -1655,6 +1656,21 @@ class MeView(APIView):
             profile.phone = data["phone"]
             profile.save(update_fields=["phone", "updated_at"])
         return Response(serialize_user(user))
+
+
+class MeChristmasGiftView(APIView):
+    """Records that this user opened (or closed) the one-time Christmas
+    gift, so it never shows again on any device. Idempotent: the first
+    time is kept."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        if profile.christmas_gift_opened_at is None:
+            profile.christmas_gift_opened_at = timezone.now()
+            profile.save(update_fields=["christmas_gift_opened_at", "updated_at"])
+        return Response(serialize_user(request.user))
 
 
 class RegisterView(APIView):

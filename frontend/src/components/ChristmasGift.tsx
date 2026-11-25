@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { markChristmasGiftOpened } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { Snowfall } from './bold/Snowfall'
@@ -7,34 +8,16 @@ const DESIGN = 'bold_christmas'
 /** After this the surprise is pointless (the holidays are over). */
 const SHOW_UNTIL = new Date('2027-01-07T00:00:00')
 
-function seenKey(userId: number | string) {
-  return `broffice.gift.${DESIGN}.${userId}`
-}
-
-function readSeen(userId: number | string) {
-  try {
-    return localStorage.getItem(seenKey(userId)) === '1'
-  } catch {
-    return false
-  }
-}
-
-function markSeen(userId: number | string) {
-  try {
-    localStorage.setItem(seenKey(userId), '1')
-  } catch {
-    // Private mode: it just shows again next visit.
-  }
-}
-
 /**
  * A one-time surprise for admin accounts: a wrapped present saying
  * "Подарък от Доан". Clicking it opens the box and the new Christmas design
  * rises out of it; clicking that opens the design preview (admins only, the
  * shop's normal ?design_preview flow, so customers never see it).
  *
- * Shown once per admin per browser, only until early January, and never
- * while the Christmas design is already live or being previewed.
+ * Shown once per admin ACCOUNT (the server records it, so a second device
+ * or cleared browser data doesn't bring it back), only until early
+ * January. Not shown while the Christmas design is being previewed; if it
+ * is already live, the gift still shows and the button opens the shop.
  */
 export function ChristmasGift() {
   const { user, isLoading } = useAuth()
@@ -45,8 +28,7 @@ export function ChristmasGift() {
   useEffect(() => {
     if (isLoading || !user?.is_admin_portal) return
     if (new Date() >= SHOW_UNTIL) return
-    if (liveDesign === DESIGN || previewDesign === DESIGN) return
-    if (readSeen(user.id)) return
+    if (previewDesign === DESIGN || user.christmas_gift_opened) return
     setVisible(true)
   }, [isLoading, user, liveDesign, previewDesign])
 
@@ -60,15 +42,24 @@ export function ChristmasGift() {
 
   if (!visible || !user) return null
 
+  const alreadyLive = liveDesign === DESIGN
+
+  /** Records it on the account. A failed call only means it may show once
+   * more, so it never blocks closing or opening the preview. */
+  function markOpened() {
+    return markChristmasGiftOpened().catch(() => undefined)
+  }
+
   function close() {
-    markSeen(user!.id)
+    void markOpened()
     setVisible(false)
   }
 
-  function goToPreview() {
-    markSeen(user!.id)
+  async function goToPreview() {
+    // Saved before leaving: the full page load below would cut the request.
+    await Promise.race([markOpened(), new Promise((resolve) => setTimeout(resolve, 2000))])
     // A full load: the preview parameter is read once when the shop starts.
-    window.location.href = `/?design_preview=${DESIGN}`
+    window.location.href = alreadyLive ? '/' : `/?design_preview=${DESIGN}`
   }
 
   return (
@@ -108,7 +99,7 @@ export function ChristmasGift() {
               Сняг, коледни цветове и шапка на логото
             </span>
             <span className="gift-cta mt-3 inline-block rounded-full px-5 py-2 text-sm font-bold">
-              Виж дизайна →
+              {alreadyLive ? 'Виж го на сайта →' : 'Виж дизайна →'}
             </span>
           </button>
 

@@ -4207,3 +4207,24 @@ def test_my_order_items_carry_the_product_number(api_client, sample_product):
     item = api_client.get(f"/api/v1/my-orders/{number}/").data["items"][0]
     assert item["product_number"] == "SUP-77"
     assert item["quantity"] == 3
+
+
+def test_christmas_gift_is_marked_opened_once_per_account(api_client, admin_user):
+    api_client.force_authenticate(admin_user)
+    assert api_client.get("/api/v1/me/").json()["christmas_gift_opened"] is False
+
+    first = api_client.post("/api/v1/me/christmas-gift/")
+    assert first.status_code == 200
+    assert first.json()["christmas_gift_opened"] is True
+    opened_at = User.objects.get(pk=admin_user.pk).profile.christmas_gift_opened_at
+    assert opened_at is not None
+
+    # Opening it again (another device) keeps the first time.
+    api_client.post("/api/v1/me/christmas-gift/")
+    profile = User.objects.get(pk=admin_user.pk).profile
+    assert profile.christmas_gift_opened_at == opened_at
+    assert api_client.get("/api/v1/me/").json()["christmas_gift_opened"] is True
+
+
+def test_christmas_gift_endpoint_needs_login(api_client, db):
+    assert api_client.post("/api/v1/me/christmas-gift/").status_code in (401, 403)
