@@ -1,10 +1,11 @@
+import { Fragment } from 'react'
 import { useVat } from '../../context/VatContext'
 
 type Size = 'sm' | 'md' | 'lg'
 
 const VALUE: Record<Size, string> = {
   sm: 'text-sm font-bold',
-  md: 'product-price text-xl font-extrabold leading-tight',
+  md: 'product-price text-lg font-extrabold leading-tight',
   lg: 'text-3xl font-extrabold leading-none sm:text-4xl',
 }
 const LABEL: Record<Size, string> = {
@@ -86,16 +87,23 @@ export function DualPrice({
             <s>€{oldIncl}</s> · <s>€{oldExcl}</s>
           </span>
         )}
-        {columns.map((c) => (
-          <div key={c.label} className="flex items-baseline gap-1.5">
-            <span className={`${VALUE.md} ${tone} whitespace-nowrap`}>€{c.value}</span>
-            <span
-              className={`${LABEL.md} whitespace-nowrap font-semibold uppercase tracking-wide text-slate-500`}
-            >
-              {c.label}
-            </span>
-          </div>
-        ))}
+        {/* Two columns so both rows line up: prices right-aligned in the
+         * first (same-width digits), labels starting at one edge in the
+         * second. */}
+        <div className="grid grid-cols-[auto_auto] items-baseline justify-start gap-x-1.5">
+          {columns.map((c) => (
+            <Fragment key={c.label}>
+              <span className={`${VALUE.md} ${tone} whitespace-nowrap text-right tabular-nums`}>
+                €{c.value}
+              </span>
+              <span
+                className={`${LABEL.md} whitespace-nowrap font-semibold uppercase tracking-wide text-slate-500`}
+              >
+                {c.label}
+              </span>
+            </Fragment>
+          ))}
+        </div>
       </div>
     )
   }

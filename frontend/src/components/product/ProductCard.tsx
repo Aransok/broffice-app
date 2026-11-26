@@ -8,7 +8,6 @@ import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import { announceCartAdd } from '../../lib/cartEvents'
 import { DualPrice } from './DualPrice'
-import { NameWithBrand } from './NameWithBrand'
 import { computeProfitBgn, formatEur } from '../../utils/currency'
 
 export function ProductCard({ product }: { product: ProductListItem }) {
@@ -93,19 +92,24 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         </div>
       </Link>
       <div className="flex flex-1 flex-col gap-1 p-3">
-        {(product.supplier_id || product.item_number) && (
-          <div className="text-right text-xs font-medium text-slate-400 tabular-nums">
-            №{product.supplier_id || product.item_number}
+        {product.brand_name && (
+          <div className="truncate text-right text-xs font-semibold text-slate-500">
+            {product.brand_name}
           </div>
         )}
         <Link to={`/product/${product.slug}`}>
           <h3
-            className="line-clamp-2 flex-1 text-sm text-slate-800 hover:text-primary"
+            className="line-clamp-2 min-h-[2.5rem] flex-1 text-sm leading-5 text-slate-800 hover:text-primary"
             title={product.name}
           >
-            <NameWithBrand name={product.name} brand={product.brand_name} />
+            {product.name}
           </h3>
         </Link>
+        {(product.supplier_id || product.item_number) && (
+          <div className="text-xs font-medium text-slate-400 tabular-nums">
+            №{product.supplier_id || product.item_number}
+          </div>
+        )}
 
         <div className="mt-1">
           <DualPrice eur={raw.currentEur} oldEur={raw.oldEur} onSale={onSale} />
