@@ -29,6 +29,8 @@ import { Seo } from '../components/Seo'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { useVat } from '../context/VatContext'
+import { DualPrice } from '../components/product/DualPrice'
+import { ResellerTotal } from '../components/product/ResellerTotal'
 import brofficeLogo from '../assets/logo.png'
 import type { MapOffice } from '../components/checkout/OfficeMap'
 import pigeonLogo from '../assets/couriers/pigeon.svg'
@@ -592,7 +594,7 @@ const COURIERS: {
 
 export function CheckoutPage() {
   const { items, totalPrice, clear } = useCart()
-  const { displayPrice, inclVatPrice, showInclVat } = useVat()
+  const { exclVatPrice, inclVatPrice } = useVat()
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -896,7 +898,9 @@ export function CheckoutPage() {
         payment_method: paymentMethod,
         coupon_code: appliedCoupon?.code,
         is_company_order: isCompanyOrder,
-        prices_include_vat: showInclVat,
+        // Every order is placed with VAT. The without-VAT price is shown
+        // only so companies can see their cost after reclaiming VAT.
+        prices_include_vat: true,
         ...(isCompanyOrder
           ? {
               company_name: companyName,
@@ -1242,18 +1246,23 @@ export function CheckoutPage() {
           <h2 className="mb-3 font-semibold text-slate-900">Обобщение</h2>
           <ul className="divide-y divide-slate-100 rounded-ui border border-slate-200 text-sm">
             {items.map((item) => (
-              <li key={item.productId} className="flex justify-between px-3 py-2">
-                <span>
+              <li
+                key={item.productId}
+                className="flex items-center justify-between gap-3 px-3 py-2"
+              >
+                <span className="min-w-0">
                   {item.name} x{item.quantity}
                 </span>
-                <span>
-                  {item.price
-                    ? (() => {
-                        const lineBgn = displayPrice(String(Number(item.price) * item.quantity))
-                        return `€${bgnToEur(lineBgn ?? '')}`
-                      })()
-                    : '-'}
-                </span>
+                {item.price ? (
+                  <DualPrice
+                    eur={bgnToEur(String(Number(item.price) * item.quantity))}
+                    size="sm"
+                    align="right"
+                    className="w-36 shrink-0"
+                  />
+                ) : (
+                  <span>-</span>
+                )}
               </li>
             ))}
           </ul>
@@ -1261,10 +1270,8 @@ export function CheckoutPage() {
             <div className="mt-2 flex justify-between text-sm text-green-700">
               <span>Купон ({appliedCoupon.code})</span>
               <span>
-                {(() => {
-                  const discountBgn = displayPrice(couponPreviewDiscount.toFixed(2))
-                  return `-€${bgnToEur(discountBgn ?? '')}`
-                })()}
+                -€{bgnToEur(inclVatPrice(couponPreviewDiscount.toFixed(2)) ?? '')} с ДДС / -€
+                {bgnToEur(exclVatPrice(couponPreviewDiscount.toFixed(2)) ?? '')} без ДДС
               </span>
             </div>
           )}
@@ -1274,38 +1281,45 @@ export function CheckoutPage() {
               <span>€{bgnToEur(Number(shippingCost).toFixed(2))}</span>
             </div>
           )}
-          <div className="mt-2 flex justify-between font-semibold text-slate-900">
-            <span>
-              {PIGEON_EXPRESS_METHODS.includes(shippingMethod) ? 'Общо' : 'Общо (с доставка)'}
-            </span>
-            <span>
-              {(() => {
-                // Shipping is the courier's price incl. VAT — added as-is,
-                // never converted by the incl./excl. VAT display toggle.
-                const productsBgn = displayPrice((totalPrice - couponPreviewDiscount).toFixed(2))
-                const totalBgn = (Number(productsBgn ?? 0) + Number(shippingCost ?? 0)).toFixed(2)
-                return `€${bgnToEur(totalBgn)}`
-              })()}
-            </span>
-          </div>
-          {!showInclVat && (
-            <div className="mt-1 flex justify-between text-sm font-semibold text-slate-700">
-              <span>Общо с ДДС</span>
-              <span>
-                {(() => {
-                  const productsBgn = inclVatPrice((totalPrice - couponPreviewDiscount).toFixed(2))
-                  const totalBgn = (Number(productsBgn ?? 0) + Number(shippingCost ?? 0)).toFixed(2)
-                  return `€${bgnToEur(totalBgn)}`
-                })()}
-              </span>
-            </div>
-          )}
-          <p className="mt-1 text-xs text-slate-400">
-            {showInclVat ? 'Поръчвате с цени с ДДС. ' : 'Поръчвате с цени без ДДС. '}
-            {PIGEON_EXPRESS_METHODS.includes(shippingMethod)
-              ? 'Доставката се заплаща на куриера при получаване.'
-              : 'Доставката е по цена на куриера (с ДДС).'}
-          </p>
+          {(() => {
+            // Shipping is the courier's price incl. VAT: added as-is to both.
+            const productsBgn = (totalPrice - couponPreviewDiscount).toFixed(2)
+            const shipping = Number(shippingCost ?? 0)
+            const exclTotal = bgnToEur(
+              (Number(exclVatPrice(productsBgn) ?? 0) + shipping).toFixed(2),
+            )
+            const inclTotal = bgnToEur(
+              (Number(inclVatPrice(productsBgn) ?? 0) + shipping).toFixed(2),
+            )
+            return (
+              <div className="mt-3">
+                <div className="mb-2 text-sm font-semibold text-slate-900">
+                  {PIGEON_EXPRESS_METHODS.includes(shippingMethod) ? 'Общо' : 'Общо (с доставка)'}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-ui border-2 border-primary bg-primary/5 px-4 py-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      с ДДС · за плащане
+                    </div>
+                    <div className="mt-1 text-2xl font-extrabold text-slate-900">€{inclTotal}</div>
+                  </div>
+                  <div className="rounded-ui border border-slate-200 bg-surface px-4 py-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      без ДДС
+                    </div>
+                    <div className="mt-1 text-2xl font-extrabold text-slate-900">€{exclTotal}</div>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-slate-500">
+                  Поръчката е с ДДС. Цената без ДДС е за фирми, които възстановяват ДДС.{' '}
+                  {PIGEON_EXPRESS_METHODS.includes(shippingMethod)
+                    ? 'Доставката се заплаща на куриера при получаване.'
+                    : 'Доставката е по цена на куриера (с ДДС).'}
+                </p>
+              </div>
+            )
+          })()}
+          <ResellerTotal className="mt-3" />
         </section>
 
         <label className="flex items-start gap-2 text-sm text-slate-700">

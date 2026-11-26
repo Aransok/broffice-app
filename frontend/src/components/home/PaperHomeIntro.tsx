@@ -10,7 +10,7 @@ import { useVat } from '../../context/VatContext'
 import { Reveal } from '../bold/motion'
 import { ProductCard } from '../product/ProductCard'
 import { QuickOrderBox } from './QuickOrderBox'
-import { InclVatLine } from '../product/InclVatLine'
+import { DualPrice } from '../product/DualPrice'
 
 /** Top of the home page in the "BRoffice Paper" design: a magazine cover
  * (vertical kicker, serif headline, one large product photo), the quick
@@ -33,10 +33,10 @@ export function PaperHomeIntro() {
 function Cover() {
   const { isEnabled } = useTheme()
   const { data } = useProducts({ on_promotion: true })
-  const { displayPrice } = useVat()
+  const { exclVatPrice } = useVat()
   const featured = data?.results.find((p) => p.primary_image) ?? data?.results[0]
   const image = featured ? getImageUrl(featured.primary_image ?? '') : null
-  const price = featured ? displayPrice(getDisplayPrice(featured).currentEur) : null
+  const price = featured ? exclVatPrice(getDisplayPrice(featured).currentEur) : null
   const quickOrder = isEnabled('quick_order')
   return (
     <section className="grid gap-8 lg:grid-cols-12 lg:gap-10">
@@ -114,10 +114,11 @@ function Cover() {
                 </span>
               </span>
               {price && (
-                <span className="shrink-0 text-right">
-                  <span className="display block text-xl text-slate-900">€{price}</span>
-                  <InclVatLine eur={getDisplayPrice(featured).currentEur} />
-                </span>
+                <DualPrice
+                  eur={getDisplayPrice(featured).currentEur}
+                  align="right"
+                  className="w-44 shrink-0"
+                />
               )}
             </span>
           )}

@@ -5,7 +5,6 @@ import { getImageUrl } from '../../api/media'
 import { getDisplayPrice } from '../../api/pricing'
 import { fetchSearch } from '../../api/search'
 import { useVat } from '../../context/VatContext'
-import { InclVatLine } from '../product/InclVatLine'
 import { NameWithBrand } from '../product/NameWithBrand'
 
 function useDebounced<T>(value: T, delay = 220) {
@@ -35,7 +34,7 @@ export function InstantSearch({
   onClose: () => void
 }) {
   const navigate = useNavigate()
-  const { displayPrice } = useVat()
+  const { exclVatPrice, inclVatPrice } = useVat()
   const q = useDebounced(query.trim())
   const [active, setActive] = useState(-1)
   const listRef = useRef<HTMLDivElement>(null)
@@ -97,7 +96,7 @@ export function InstantSearch({
         <ul className="max-h-[60vh] overflow-y-auto py-2">
           {results.map((product, index) => {
             const raw = getDisplayPrice(product)
-            const price = displayPrice(raw.currentEur)
+            const price = exclVatPrice(raw.currentEur)
             const image = getImageUrl(product.primary_image ?? '')
             const number = product.supplier_id || product.item_number
             return (
@@ -128,13 +127,20 @@ export function InstantSearch({
                     )}
                   </span>
                   <span
-                    className={`shrink-0 text-sm font-extrabold ${raw.onSale ? 'text-[#ffb27a]' : ''}`}
+                    className={`shrink-0 text-right text-sm font-extrabold ${raw.onSale ? 'text-[#ffb27a]' : ''}`}
                   >
-                    {price ? `€${price}` : ''}
-                    <InclVatLine
-                      eur={raw.currentEur}
-                      className="text-[11px] font-normal text-white/60"
-                    />
+                    {price && (
+                      <>
+                        <span className="block">
+                          €{inclVatPrice(raw.currentEur)}{' '}
+                          <span className="text-[11px] font-semibold opacity-70">с ДДС</span>
+                        </span>
+                        <span className="block">
+                          €{price}{' '}
+                          <span className="text-[11px] font-semibold opacity-70">без ДДС</span>
+                        </span>
+                      </>
+                    )}
                   </span>
                 </Link>
               </li>

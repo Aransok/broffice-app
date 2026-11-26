@@ -1,42 +1,26 @@
-import { createContext, type ReactNode, useContext, useMemo, useState } from 'react'
+import { createContext, type ReactNode, useContext, useMemo } from 'react'
 import { usePublicConfig } from '../api/config'
 
-const STORAGE_KEY = 'broffice.showInclVat'
-
+/** Prices are always shown both without and with VAT (<DualPrice>), and
+ * every order is placed with VAT, so there is no switch of any kind. The
+ * without-VAT price is for companies, who get the VAT back. */
 interface VatContextValue {
-  showInclVat: boolean
-  setShowInclVat: (value: boolean) => void
   vatRatePercent: number
-  /** Converts a base price (as stored/quoted server-side) to the currently
-   * selected display convention (incl. or excl. VAT) — the single place this
-   * conversion happens, so every listing/cart/checkout view stays consistent
-   * (spec #9) instead of each page doing its own VAT math. */
-  displayPrice: (base: string | null | undefined) => string | null
-  /** The same base price always converted to incl. VAT, whatever the
-   * toggle says. Used for the "с ДДС" line shown under every price while
-   * the visitor browses without VAT, so nobody orders thinking the
-   * without-VAT number is what they will pay. */
+  /** A base price (as stored/quoted server-side) with VAT. The single place
+   * this math happens, so every view stays consistent. */
   inclVatPrice: (base: string | null | undefined) => string | null
+  /** The same base price without VAT. */
+  exclVatPrice: (base: string | null | undefined) => string | null
 }
 
 const VatContext = createContext<VatContextValue | null>(null)
 
 export function VatProvider({ children }: { children: ReactNode }) {
   const { data: config } = usePublicConfig()
-  const [showInclVat, setShowInclVatState] = useState(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    return stored === null ? false : stored === 'true'
-  })
-
-  function setShowInclVat(value: boolean) {
-    setShowInclVatState(value)
-    localStorage.setItem(STORAGE_KEY, String(value))
-  }
-
   const vatRatePercent = config ? Number(config.vat_rate_percent) : 20
   const baseIncludesVat = config?.prices_include_vat ?? false
 
-  const { displayPrice, inclVatPrice } = useMemo(() => {
+  const { inclVatPrice, exclVatPrice } = useMemo(() => {
     const convert = (base: string | null | undefined, inclVat: boolean) => {
       if (base === null || base === undefined || base === '') return null
       const value = Number(base)
@@ -47,14 +31,18 @@ export function VatProvider({ children }: { children: ReactNode }) {
       return converted.toFixed(2)
     }
     return {
-      displayPrice: (base: string | null | undefined) => convert(base, showInclVat),
       inclVatPrice: (base: string | null | undefined) => convert(base, true),
+      exclVatPrice: (base: string | null | undefined) => convert(base, false),
     }
-  }, [showInclVat, baseIncludesVat, vatRatePercent])
+  }, [baseIncludesVat, vatRatePercent])
 
   return (
     <VatContext.Provider
-      value={{ showInclVat, setShowInclVat, vatRatePercent, displayPrice, inclVatPrice }}
+      value={{
+        vatRatePercent,
+        inclVatPrice,
+        exclVatPrice,
+      }}
     >
       {children}
     </VatContext.Provider>

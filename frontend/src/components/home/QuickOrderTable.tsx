@@ -21,7 +21,6 @@ import { announceCartAdd } from '../../lib/cartEvents'
 import { bgnToEur } from '../../utils/currency'
 import { type QuickLine, parseQuickOrder } from './parseQuickOrder'
 import { productNumber } from './QuickOrderBox'
-import { InclVatLine } from '../product/InclVatLine'
 import { NameWithBrand } from '../product/NameWithBrand'
 
 function useDebounced<T>(value: T, delay = 350) {
@@ -165,7 +164,7 @@ export function QuickOrderTable({
   placeholder?: string
 }) {
   const { addItem } = useCart()
-  const { displayPrice } = useVat()
+  const { exclVatPrice, inclVatPrice } = useVat()
   const [rows, setRows] = useState<Row[]>(() =>
     Array.from({ length: START_ROWS }, () => ({ ...EMPTY_ROW })),
   )
@@ -203,9 +202,10 @@ export function QuickOrderTable({
   })
   const foundLines = resolved.filter((l) => l.product)
   const total = foundLines.reduce((sum, line) => {
-    const price = Number(displayPrice(getDisplayPrice(line.product!).currentEur))
+    const price = Number(exclVatPrice(getDisplayPrice(line.product!).currentEur))
     return Number.isFinite(price) ? sum + price * line.quantity : sum
   }, 0)
+  const totalInclVat = inclVatPrice(total.toFixed(2))
 
   function update(index: number, patch: Partial<Row>) {
     setAddedCount(0)
@@ -382,7 +382,7 @@ export function QuickOrderTable({
             {resolved.map((line, index) => {
               const product = line.product
               const raw = product ? getDisplayPrice(product) : null
-              const price = raw ? displayPrice(raw.currentEur) : null
+              const price = raw ? exclVatPrice(raw.currentEur) : null
               const image = product ? getImageUrl(product.primary_image ?? '') : null
               const isBlank = !line.row.code && !line.row.qty
               return (
@@ -445,12 +445,15 @@ export function QuickOrderTable({
                           </Link>
                           <span className="block truncate text-xs text-slate-500">
                             №{productNumber(product)} ·{' '}
-                            {price ? `${line.quantity} × €${price}` : 'цена при запитване'}
+                            {price
+                              ? `${line.quantity} × €${inclVatPrice(raw!.currentEur)} с ДДС`
+                              : 'цена при запитване'}
                           </span>
-                          <InclVatLine
-                            eur={raw?.currentEur}
-                            className="truncate text-xs text-slate-500"
-                          />
+                          {price && (
+                            <span className="block truncate text-xs text-slate-500">
+                              €{price} без ДДС
+                            </span>
+                          )}
                         </div>
                       </div>
                     ) : line.pending ? (
@@ -492,7 +495,7 @@ export function QuickOrderTable({
       >
         {foundLines.length > 0
           ? `Добави ${foundLines.length === 1 ? '1 продукт' : `${foundLines.length} продукта`}${
-              total > 0 ? ` · €${total.toFixed(2)}` : ''
+              total > 0 ? ` · €${totalInclVat} с ДДС / €${total.toFixed(2)} без ДДС` : ''
             }`
           : addedCount > 0
             ? `✓ Добавени ${addedCount} в количката`

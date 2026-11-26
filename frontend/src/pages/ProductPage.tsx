@@ -9,8 +9,7 @@ import { ProductCard } from '../components/product/ProductCard'
 import { Seo } from '../components/Seo'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
-import { useVat } from '../context/VatContext'
-import { InclVatLine } from '../components/product/InclVatLine'
+import { DualPrice } from '../components/product/DualPrice'
 
 export function ProductPage() {
   const { slug = '' } = useParams()
@@ -21,7 +20,6 @@ export function ProductPage() {
   const [added, setAdded] = useState(false)
   const [quantity, setQuantity] = useState(1)
   const { addItem } = useCart()
-  const { displayPrice } = useVat()
   const { user } = useAuth()
 
   // Powers the admin "Активност" tab (which products this customer has
@@ -52,8 +50,6 @@ export function ProductPage() {
   }
 
   const raw = getDisplayPrice(product)
-  const currentEur = displayPrice(raw.currentEur)
-  const oldEur = displayPrice(raw.oldEur)
   const { onSale } = raw
   const images = product.images
   const mainImage = images[activeImage] ?? images[0]
@@ -131,19 +127,13 @@ export function ProductPage() {
             {product.name}
           </h1>
 
-          <div className="mt-4 flex items-baseline gap-3">
-            {onSale && oldEur && (
-              <span className="text-lg text-slate-400 line-through">€{oldEur}</span>
-            )}
-            <span
-              className={
-                onSale ? 'text-2xl font-bold text-red-600' : 'text-2xl font-bold text-slate-900'
-              }
-            >
-              {currentEur ? `€${currentEur}` : 'Цена при запитване'}
-            </span>
-          </div>
-          <InclVatLine eur={raw.currentEur} className="mt-0.5 text-sm text-slate-500" />
+          <DualPrice
+            eur={raw.currentEur}
+            oldEur={raw.oldEur}
+            onSale={onSale}
+            size="lg"
+            className="mt-4 max-w-md"
+          />
           {product.pack_quantity && product.pack_quantity > 1 && (
             <p className="mt-1 text-sm text-slate-500">Опаковка: {product.pack_quantity} бр.</p>
           )}
