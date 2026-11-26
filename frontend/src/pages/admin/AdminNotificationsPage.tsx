@@ -6,6 +6,7 @@ import {
   markNotificationRead,
   rejectOrder,
   removeOrderItem,
+  setOrderItemQuantity,
   repriceOrder,
   type OrderStatusFilter,
   useNotifications,
@@ -170,6 +171,17 @@ export function AdminNotificationsPage() {
       setAddPanelOrder(null)
       setAddQuantity(1)
       setAddFreeGift(false)
+      await refetch()
+    } finally {
+      setBusyOrder(null)
+    }
+  }
+
+  async function handleSetQuantity(number: string, itemId: string, quantity: number) {
+    if (!Number.isInteger(quantity) || quantity < 1) return
+    setBusyOrder(number)
+    try {
+      await setOrderItemQuantity(number, itemId, quantity)
       await refetch()
     } finally {
       setBusyOrder(null)
@@ -347,9 +359,18 @@ export function AdminNotificationsPage() {
                             ) : (
                               item.product_name
                             )}
-                            {supplierId && <span className="text-slate-400"> · №{supplierId}</span>}{' '}
-                            x{item.quantity}
+                            {supplierId && <span className="text-slate-400"> · №{supplierId}</span>}
+                            {order.status !== 'pending' && <> x{item.quantity}</>}
                           </span>
+                          {order.status === 'pending' && (
+                            <OrderItemQuantity
+                              quantity={item.quantity}
+                              disabled={busyOrder === order.number}
+                              onChange={(quantity) =>
+                                handleSetQuantity(order.number, item.id, quantity)
+                              }
+                            />
+                          )}
                           {order.user && item.product && (
                             <AdminQuickPromotionButton
                               customerId={order.user}
@@ -637,5 +658,71 @@ export function AdminNotificationsPage() {
         </div>
       )}
     </div>
+  )
+}
+
+/** − / number / + for one line of a pending order. The number can be typed
+ * and is saved on Enter or when the field loses focus. Going below 1 is
+ * removing, which is the ✕ next to the line. */
+function OrderItemQuantity({
+  quantity,
+  disabled,
+  onChange,
+}: {
+  quantity: number
+  disabled: boolean
+  onChange: (quantity: number) => void
+}) {
+  const [draft, setDraft] = useState(String(quantity))
+  const [shown, setShown] = useState(quantity)
+  if (shown !== quantity) {
+    // The order was refetched with a new quantity: show it.
+    setShown(quantity)
+    setDraft(String(quantity))
+  }
+
+  function commit() {
+    const next = Number.parseInt(draft, 10)
+    if (!Number.isFinite(next) || next < 1) {
+      setDraft(String(quantity))
+      return
+    }
+    if (next !== quantity) onChange(next)
+  }
+
+  return (
+    <span className="mt-1 inline-flex items-center rounded-ui border border-slate-300 text-sm">
+      <button
+        type="button"
+        aria-label="Намали количеството"
+        disabled={disabled || quantity <= 1}
+        onClick={() => onChange(quantity - 1)}
+        className="px-2 py-0.5 text-slate-600 hover:text-primary disabled:opacity-40"
+      >
+        −
+      </button>
+      <input
+        type="text"
+        inputMode="numeric"
+        aria-label="Количество"
+        value={draft}
+        disabled={disabled}
+        onChange={(event) => setDraft(event.target.value.replace(/\D/g, ''))}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') commit()
+        }}
+        className="w-12 border-x border-slate-300 bg-transparent py-0.5 text-center focus:outline-none"
+      />
+      <button
+        type="button"
+        aria-label="Увеличи количеството"
+        disabled={disabled}
+        onClick={() => onChange(quantity + 1)}
+        className="px-2 py-0.5 text-slate-600 hover:text-primary disabled:opacity-40"
+      >
+        +
+      </button>
+    </span>
   )
 }

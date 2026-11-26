@@ -4228,3 +4228,63 @@ def test_christmas_gift_is_marked_opened_once_per_account(api_client, admin_user
 
 def test_christmas_gift_endpoint_needs_login(api_client, db):
     assert api_client.post("/api/v1/me/christmas-gift/").status_code in (401, 403)
+
+
+def _pending_order_with_one_item(api_client, quantity=2):
+    resp = api_client.post(
+        "/api/v1/orders/",
+        {
+            "customer_email": "buyer@example.com",
+            "items": [{"product_external_id": "272", "quantity": quantity}],
+        },
+        format="json",
+    )
+    return resp.data["number"], resp.data["items"][0]
+
+
+@pytest.mark.django_db
+def test_admin_changes_item_quantity_on_pending_order(
+    api_client, admin_user, sample_product
+):
+    number, item = _pending_order_with_one_item(api_client, quantity=2)
+    unit = Decimal(item["unit_price"])
+
+    api_client.force_authenticate(user=admin_user)
+    for quantity in (5, 1):
+        resp = api_client.patch(
+            f"/api/v1/admin/orders/{number}/items/{item['id']}/",
+            {"quantity": quantity},
+            format="json",
+        )
+        assert resp.status_code == 200
+        line = resp.data["items"][0]
+        assert line["quantity"] == quantity
+        assert Decimal(line["unit_price"]) == unit
+        assert Decimal(line["line_total"]) == unit * quantity
+        assert Decimal(resp.data["subtotal_bgn"]) == unit * quantity
+
+
+@pytest.mark.django_db
+def test_admin_item_quantity_rejects_zero_and_non_pending(
+    api_client, admin_user, sample_product
+):
+    number, item = _pending_order_with_one_item(api_client)
+    url = f"/api/v1/admin/orders/{number}/items/{item['id']}/"
+    api_client.force_authenticate(user=admin_user)
+
+    assert api_client.patch(url, {"quantity": 0}, format="json").status_code == 400
+    assert api_client.patch(url, {"quantity": "x"}, format="json").status_code == 400
+
+    api_client.post(f"/api/v1/admin/orders/{number}/confirm/")
+    assert api_client.patch(url, {"quantity": 3}, format="json").status_code == 400
+
+
+@pytest.mark.django_db
+def test_admin_item_quantity_needs_admin(api_client, sample_product):
+    number, item = _pending_order_with_one_item(api_client)
+    resp = api_client.patch(
+        f"/api/v1/admin/orders/{number}/items/{item['id']}/",
+        {"quantity": 9},
+        format="json",
+    )
+    assert resp.status_code in (401, 403)

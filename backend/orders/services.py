@@ -783,6 +783,28 @@ def remove_item_from_pending_order(order: Order, item_id) -> Order:
     return order
 
 
+def set_pending_order_item_quantity(order: Order, item_id, quantity: int) -> Order:
+    """Admin raises or lowers one line's quantity on a still-pending order
+    (e.g. the customer asked for more, or only some are in stock). The line
+    keeps its unit price, so a manual price or a promotion already on it is
+    kept; "reprice" re-checks promotions if the new quantity should change
+    them. Lowering to zero is removing, which has its own action."""
+    if order.status != Order.STATUS_PENDING:
+        raise ValueError("Only a pending order can be edited.")
+    if quantity < 1:
+        raise ValueError("Количеството трябва да е поне 1.")
+    item = order.items.filter(id=item_id).first()
+    if item is None:
+        raise ValueError("Артикулът не е намерен в тази поръчка.")
+    item.quantity = quantity
+    item.line_total = item.unit_price * quantity
+    item.save(update_fields=["quantity", "line_total", "updated_at"])
+
+    order.refresh_from_db()
+    recalc_order_total(order)
+    return order
+
+
 def _get_or_save_address(
     user,
     address_id,

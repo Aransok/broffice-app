@@ -78,6 +78,7 @@ from orders.services import (
     send_admin_confirmation_email,
     send_customer_invoice_email,
     send_customer_rejection_email,
+    set_pending_order_item_quantity,
 )
 from pages.models import Page as PageModel
 from pricing.models import AdminPriceOverride
@@ -1376,11 +1377,27 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(OrderSerializer(order, context={"request": request}).data)
 
-    @action(detail=True, methods=["delete"], url_path=r"items/(?P<item_id>[^/.]+)")
-    def remove_item(self, request, number=None, item_id=None):
+    @action(
+        detail=True,
+        methods=["patch", "delete"],
+        url_path=r"items/(?P<item_id>[^/.]+)",
+    )
+    def item_detail(self, request, number=None, item_id=None):
+        # PATCH {"quantity": n} changes a line's quantity, DELETE removes it;
+        # both only on a still-pending order.
         order = self.get_object()
         try:
-            remove_item_from_pending_order(order, item_id)
+            if request.method == "DELETE":
+                remove_item_from_pending_order(order, item_id)
+            else:
+                try:
+                    quantity = int(request.data.get("quantity"))
+                except (TypeError, ValueError):
+                    return Response(
+                        {"detail": "Невалидно количество."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                set_pending_order_item_quantity(order, item_id, quantity)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(OrderSerializer(order, context={"request": request}).data)

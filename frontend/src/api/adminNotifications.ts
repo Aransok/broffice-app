@@ -62,10 +62,15 @@ export function addOrderItem(
     .then((res) => res.data)
 }
 
-export function removeOrderItem(number: string, itemId: string) {
+/** Raises or lowers one line's quantity on a pending order. */
+export function setOrderItemQuantity(number: string, itemId: string, quantity: number) {
   return apiClient
-    .delete<Order>(`/admin/orders/${number}/items/${itemId}/`)
+    .patch<Order>(`/admin/orders/${number}/items/${itemId}/`, { quantity })
     .then((res) => res.data)
+}
+
+export function removeOrderItem(number: string, itemId: string) {
+  return apiClient.delete<Order>(`/admin/orders/${number}/items/${itemId}/`).then((res) => res.data)
 }
 
 export function useNotifications(params: { status?: OrderStatusFilter; page?: number } = {}) {
