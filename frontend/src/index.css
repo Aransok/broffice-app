@@ -986,6 +986,10 @@ html[data-family='bold'] body {
   font-size: 1.1rem;
   letter-spacing: -0.02em;
 }
+/* Cards show two prices (с ДДС over без ДДС), so each is a bit smaller. */
+:root[data-family='bold'] .product-card .product-price {
+  font-size: 0.95rem;
+}
 :root[data-family='bold'] .btn-buy {
   background: var(--color-buy);
   color: var(--color-buy-ink);

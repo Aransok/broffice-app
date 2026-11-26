@@ -4,7 +4,7 @@ type Size = 'sm' | 'md' | 'lg'
 
 const VALUE: Record<Size, string> = {
   sm: 'text-sm font-bold',
-  md: 'product-price text-xl font-extrabold leading-tight',
+  md: 'product-price text-lg font-extrabold leading-tight',
   lg: 'text-3xl font-extrabold leading-none sm:text-4xl',
 }
 const LABEL: Record<Size, string> = {
