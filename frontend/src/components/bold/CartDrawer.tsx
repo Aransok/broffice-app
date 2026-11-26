@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { getImageUrl } from '../../api/media'
 import { useCart } from '../../context/CartContext'
-import { useVat } from '../../context/VatContext'
 import { type CartAddDetail, onCartAdd, onCartOpen } from '../../lib/cartEvents'
 import { bgnToEur } from '../../utils/currency'
-import { InclVatLine } from '../product/InclVatLine'
+import { DualPrice } from '../product/DualPrice'
+import { ResellerTotal } from '../product/ResellerTotal'
 
 /** Sends a copy of the product image flying into the header cart icon. */
 function flyToCart(source: HTMLElement | null | undefined) {
@@ -50,7 +50,6 @@ function flyToCart(source: HTMLElement | null | undefined) {
  */
 export function CartDrawer() {
   const { items, itemCount, totalPrice, removeItem, setQuantity } = useCart()
-  const { displayPrice } = useVat()
   const location = useLocation()
   const [open, setOpen] = useState(false)
   const [lastAdded, setLastAdded] = useState<CartAddDetail | null>(null)
@@ -89,8 +88,6 @@ export function CartDrawer() {
       document.body.style.overflow = ''
     }
   }, [open])
-
-  const total = displayPrice(bgnToEur(String(totalPrice)))
 
   return (
     <>
@@ -150,10 +147,6 @@ export function CartDrawer() {
           )}
           {items.map((item) => {
             const image = getImageUrl(item.image ?? '')
-            const price = item.price ? displayPrice(bgnToEur(item.price)) : null
-            const lineTotal = item.price
-              ? displayPrice(bgnToEur(String(Number(item.price) * item.quantity)))
-              : null
             return (
               <li key={item.productId} className="flex items-center gap-3 px-5 py-3">
                 <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100">
@@ -202,16 +195,13 @@ export function CartDrawer() {
                     </button>
                   </span>
                 </span>
-                <span className="flex shrink-0 flex-col items-end">
-                  <span className="text-sm font-extrabold">{lineTotal ? `€${lineTotal}` : ''}</span>
+                <span className="w-36 shrink-0">
                   {item.price && (
-                    <InclVatLine
+                    <DualPrice
                       eur={bgnToEur(String(Number(item.price) * item.quantity))}
-                      className="text-[11px] text-slate-500"
+                      size="sm"
+                      align="right"
                     />
-                  )}
-                  {price && item.quantity > 1 && (
-                    <span className="text-[11px] text-slate-500">€{price} / бр.</span>
                   )}
                 </span>
               </li>
@@ -220,13 +210,11 @@ export function CartDrawer() {
         </ul>
 
         <footer className="border-t border-slate-200 p-5">
-          <div className="mb-3 flex items-baseline justify-between">
+          <div className="mb-3 flex items-end justify-between gap-4">
             <span className="text-sm font-semibold text-slate-500">Общо</span>
-            <span className="text-right">
-              <span className="display block text-2xl">€{total ?? '0.00'}</span>
-              <InclVatLine eur={bgnToEur(String(totalPrice))} className="text-sm text-slate-500" />
-            </span>
+            <DualPrice eur={bgnToEur(String(totalPrice))} align="right" className="w-60" />
           </div>
+          <ResellerTotal className="mb-3" />
           <div className="grid grid-cols-2 gap-2">
             <Link
               to="/cart"

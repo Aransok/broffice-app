@@ -6,9 +6,8 @@ import { getDisplayPrice } from '../../api/pricing'
 import type { ProductListItem } from '../../api/types'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
-import { useVat } from '../../context/VatContext'
 import { announceCartAdd } from '../../lib/cartEvents'
-import { InclVatLine } from './InclVatLine'
+import { DualPrice } from './DualPrice'
 import { NameWithBrand } from './NameWithBrand'
 import { computeProfitBgn, formatEur } from '../../utils/currency'
 
@@ -20,12 +19,9 @@ export function ProductCard({ product }: { product: ProductListItem }) {
   const { addItem } = useCart()
   const { user } = useAuth()
   const navigate = useNavigate()
-  const { displayPrice } = useVat()
 
   const imageUrl = getImageUrl(product.primary_image ?? '')
   const raw = getDisplayPrice(product)
-  const currentEur = displayPrice(raw.currentEur)
-  const oldEur = displayPrice(raw.oldEur)
   const { onSale } = raw
 
   const imageRef = useRef<HTMLImageElement>(null)
@@ -112,17 +108,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         </Link>
 
         <div className="mt-1">
-          {onSale && oldEur && <div className="text-sm text-slate-400 line-through">€{oldEur}</div>}
-          <div
-            className={
-              onSale
-                ? 'product-price font-semibold text-red-600'
-                : 'product-price font-semibold text-slate-900'
-            }
-          >
-            {currentEur ? `€${currentEur}` : 'Цена при запитване'}
-          </div>
-          <InclVatLine eur={raw.currentEur} />
+          <DualPrice eur={raw.currentEur} oldEur={raw.oldEur} onSale={onSale} />
           {/* admin_price only ever comes back non-null when the viewer is an
            * admin (see ProductListSerializer.get_admin_price on the backend)
            * — no separate frontend role check needed, its mere presence is

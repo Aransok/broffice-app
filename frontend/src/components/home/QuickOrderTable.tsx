@@ -165,7 +165,7 @@ export function QuickOrderTable({
   placeholder?: string
 }) {
   const { addItem } = useCart()
-  const { displayPrice } = useVat()
+  const { exclVatPrice, inclVatPrice } = useVat()
   const [rows, setRows] = useState<Row[]>(() =>
     Array.from({ length: START_ROWS }, () => ({ ...EMPTY_ROW })),
   )
@@ -203,9 +203,10 @@ export function QuickOrderTable({
   })
   const foundLines = resolved.filter((l) => l.product)
   const total = foundLines.reduce((sum, line) => {
-    const price = Number(displayPrice(getDisplayPrice(line.product!).currentEur))
+    const price = Number(exclVatPrice(getDisplayPrice(line.product!).currentEur))
     return Number.isFinite(price) ? sum + price * line.quantity : sum
   }, 0)
+  const totalInclVat = inclVatPrice(total.toFixed(2))
 
   function update(index: number, patch: Partial<Row>) {
     setAddedCount(0)
@@ -382,7 +383,7 @@ export function QuickOrderTable({
             {resolved.map((line, index) => {
               const product = line.product
               const raw = product ? getDisplayPrice(product) : null
-              const price = raw ? displayPrice(raw.currentEur) : null
+              const price = raw ? exclVatPrice(raw.currentEur) : null
               const image = product ? getImageUrl(product.primary_image ?? '') : null
               const isBlank = !line.row.code && !line.row.qty
               return (
@@ -445,7 +446,7 @@ export function QuickOrderTable({
                           </Link>
                           <span className="block truncate text-xs text-slate-500">
                             №{productNumber(product)} ·{' '}
-                            {price ? `${line.quantity} × €${price}` : 'цена при запитване'}
+                            {price ? `${line.quantity} × €${price} без ДДС` : 'цена при запитване'}
                           </span>
                           <InclVatLine
                             eur={raw?.currentEur}
@@ -492,7 +493,7 @@ export function QuickOrderTable({
       >
         {foundLines.length > 0
           ? `Добави ${foundLines.length === 1 ? '1 продукт' : `${foundLines.length} продукта`}${
-              total > 0 ? ` · €${total.toFixed(2)}` : ''
+              total > 0 ? ` · €${total.toFixed(2)} без ДДС / €${totalInclVat} с ДДС` : ''
             }`
           : addedCount > 0
             ? `✓ Добавени ${addedCount} в количката`

@@ -1,12 +1,11 @@
 import { useVat } from '../../context/VatContext'
 
 /**
- * Small "€X с ДДС" line under a price, shown only while prices are displayed
- * without VAT. A company can order at without-VAT prices, but the invoice
- * total includes VAT, so the with-VAT amount must always be visible next to
- * the number they are looking at.
+ * Compact "€X с ДДС" for tight spots (search dropdown, quick order), next
+ * to a "€Y без ДДС" the caller shows. Larger spots use <DualPrice>. Both
+ * prices are always shown; there is no with/without-VAT switch any more.
  *
- * `eur` is the same base EUR amount the caller passes to displayPrice().
+ * `eur` is the base EUR amount as the API quotes it.
  */
 export function InclVatLine({
   eur,
@@ -18,8 +17,7 @@ export function InclVatLine({
   /** Continue the same text line (" · €X с ДДС") instead of a new line. */
   inline?: boolean
 }) {
-  const { showInclVat, inclVatPrice } = useVat()
-  if (showInclVat) return null
+  const { inclVatPrice } = useVat()
   const price = inclVatPrice(eur)
   if (!price) return null
   if (inline) return <span className={className}> · €{price} с ДДС</span>

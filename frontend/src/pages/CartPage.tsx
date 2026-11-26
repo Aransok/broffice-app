@@ -2,13 +2,12 @@ import { Link } from 'react-router-dom'
 import { getImageUrl } from '../api/media'
 import { Seo } from '../components/Seo'
 import { useCart } from '../context/CartContext'
-import { useVat } from '../context/VatContext'
 import { bgnToEur } from '../utils/currency'
-import { InclVatLine } from '../components/product/InclVatLine'
+import { DualPrice } from '../components/product/DualPrice'
+import { ResellerTotal } from '../components/product/ResellerTotal'
 
 export function CartPage() {
   const { items, totalPrice, removeItem, setQuantity } = useCart()
-  const { displayPrice } = useVat()
 
   if (items.length === 0) {
     return (
@@ -57,18 +56,14 @@ export function CartPage() {
                 onChange={(event) => setQuantity(item.productId, Number(event.target.value))}
                 className="w-16 rounded-ui border border-slate-300 px-2 py-1 text-center"
               />
-              <div className="w-28 text-right font-medium text-slate-900">
-                {item.price
-                  ? (() => {
-                      const lineBgn = displayPrice(String(Number(item.price) * item.quantity))
-                      return `€${lineBgn ? bgnToEur(lineBgn) : '-'}`
-                    })()
-                  : '-'}
-                {item.price && (
-                  <InclVatLine
+              <div className="w-44">
+                {item.price ? (
+                  <DualPrice
                     eur={bgnToEur(String(Number(item.price) * item.quantity))}
-                    className="text-xs font-normal text-slate-500"
+                    align="right"
                   />
+                ) : (
+                  <span className="block text-right">-</span>
                 )}
               </div>
               <button
@@ -83,14 +78,14 @@ export function CartPage() {
         })}
       </div>
 
-      <div className="mt-6 flex items-center justify-between">
-        <span className="text-lg font-semibold text-slate-900">
-          Общо: €{bgnToEur(displayPrice(totalPrice.toFixed(2)) ?? '')}
-          <InclVatLine
+      <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
+        <div className="flex items-end gap-4">
+          <span className="text-lg font-semibold text-slate-900">Общо</span>
+          <DualPrice
             eur={bgnToEur(totalPrice.toFixed(2))}
-            className="text-sm font-normal text-slate-500"
+            className="w-64 [&_.product-price]:text-2xl"
           />
-        </span>
+        </div>
         <Link
           to="/checkout"
           className="rounded-ui bg-primary px-6 py-3 font-medium text-white hover:opacity-90"
@@ -98,6 +93,7 @@ export function CartPage() {
           Продължи към поръчка
         </Link>
       </div>
+      <ResellerTotal className="mt-4 max-w-sm" />
     </div>
   )
 }

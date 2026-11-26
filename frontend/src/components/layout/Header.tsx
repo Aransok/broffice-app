@@ -7,7 +7,6 @@ import logo from '../../assets/logo.png'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import { isBoldFamily, useTheme } from '../../context/ThemeContext'
-import { useVat } from '../../context/VatContext'
 import { getPreviewUser } from '../../preview'
 import { playNotificationSound } from '../../utils/notificationSound'
 import { CategoriesMegaMenu } from './CategoriesMegaMenu'
@@ -36,7 +35,6 @@ export function Header() {
   const { itemCount } = useCart()
   const { user, logout } = useAuth()
   const { data: stats } = useDashboardStats(Boolean(user?.is_admin_portal))
-  const { showInclVat, setShowInclVat } = useVat()
   const { data: config } = usePublicConfig()
   const { mode, setMode, preset, isEnabled } = useTheme()
   // The Bold family's header goes dark in dark mode, where the blue 'BR'
@@ -195,15 +193,6 @@ export function Header() {
               </svg>
             )}
           </button>
-          <select
-            value={showInclVat ? 'incl' : 'excl'}
-            onChange={(event) => setShowInclVat(event.target.value === 'incl')}
-            className="rounded-ui border border-slate-300 px-2 py-1 text-xs"
-            aria-label="Показвай цени с/без ДДС"
-          >
-            <option value="excl">Цени без ДДС</option>
-            <option value="incl">Цени с ДДС</option>
-          </select>
           {user ? (
             <>
               <Link to="/account/orders" className="hover:text-primary">

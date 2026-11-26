@@ -43,7 +43,7 @@ export function QuickOrderBox({
   placeholder?: string
 }) {
   const { addItem } = useCart()
-  const { displayPrice } = useVat()
+  const { exclVatPrice } = useVat()
   const [text, setText] = useState('')
   const [added, setAdded] = useState<Record<string, number>>({})
   const lines = useMemo(() => parseQuickOrder(text), [text])
@@ -123,7 +123,7 @@ export function QuickOrderBox({
               )
             }
             const raw = getDisplayPrice(product)
-            const price = displayPrice(raw.currentEur)
+            const price = exclVatPrice(raw.currentEur)
             const image = getImageUrl(product.primary_image ?? '')
             return (
               <li
@@ -155,7 +155,7 @@ export function QuickOrderBox({
                     <NameWithBrand name={product.name} brand={product.brand_name} />
                   </Link>
                   <div className="text-xs text-slate-500">
-                    {line.quantity} × {price ? `€${price}` : 'цена при запитване'}
+                    {line.quantity} × {price ? `€${price} без ДДС` : 'цена при запитване'}
                     <InclVatLine eur={raw.currentEur} inline className="text-slate-500" />
                   </div>
                 </div>
