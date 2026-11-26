@@ -99,7 +99,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         )}
         <Link to={`/product/${product.slug}`}>
           <h3
-            className="line-clamp-2 flex-1 text-sm text-slate-800 hover:text-primary"
+            className="line-clamp-2 min-h-[2.5rem] flex-1 text-sm leading-5 text-slate-800 hover:text-primary"
             title={product.name}
           >
             {product.name}
