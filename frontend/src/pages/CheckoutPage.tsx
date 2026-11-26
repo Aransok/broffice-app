@@ -1270,8 +1270,8 @@ export function CheckoutPage() {
             <div className="mt-2 flex justify-between text-sm text-green-700">
               <span>Купон ({appliedCoupon.code})</span>
               <span>
-                -€{bgnToEur(exclVatPrice(couponPreviewDiscount.toFixed(2)) ?? '')} без ДДС / -€
-                {bgnToEur(inclVatPrice(couponPreviewDiscount.toFixed(2)) ?? '')} с ДДС
+                -€{bgnToEur(inclVatPrice(couponPreviewDiscount.toFixed(2)) ?? '')} с ДДС / -€
+                {bgnToEur(exclVatPrice(couponPreviewDiscount.toFixed(2)) ?? '')} без ДДС
               </span>
             </div>
           )}
@@ -1297,17 +1297,17 @@ export function CheckoutPage() {
                   {PIGEON_EXPRESS_METHODS.includes(shippingMethod) ? 'Общо' : 'Общо (с доставка)'}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-ui border border-slate-200 bg-surface px-4 py-3">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      без ДДС
-                    </div>
-                    <div className="mt-1 text-2xl font-extrabold text-slate-900">€{exclTotal}</div>
-                  </div>
                   <div className="rounded-ui border-2 border-primary bg-primary/5 px-4 py-3">
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       с ДДС · за плащане
                     </div>
                     <div className="mt-1 text-2xl font-extrabold text-slate-900">€{inclTotal}</div>
+                  </div>
+                  <div className="rounded-ui border border-slate-200 bg-surface px-4 py-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      без ДДС
+                    </div>
+                    <div className="mt-1 text-2xl font-extrabold text-slate-900">€{exclTotal}</div>
                   </div>
                 </div>
                 <p className="mt-2 text-xs text-slate-500">

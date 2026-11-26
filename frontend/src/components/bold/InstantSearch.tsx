@@ -5,7 +5,6 @@ import { getImageUrl } from '../../api/media'
 import { getDisplayPrice } from '../../api/pricing'
 import { fetchSearch } from '../../api/search'
 import { useVat } from '../../context/VatContext'
-import { InclVatLine } from '../product/InclVatLine'
 import { NameWithBrand } from '../product/NameWithBrand'
 
 function useDebounced<T>(value: T, delay = 220) {
@@ -35,7 +34,7 @@ export function InstantSearch({
   onClose: () => void
 }) {
   const navigate = useNavigate()
-  const { exclVatPrice } = useVat()
+  const { exclVatPrice, inclVatPrice } = useVat()
   const q = useDebounced(query.trim())
   const [active, setActive] = useState(-1)
   const listRef = useRef<HTMLDivElement>(null)
@@ -131,12 +130,17 @@ export function InstantSearch({
                     className={`shrink-0 text-right text-sm font-extrabold ${raw.onSale ? 'text-[#ffb27a]' : ''}`}
                   >
                     {price && (
-                      <span className="block">
-                        €{price}{' '}
-                        <span className="text-[11px] font-semibold opacity-70">без ДДС</span>
-                      </span>
+                      <>
+                        <span className="block">
+                          €{inclVatPrice(raw.currentEur)}{' '}
+                          <span className="text-[11px] font-semibold opacity-70">с ДДС</span>
+                        </span>
+                        <span className="block">
+                          €{price}{' '}
+                          <span className="text-[11px] font-semibold opacity-70">без ДДС</span>
+                        </span>
+                      </>
                     )}
-                    <InclVatLine eur={raw.currentEur} className="text-sm font-extrabold" />
                   </span>
                 </Link>
               </li>

@@ -53,8 +53,10 @@ export function DualPrice({
   const oldIncl = onSale ? inclVatPrice(oldEur) : null
   const tone = onSale ? 'text-red-600' : 'text-slate-900'
   const columns = [
-    { label: 'без ДДС', value: excl, old: oldExcl },
+    // With VAT first: that is what an order costs. Without VAT is for
+    // companies, who get the VAT back.
     { label: 'с ДДС', value: incl, old: oldIncl },
+    { label: 'без ДДС', value: excl, old: oldExcl },
   ]
 
   if (size === 'lg') {
@@ -81,7 +83,7 @@ export function DualPrice({
       <div className={`flex flex-col ${align === 'right' ? 'items-end' : ''} ${className}`}>
         {oldExcl && oldIncl && (
           <span className={`${OLD.md} text-slate-400`}>
-            <s>€{oldExcl}</s> · <s>€{oldIncl}</s>
+            <s>€{oldIncl}</s> · <s>€{oldExcl}</s>
           </span>
         )}
         {columns.map((c) => (

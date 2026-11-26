@@ -21,7 +21,6 @@ import { announceCartAdd } from '../../lib/cartEvents'
 import { bgnToEur } from '../../utils/currency'
 import { type QuickLine, parseQuickOrder } from './parseQuickOrder'
 import { productNumber } from './QuickOrderBox'
-import { InclVatLine } from '../product/InclVatLine'
 import { NameWithBrand } from '../product/NameWithBrand'
 
 function useDebounced<T>(value: T, delay = 350) {
@@ -446,12 +445,15 @@ export function QuickOrderTable({
                           </Link>
                           <span className="block truncate text-xs text-slate-500">
                             №{productNumber(product)} ·{' '}
-                            {price ? `${line.quantity} × €${price} без ДДС` : 'цена при запитване'}
+                            {price
+                              ? `${line.quantity} × €${inclVatPrice(raw!.currentEur)} с ДДС`
+                              : 'цена при запитване'}
                           </span>
-                          <InclVatLine
-                            eur={raw?.currentEur}
-                            className="truncate text-xs text-slate-500"
-                          />
+                          {price && (
+                            <span className="block truncate text-xs text-slate-500">
+                              €{price} без ДДС
+                            </span>
+                          )}
                         </div>
                       </div>
                     ) : line.pending ? (
@@ -493,7 +495,7 @@ export function QuickOrderTable({
       >
         {foundLines.length > 0
           ? `Добави ${foundLines.length === 1 ? '1 продукт' : `${foundLines.length} продукта`}${
-              total > 0 ? ` · €${total.toFixed(2)} без ДДС / €${totalInclVat} с ДДС` : ''
+              total > 0 ? ` · €${totalInclVat} с ДДС / €${total.toFixed(2)} без ДДС` : ''
             }`
           : addedCount > 0
             ? `✓ Добавени ${addedCount} в количката`
