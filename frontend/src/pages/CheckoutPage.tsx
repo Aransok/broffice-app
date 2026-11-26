@@ -594,7 +594,7 @@ const COURIERS: {
 
 export function CheckoutPage() {
   const { items, totalPrice, clear } = useCart()
-  const { exclVatPrice, inclVatPrice, showInclVat, setShowInclVat } = useVat()
+  const { exclVatPrice, inclVatPrice } = useVat()
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -898,7 +898,9 @@ export function CheckoutPage() {
         payment_method: paymentMethod,
         coupon_code: appliedCoupon?.code,
         is_company_order: isCompanyOrder,
-        prices_include_vat: showInclVat,
+        // Every order is placed with VAT. The without-VAT price is shown
+        // only so companies can see their cost after reclaiming VAT.
+        prices_include_vat: true,
         ...(isCompanyOrder
           ? {
               company_name: companyName,
@@ -1289,51 +1291,32 @@ export function CheckoutPage() {
             const inclTotal = bgnToEur(
               (Number(inclVatPrice(productsBgn) ?? 0) + shipping).toFixed(2),
             )
-            const options = [
-              { inclVat: false, label: 'без ДДС', total: exclTotal },
-              { inclVat: true, label: 'с ДДС', total: inclTotal },
-            ]
             return (
-              <fieldset className="mt-3">
-                <legend className="mb-2 text-sm font-semibold text-slate-900">
-                  {PIGEON_EXPRESS_METHODS.includes(shippingMethod) ? 'Общо' : 'Общо (с доставка)'}{' '}
-                  <span className="font-normal text-slate-500">
-                    · изберете с какви цени поръчвате
-                  </span>
-                </legend>
+              <div className="mt-3">
+                <div className="mb-2 text-sm font-semibold text-slate-900">
+                  {PIGEON_EXPRESS_METHODS.includes(shippingMethod) ? 'Общо' : 'Общо (с доставка)'}
+                </div>
                 <div className="grid grid-cols-2 gap-3">
-                  {options.map((option) => {
-                    const selected = showInclVat === option.inclVat
-                    return (
-                      <label
-                        key={option.label}
-                        className={`flex cursor-pointer flex-col gap-1 rounded-ui border-2 px-4 py-3 ${
-                          selected ? 'border-primary bg-primary/5' : 'border-slate-200 bg-surface'
-                        }`}
-                      >
-                        <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          <input
-                            type="radio"
-                            name="order-vat"
-                            checked={selected}
-                            onChange={() => setShowInclVat(option.inclVat)}
-                          />
-                          {option.label}
-                        </span>
-                        <span className="text-2xl font-extrabold text-slate-900">
-                          €{option.total}
-                        </span>
-                      </label>
-                    )
-                  })}
+                  <div className="rounded-ui border border-slate-200 bg-surface px-4 py-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      без ДДС
+                    </div>
+                    <div className="mt-1 text-2xl font-extrabold text-slate-900">€{exclTotal}</div>
+                  </div>
+                  <div className="rounded-ui border-2 border-primary bg-primary/5 px-4 py-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      с ДДС · за плащане
+                    </div>
+                    <div className="mt-1 text-2xl font-extrabold text-slate-900">€{inclTotal}</div>
+                  </div>
                 </div>
                 <p className="mt-2 text-xs text-slate-500">
-                  {showInclVat ? 'Поръчвате с цени с ДДС. ' : 'Поръчвате с цени без ДДС. '}
+                  Поръчката е с ДДС. Цената без ДДС е за фирми, които възстановяват ДДС.{' '}
                   {PIGEON_EXPRESS_METHODS.includes(shippingMethod)
                     ? 'Доставката се заплаща на куриера при получаване.'
                     : 'Доставката е по цена на куриера (с ДДС).'}
                 </p>
-              </fieldset>
+              </div>
             )
           })()}
           <ResellerTotal className="mt-3" />
